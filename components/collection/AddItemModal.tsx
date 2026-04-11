@@ -237,32 +237,32 @@ export function AddItemModal({
     };
   }
 
-  async function handleSearchCover() {
-    if (form.type !== "game") return;
-    if (!form.title.trim()) return;
+  async function handleSearchCoverAgain() {
+  if (!isGame) return;
+  if (!item) return;
 
-    setIsSearchingCover(true);
+  setIsSearchingCover(true);
 
-    try {
-      const coverUrl = await searchIgdbCover(
-        form.title.trim(),
-        form.platform.trim(),
-      );
+  try {
+    const coverUrl = await searchIgdbCover(
+      nameInput || item.title,
+      item.platform,
+    );
 
-      if (coverUrl) {
-        updateField("imageUrl", coverUrl);
-      } else {
-        alert(
-          "Não encontrei capa automaticamente. Você pode colar a URL manualmente.",
-        );
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Não foi possível buscar a capa agora.");
-    } finally {
-      setIsSearchingCover(false);
+    if (!coverUrl) {
+      alert("Não encontrei uma capa nova para esse jogo agora.");
+      return;
     }
+
+    setImageUrlInput(coverUrl);
+    setIsEditingImage(false);
+  } catch (error) {
+    console.error(error);
+    alert("Não foi possível buscar a capa agora.");
+  } finally {
+    setIsSearchingCover(false);
   }
+}
 
   function applySearchResult(result: IgdbSearchResult) {
     skipNextAutoSearchRef.current = true;
