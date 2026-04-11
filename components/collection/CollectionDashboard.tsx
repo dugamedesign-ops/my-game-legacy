@@ -15,6 +15,7 @@ import { FinancialOverview } from "./FinancialOverview";
 import { PendingItemsOverview } from "./PendingItemsOverview";
 import { FiltersBar } from "./FiltersBar";
 import { applyFilters, type Filters } from "@/lib/filter-utils";
+import { AuthPanel } from "@/components/auth/AuthPanel";
 
 type CollectionDashboardProps = {
   items: Item[];
@@ -33,12 +34,19 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     updateItem,
     removeItem,
     isLoaded,
+    user,
+    isSyncing,
+    hasLocalDataToImport,
+    importLocalData,
+    dismissLocalImport,
   } = usePersistentCollection(items);
 
   const [search, setSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
+
+  const [importStatus, setImportStatus] = useState<string | null>(null);
 
   const [prefilledType, setPrefilledType] = useState<
     "console" | "accessory" | "game" | null
@@ -132,6 +140,46 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_25%),radial-gradient(circle_at_80%_20%,_rgba(168,85,247,0.12),_transparent_20%),linear-gradient(180deg,_#09090b_0%,_#111827_100%)] text-white">
         <div className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 lg:px-8">
           <header className="mb-8 overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.05] p-6 shadow-[0_8px_40px_rgb(0,0,0,0.25)] backdrop-blur">
+            <div className="mb-6 rounded-2xl border border-white/10 bg-black/20 p-4">
+              <AuthPanel />
+              {isSyncing && (
+                <p className="mt-2 text-xs text-white/50">Sincronizando coleção online...</p>
+              )}
+            </div>
+
+            {hasLocalDataToImport && user && (
+              <div className="mb-6 rounded-2xl border border-cyan-400/30 bg-cyan-500/10 p-4 text-sm text-cyan-50">
+                <p className="font-medium">Encontramos dados locais no seu navegador.</p>
+                <p className="mt-1 text-cyan-100/85">
+                  Deseja importar sua coleção do localStorage para sua conta?
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const result = await importLocalData();
+                      if (result.error) {
+                        setImportStatus(`Falha ao importar: ${result.error}`);
+                        return;
+                      }
+                      setImportStatus(`${result.imported} item(ns) importado(s) com sucesso.`);
+                    }}
+                    className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black hover:bg-white/90"
+                  >
+                    Importar agora
+                  </button>
+                  <button
+                    type="button"
+                    onClick={dismissLocalImport}
+                    className="rounded-xl border border-white/20 px-3 py-2 text-xs text-white/80 hover:bg-white/10"
+                  >
+                    Agora não
+                  </button>
+                </div>
+                {importStatus && <p className="mt-2 text-xs text-cyan-100">{importStatus}</p>}
+              </div>
+            )}
+
             <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
               <div className="space-y-3">
                 <p className="text-sm uppercase tracking-[0.3em] text-white/45">
@@ -235,6 +283,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
         existingItems={collectionItems}
         initialType={prefilledType}
         initialPlatform={prefilledPlatform}
+        currentUserId={user?.id}
       />
 
       {contextMenu && (
