@@ -220,7 +220,15 @@ export function ItemDetailsModal({
     setIsSearchingCover(true);
 
     try {
-      const coverUrl = await searchIgdbCover(nameInput || item.title, item.platform);
+      const title = nameInput || item?.title;
+      const platform = item?.platform;
+
+      if (!title || !platform) {
+        alert("Dados insuficientes para buscar uma nova capa.");
+        return;
+      }
+
+      const coverUrl = await searchIgdbCover(title, platform);
 
       if (!coverUrl) {
         alert("Não encontrei uma capa nova para esse jogo agora.");
@@ -283,6 +291,8 @@ export function ItemDetailsModal({
   }
 
   function handleSaveAll() {
+    if (!item) return;
+
     const year = purchaseYearInput.trim() ? Number(purchaseYearInput.trim()) : undefined;
     const month = purchaseMonthInput.trim() ? Number(purchaseMonthInput.trim()) : undefined;
     const day = purchaseDayInput.trim() ? Number(purchaseDayInput.trim()) : undefined;
