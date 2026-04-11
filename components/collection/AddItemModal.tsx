@@ -237,25 +237,25 @@ export function AddItemModal({
     };
   }
 
-  async function handleSearchCoverAgain() {
-  if (!isGame) return;
-  if (!item) return;
+  async function handleSearchCover() {
+  if (form.type !== "game") return;
+  if (!form.title.trim()) return;
 
   setIsSearchingCover(true);
 
   try {
     const coverUrl = await searchIgdbCover(
-      nameInput || item.title,
-      item.platform,
+      form.title.trim(),
+      form.platform.trim(),
     );
 
-    if (!coverUrl) {
-      alert("Não encontrei uma capa nova para esse jogo agora.");
-      return;
+    if (coverUrl) {
+      updateField("imageUrl", coverUrl);
+    } else {
+      alert(
+        "Não encontrei capa automaticamente. Você pode colar a URL manualmente.",
+      );
     }
-
-    setImageUrlInput(coverUrl);
-    setIsEditingImage(false);
   } catch (error) {
     console.error(error);
     alert("Não foi possível buscar a capa agora.");
