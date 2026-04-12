@@ -16,7 +16,7 @@ export function PendingItemsOverview({
   items,
   onOpenItem,
 }: PendingItemsOverviewProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const pendingInfos = getPendingItems(items);
 
   return (

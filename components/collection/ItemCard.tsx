@@ -11,39 +11,6 @@ type ItemCardProps = {
   size?: CardSize;
 };
 
-function formatOwnershipLabel(item: Item) {
-  if (item.ownershipStatus === "wishlist") return "Wishlist";
-  if (item.ownershipStatus === "preorder") return "Pré-venda";
-  return null;
-}
-
-function formatPriorityLabel(priority?: Item["purchasePriority"]) {
-  if (!priority) return null;
-
-  const map = {
-    low: "Baixa",
-    medium: "Média",
-    high: "Alta",
-    maximum: "Prioridade Máxima",
-  };
-
-  return map[priority];
-}
-
-function formatProgressLabel(status?: Item["gameProgressStatus"]) {
-  if (!status) return null;
-
-  const map = {
-    backlog: "Backlog",
-    playing: "Jogando",
-    paused: "Pausado",
-    finished: "Terminado",
-    platinum: "Platinado",
-  };
-
-  return map[status];
-}
-
 function formatRarityLabel(tag: NonNullable<Item["rarityTags"]>[number]) {
   const map = {
     normal: "Normal",
@@ -71,6 +38,24 @@ const sizeConfig: Record<CardSize, string> = {
   small: "aspect-[5/6]",
 };
 
+function getOwnershipFrame(item: Item) {
+  if (item.ownershipStatus === "wishlist") {
+    return "border-amber-300/80 shadow-[0_0_0_1px_rgba(252,211,77,0.18)]";
+  }
+
+  if (item.ownershipStatus === "preorder") {
+    return "border-fuchsia-400/80 shadow-[0_0_0_1px_rgba(232,121,249,0.18)]";
+  }
+
+  return "border-white/10";
+}
+
+function getCornerSeal(item: Item) {
+  if (item.ownershipStatus === "wishlist") return "☆";
+  if (item.ownershipStatus === "preorder") return "🎀";
+  return null;
+}
+
 export function ItemCard({
   item,
   onClick,
@@ -78,12 +63,8 @@ export function ItemCard({
   size = "large",
 }: ItemCardProps) {
   const theme = getPlatformTheme(item.platform);
-  const ownershipLabel = formatOwnershipLabel(item);
-  const priorityLabel = formatPriorityLabel(item.purchasePriority);
-  const progressLabel = formatProgressLabel(item.gameProgressStatus);
-
   const isSmall = size === "small";
-  const showFullBadges = size === "medium" || size === "large";
+  const cornerSeal = getCornerSeal(item);
 
   return (
     <button
@@ -93,9 +74,9 @@ export function ItemCard({
         event.preventDefault();
         onContextMenu?.(item, event.clientX, event.clientY);
       }}
-      className="group w-full rounded-3xl border border-white/10 bg-white/[0.03] p-2 text-left shadow-[0_8px_30px_rgb(0,0,0,0.18)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:bg-white/[0.07]"
+      className={`group w-full rounded-3xl border bg-white/[0.03] p-1.5 text-left shadow-[0_8px_30px_rgb(0,0,0,0.18)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:bg-white/[0.07] ${getOwnershipFrame(item)}`}
     >
-      <div className={`relative overflow-hidden rounded-[24px] ${sizeConfig[size]}`}>
+      <div className={`relative overflow-hidden rounded-[22px] ${sizeConfig[size]}`}>
         {item.imageUrl ? (
           <img
             src={item.imageUrl}
@@ -106,91 +87,43 @@ export function ItemCard({
           <div
             className={`flex h-full w-full items-end bg-gradient-to-br ${theme.placeholder} p-4`}
           >
-            <div className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.25em] text-white/55">
-                {item.platform}
-              </p>
-            </div>
+            <p className="text-[11px] uppercase tracking-[0.25em] text-white/55">
+              {item.platform}
+            </p>
           </div>
         )}
 
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent" />
 
-        {ownershipLabel && (
-          <div className="absolute left-4 right-4 top-4">
-            {isSmall ? (
-              <div
-                className={`h-2 w-full rounded-full ${
-                  item.ownershipStatus === "wishlist"
-                    ? "bg-amber-300"
-                    : "bg-fuchsia-300"
-                }`}
-              />
-            ) : (
-              <span
-                className={`inline-flex rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-wide shadow-lg ${
-                  item.ownershipStatus === "wishlist"
-                    ? "bg-amber-300 text-amber-950"
-                    : "bg-fuchsia-300 text-fuchsia-950"
-                }`}
-              >
-                {item.ownershipStatus === "preorder"
-                  ? "🎁 Reservado • Pré-venda"
-                  : ownershipLabel}
-              </span>
-            )}
-          </div>
+        {cornerSeal && (
+          <span className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-black/30 text-sm text-white/90 backdrop-blur">
+            {cornerSeal}
+          </span>
         )}
       </div>
 
-      <div className="-mt-4 mx-2 rounded-2xl border border-white/10 bg-[#0b1020]/95 p-3 backdrop-blur">
+      <div className="mx-1 -mt-3 rounded-xl border border-white/10 bg-[#0b1020]/92 px-2.5 py-2 backdrop-blur">
         <h3
-          className={`font-semibold text-white ${
-            isSmall ? "line-clamp-2 text-base" : "line-clamp-2 text-lg"
+          className={`font-semibold leading-snug text-white ${
+            isSmall ? "line-clamp-2 text-sm" : "line-clamp-2 text-base"
           }`}
         >
           {item.title}
         </h3>
 
         {item.subtitle && (
-          <p
-            className={`mt-1 text-white/75 ${
-              isSmall ? "line-clamp-1 text-xs" : "line-clamp-2 text-sm"
-            }`}
-          >
-            {item.subtitle}
-          </p>
+          <p className="mt-0.5 line-clamp-1 text-xs text-white/72">{item.subtitle}</p>
         )}
 
-        {showFullBadges ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {priorityLabel && <StatusBadge label={priorityLabel} variant="priority" />}
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {item.mediaFormats?.map((format) => (
+            <StatusBadge key={format} label={formatMediaLabel(format)} variant="media" />
+          ))}
 
-            {progressLabel && <StatusBadge label={progressLabel} variant="progress" />}
-
-            {item.mediaFormats?.map((format) => (
-              <StatusBadge
-                key={format}
-                label={formatMediaLabel(format)}
-                variant="media"
-              />
-            ))}
-
-            {item.rarityTags?.map((tag) => (
-              <StatusBadge key={tag} label={formatRarityLabel(tag)} variant="rarity" />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {item.mediaFormats?.map((format) => (
-              <StatusBadge
-                key={format}
-                label={formatMediaLabel(format)}
-                variant="media"
-              />
-            ))}
-          </div>
-        )}
+          {item.rarityTags?.slice(0, 1).map((tag) => (
+            <StatusBadge key={tag} label={formatRarityLabel(tag)} variant="rarity" />
+          ))}
+        </div>
       </div>
     </button>
   );

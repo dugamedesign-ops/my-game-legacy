@@ -46,7 +46,7 @@ export function PlatformSection({
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <span className={`h-3 w-3 rounded-full ${theme.accent}`} />
-              <h2 className="text-2xl font-semibold tracking-tight text-white">
+              <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
                 {platform}
               </h2>
             </div>
