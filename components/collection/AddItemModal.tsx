@@ -69,6 +69,7 @@ export function AddItemModal({
   const [searchResults, setSearchResults] = useState<IgdbSearchResult[]>([]);
   const [isSearchingGames, setIsSearchingGames] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [isGameSelectionDone, setIsGameSelectionDone] = useState(false);
 
   const skipNextAutoSearchRef = useRef(false);
 
@@ -107,6 +108,7 @@ export function AddItemModal({
     setForm(getInitialForm(initialType, initialPlatform));
     setSearchResults([]);
     setShowResults(false);
+    setIsGameSelectionDone(false);
 
     if (initialType) {
       setStep(2);
@@ -290,6 +292,7 @@ export function AddItemModal({
     }));
 
     setShowResults(false);
+    setIsGameSelectionDone(true);
   }
 
   function handleSave() {
@@ -368,60 +371,86 @@ export function AddItemModal({
 
           {step === 2 && (
             <div className="space-y-5">
-              {form.type === "game" && (
-                <div className="relative">
-                  <FieldBlock label="Nome do jogo *">
+              {form.type === "game" && !isGameSelectionDone ? (
+                <div className="space-y-4 rounded-3xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-sm text-white/70">
+                    Pesquise e selecione seu jogo primeiro para continuar o cadastro.
+                  </p>
+
+                  <div className="relative">
                     <input
                       value={form.title}
                       onChange={(e) => {
                         updateField("title", e.target.value);
                         setShowResults(true);
                       }}
-                      placeholder="Digite o nome para buscar sugestões"
+                      placeholder="Pesquisar por um jogo..."
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                     />
-                  </FieldBlock>
 
-                  {showResults && (searchResults.length > 0 || isSearchingGames) && (
-                    <div className="absolute z-20 mt-2 max-h-80 w-full overflow-y-auto rounded-2xl border border-white/10 bg-[#0d1326] shadow-2xl">
-                      {isSearchingGames ? (
-                        <div className="px-4 py-3 text-sm text-white/65">
-                          Buscando na IGDB...
-                        </div>
-                      ) : (
-                        searchResults.map((result) => (
-                          <button
-                            key={result.id}
-                            type="button"
-                            onClick={() => applySearchResult(result)}
-                            className="flex w-full items-center gap-3 border-b border-white/5 px-4 py-3 text-left transition hover:bg-white/[0.04]"
-                          >
-                            <div className="h-16 w-12 overflow-hidden rounded-lg bg-white/5">
-                              {result.coverUrl ? (
-                                <img
-                                  src={result.coverUrl}
-                                  alt={result.name}
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : null}
-                            </div>
+                    {showResults && (searchResults.length > 0 || isSearchingGames) && (
+                      <div className="absolute z-20 mt-2 max-h-80 w-full overflow-y-auto rounded-2xl border border-white/10 bg-[#0d1326] shadow-2xl">
+                        {isSearchingGames ? (
+                          <div className="px-4 py-3 text-sm text-white/65">
+                            Buscando na IGDB...
+                          </div>
+                        ) : (
+                          searchResults.map((result) => (
+                            <button
+                              key={result.id}
+                              type="button"
+                              onClick={() => applySearchResult(result)}
+                              className="flex w-full items-center gap-3 border-b border-white/5 px-4 py-3 text-left transition hover:bg-white/[0.04]"
+                            >
+                              <div className="h-16 w-12 overflow-hidden rounded-lg bg-white/5">
+                                {result.coverUrl ? (
+                                  <img
+                                    src={result.coverUrl}
+                                    alt={result.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : null}
+                              </div>
 
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium text-white">
-                                {result.name}
-                              </p>
-                              <p className="mt-1 truncate text-xs text-white/55">
-                                {result.platforms.join(" • ") ||
-                                  "Plataforma não identificada"}
-                              </p>
-                            </div>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium text-white">
+                                  {result.name}
+                                </p>
+                                <p className="mt-1 truncate text-xs text-white/55">
+                                  {result.platforms.join(" • ") ||
+                                    "Plataforma não identificada"}
+                                </p>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      disabled={!form.title.trim()}
+                      onClick={() => setIsGameSelectionDone(true)}
+                      className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Continuar com esse nome
+                    </button>
+                  </div>
                 </div>
-              )}
+              ) : (
+                <>
+                  {form.type === "game" && (
+                    <FieldBlock label="Nome do jogo *">
+                      <input
+                        value={form.title}
+                        onChange={(e) => updateField("title", e.target.value)}
+                        placeholder="Nome do jogo"
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      />
+                    </FieldBlock>
+                  )}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FieldBlock label="Plataforma *">
@@ -648,6 +677,8 @@ export function AddItemModal({
                   Salvar item
                 </button>
               </div>
+              </>
+              )}
             </div>
           )}
         </div>
