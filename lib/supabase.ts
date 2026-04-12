@@ -9,6 +9,11 @@ export type SupabaseSession = {
 export type SupabaseUser = {
   id: string;
   email?: string;
+  user_metadata?: {
+    name?: string;
+    full_name?: string;
+    [key: string]: unknown;
+  };
 };
 
 type AuthResponse = {

@@ -185,8 +185,6 @@ export function AddItemModal({
     mediaFormats,
   ]);
 
-  if (!isOpen) return null;
-
   function resetAndClose() {
     setStep(1);
     setSearchResults([]);
@@ -194,6 +192,25 @@ export function AddItemModal({
     setForm(getInitialForm(null, null));
     onClose();
   }
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setStep(1);
+        setSearchResults([]);
+        setShowResults(false);
+        setForm(getInitialForm(null, null));
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));

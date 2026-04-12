@@ -34,13 +34,22 @@ function getCornerSeal(item: Item) {
   return null;
 }
 
+function getCornerSealLabel(item: Item) {
+  if (item.ownershipStatus === "wishlist") return "Wishlist";
+  if (item.ownershipStatus === "preorder") return "Pré-venda";
+  return "";
+}
+
 function hasMedia(item: Item, media: "physical" | "digital") {
   return !!item.mediaFormats?.includes(media);
 }
 
 function MediaSeal({ icon, label }: { icon: string; label: string }) {
   return (
-    <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/35 bg-black/55 backdrop-blur">
+    <span
+      title={label}
+      className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/35 bg-black/55 backdrop-blur"
+    >
       <span className="text-xl leading-none" aria-label={label} role="img">
         {icon}
       </span>
@@ -86,7 +95,10 @@ export function ItemCard({
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
 
         {cornerSeal && (
-          <span className="absolute right-3 top-3 inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-black/40 text-sm text-white/95 backdrop-blur">
+          <span
+            title={getCornerSealLabel(item)}
+            className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/40 text-sm text-white/95 backdrop-blur"
+          >
             {cornerSeal}
           </span>
         )}

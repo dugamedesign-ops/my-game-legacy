@@ -14,7 +14,6 @@ export function AuthPanel() {
     signInWithPassword,
     signUpWithPassword,
     signInWithOtp,
-    signOut,
   } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>("login");
@@ -121,20 +120,7 @@ export function AuthPanel() {
     );
   }
 
-  if (user) {
-    return (
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/80">
-        <span>Conectado como {user.email}</span>
-        <button
-          type="button"
-          onClick={() => void signOut()}
-          className="rounded-xl border border-white/15 px-3 py-1.5 text-xs font-medium text-white/85 hover:bg-white/10"
-        >
-          Sair
-        </button>
-      </div>
-    );
-  }
+  if (user) return null;
 
   return (
     <div className="space-y-3 rounded-2xl border border-white/10 bg-black/15 p-3">

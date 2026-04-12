@@ -183,6 +183,19 @@ export function ItemDetailsModal({
     setShowUploadTip(false);
   }, [item?.id, isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !item) return null;
 
   const isGame = item.type === "game";

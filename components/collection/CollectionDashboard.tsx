@@ -16,6 +16,7 @@ import { PendingItemsOverview } from "./PendingItemsOverview";
 import { FiltersBar } from "./FiltersBar";
 import { applyFilters, type Filters } from "@/lib/filter-utils";
 import { AuthPanel } from "@/components/auth/AuthPanel";
+import { useAuth } from "@/providers/AuthProvider";
 
 type CollectionDashboardProps = {
   items: Item[];
@@ -28,6 +29,7 @@ type ContextMenuState = {
 } | null;
 
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
+  const { user: authUser, signOut } = useAuth();
   const {
     items: collectionItems,
     addItem,
@@ -42,6 +44,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   } = usePersistentCollection(items);
 
   const [search, setSearch] = useState("");
+  const [legacyTitleOverride, setLegacyTitleOverride] = useState("");
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
@@ -63,6 +66,17 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     media: [],
     missing: [],
   });
+
+  const legacyTitle = useMemo(() => {
+    if (legacyTitleOverride.trim()) return legacyTitleOverride;
+    const rawName =
+      authUser?.user_metadata?.full_name ??
+      authUser?.user_metadata?.name ??
+      authUser?.email?.split("@")[0] ??
+      "My";
+    const firstName = rawName.split(" ")[0].replace(/[^a-zA-ZÀ-ÿ0-9]/g, "");
+    return `${firstName || "My"}'s Legacy`;
+  }, [authUser?.email, authUser?.user_metadata?.full_name, authUser?.user_metadata?.name, legacyTitleOverride]);
 
   useEffect(() => {
     function handleCloseContextMenu() {
@@ -149,8 +163,17 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-6">
             <aside className="mb-6 lg:sticky lg:top-6 lg:mb-0 lg:h-fit">
               <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
-                <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/80">Coleção gamer</p>
+                <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/80">My Game Legacy</p>
                 <h2 className="mt-2 text-2xl font-semibold text-white">My Game Legacy</h2>
+                <div className="mt-3">
+                  <label className="text-xs text-white/50">Nome da coleção</label>
+                  <input
+                    value={legacyTitle}
+                    onChange={(event) => setLegacyTitleOverride(event.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-white/35"
+                    placeholder="Seu nome Legacy"
+                  />
+                </div>
                 <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
                   <AuthPanel />
                   {isSyncing && (
@@ -158,13 +181,24 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                   )}
                 </div>
                 <div className="mt-4 space-y-2">
-                  <button type="button" onClick={handleOpenDefaultAdd} className="w-full rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black hover:bg-white/90">+ Adicionar</button>
+                  <button type="button" onClick={handleOpenDefaultAdd} className="w-full rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black transition hover:bg-white/90 active:scale-[0.98]">+ Adicionar</button>
                   <div className="grid grid-cols-3 gap-2">
-                    <button type="button" onClick={() => handleOpenQuickAdd("game")} className="rounded-xl border border-white/15 px-2 py-2 text-xs text-white/85 hover:bg-white/10">Jogo</button>
-                    <button type="button" onClick={() => handleOpenQuickAdd("console")} className="rounded-xl border border-white/15 px-2 py-2 text-xs text-white/85 hover:bg-white/10">Console</button>
-                    <button type="button" onClick={() => handleOpenQuickAdd("accessory")} className="rounded-xl border border-white/15 px-2 py-2 text-xs text-white/85 hover:bg-white/10">Acessório</button>
+                    <button type="button" onClick={() => handleOpenQuickAdd("game")} className="rounded-xl border border-white/15 px-2 py-2 text-xs text-white/85 transition hover:bg-white/10 active:scale-[0.97]">+ Jogo 🎮</button>
+                    <button type="button" onClick={() => handleOpenQuickAdd("console")} className="rounded-xl border border-white/15 px-2 py-2 text-xs text-white/85 transition hover:bg-white/10 active:scale-[0.97]">+ Console 🕹️</button>
+                    <button type="button" onClick={() => handleOpenQuickAdd("accessory")} className="rounded-xl border border-white/15 px-2 py-2 text-xs text-white/85 transition hover:bg-white/10 active:scale-[0.97]">+ Acessório 🎧</button>
                   </div>
                 </div>
+                {authUser && (
+                  <div className="mt-4 border-t border-white/10 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => void signOut()}
+                      className="w-full rounded-xl border border-white/20 px-3 py-2 text-sm text-white/85 transition hover:bg-white/10 active:scale-[0.98]"
+                    >
+                      Sair
+                    </button>
+                  </div>
+                )}
               </div>
             </aside>
             <div>
@@ -205,7 +239,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
               <div className="space-y-3">
                 <p className="text-sm uppercase tracking-[0.3em] text-white/45">
-                  Coleção gamer
+                  {legacyTitle}
                 </p>
                 <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
                   Sua vitrine digital
