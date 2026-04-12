@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useAuth } from "@/providers/AuthProvider";
+import { getMissingSupabaseEnvKeys } from "@/lib/supabase";
 
 export function AuthPanel() {
   const { user, isEnabled, signInWithOtp, signOut } = useAuth();
@@ -31,10 +32,23 @@ export function AuthPanel() {
   }
 
   if (!isEnabled) {
+    const missingEnvKeys = getMissingSupabaseEnvKeys();
+
     return (
-      <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-xs text-amber-100">
-        Autenticação online desativada. Defina NEXT_PUBLIC_SUPABASE_URL e
-        NEXT_PUBLIC_SUPABASE_ANON_KEY para habilitar login e sincronização.
+      <div className="space-y-2 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-xs text-amber-100">
+        <p className="font-medium">Autenticação online desativada.</p>
+        <p>
+          Variáveis ausentes:{" "}
+          {missingEnvKeys.length > 0
+            ? missingEnvKeys.join(", ")
+            : "NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY"}
+          .
+        </p>
+        <ol className="list-decimal space-y-1 pl-4 text-amber-100/90">
+          <li>Copie `.env.example` para `.env.local`.</li>
+          <li>Confirme URL e anon key do seu projeto Supabase.</li>
+          <li>Reinicie o servidor (`npm run dev`).</li>
+        </ol>
       </div>
     );
   }

@@ -12,6 +12,15 @@ export type SupabaseUser = {
 
 const SESSION_KEY = "supabase-rest-session";
 
+const REQUIRED_SUPABASE_ENV_KEYS = [
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+] as const;
+
+export function getMissingSupabaseEnvKeys() {
+  return REQUIRED_SUPABASE_ENV_KEYS.filter((key) => !process.env[key]);
+}
+
 export function getSupabaseEnv() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

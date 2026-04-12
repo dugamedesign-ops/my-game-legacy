@@ -30,6 +30,17 @@ cp .env.example .env.local
 npm run dev
 ```
 
+## Não consegue fazer login?
+
+Se aparecer o aviso **"Autenticação online desativada"**:
+
+1. Verifique se o arquivo está exatamente em `./.env.local` (na raiz do projeto).
+2. Confirme se essas duas variáveis estão preenchidas:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. Reinicie o servidor após alterar variáveis (`Ctrl + C` e `npm run dev` novamente).
+4. Abra o app na mesma URL configurada como redirect no Supabase Auth (em dev, normalmente `http://localhost:3000`).
+
 ## Fluxo de autenticação e migração
 
 - Sem login: o app segue funcionando com `localStorage`.
