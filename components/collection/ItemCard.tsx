@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Item } from "@/types/collection";
 
 type CardSize = "large" | "medium" | "small";
@@ -39,20 +40,28 @@ function hasMedia(item: Item, media: "physical" | "digital") {
 
 function MediaSeal({
   active,
-  icon,
+  src,
+  alt,
 }: {
   active: boolean;
-  icon: string;
+  src: string;
+  alt: string;
 }) {
   return (
     <span
-      className={`inline-flex h-7 w-7 items-center justify-center rounded-full border text-sm backdrop-blur ${
+      className={`inline-flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border backdrop-blur ${
         active
-          ? "border-white/30 bg-black/45 text-white"
-          : "border-white/12 bg-black/20 text-white/25"
+          ? "border-white/30 bg-black/45"
+          : "border-white/12 bg-black/20 opacity-45"
       }`}
     >
-      {icon}
+      <Image
+        src={src}
+        alt={alt}
+        width={16}
+        height={16}
+        className={`h-4 w-4 object-contain ${active ? "opacity-100" : "opacity-30"}`}
+      />
     </span>
   );
 }
@@ -96,8 +105,16 @@ export function ItemCard({
         )}
 
         <div className="absolute bottom-3 left-3 flex items-center gap-2">
-          <MediaSeal active={hasMedia(item, "physical")} icon="💿" />
-          <MediaSeal active={hasMedia(item, "digital")} icon="☁" />
+          <MediaSeal
+            active={hasMedia(item, "physical")}
+            src="/icons/media-physical.png"
+            alt="Mídia física"
+          />
+          <MediaSeal
+            active={hasMedia(item, "digital")}
+            src="/icons/media-digital.png"
+            alt="Mídia digital"
+          />
         </div>
       </div>
 
