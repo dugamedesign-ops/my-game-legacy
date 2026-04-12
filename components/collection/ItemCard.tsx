@@ -93,9 +93,9 @@ export function ItemCard({
         event.preventDefault();
         onContextMenu?.(item, event.clientX, event.clientY);
       }}
-      className="group w-full overflow-hidden rounded-3xl border border-white/10 bg-white/5 text-left shadow-[0_8px_30px_rgb(0,0,0,0.18)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:bg-white/[0.07]"
+      className="group w-full rounded-3xl border border-white/10 bg-white/[0.03] p-2 text-left shadow-[0_8px_30px_rgb(0,0,0,0.18)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:bg-white/[0.07]"
     >
-      <div className={`relative overflow-hidden ${sizeConfig[size]}`}>
+      <div className={`relative overflow-hidden rounded-[24px] ${sizeConfig[size]}`}>
         {item.imageUrl ? (
           <img
             src={item.imageUrl}
@@ -110,12 +110,11 @@ export function ItemCard({
               <p className="text-xs uppercase tracking-[0.25em] text-white/55">
                 {item.platform}
               </p>
-              <p className="text-lg font-semibold text-white/95">{item.title}</p>
             </div>
           </div>
         )}
 
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
 
         {ownershipLabel && (
           <div className="absolute left-4 right-4 top-4">
@@ -142,70 +141,56 @@ export function ItemCard({
             )}
           </div>
         )}
+      </div>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4">
-          <div className="space-y-2">
-            <div>
-              <h3
-                className={`font-semibold text-white ${
-                  isSmall ? "line-clamp-2 text-base" : "line-clamp-2 text-lg"
-                }`}
-              >
-                {item.title}
-              </h3>
+      <div className="-mt-4 mx-2 rounded-2xl border border-white/10 bg-[#0b1020]/95 p-3 backdrop-blur">
+        <h3
+          className={`font-semibold text-white ${
+            isSmall ? "line-clamp-2 text-base" : "line-clamp-2 text-lg"
+          }`}
+        >
+          {item.title}
+        </h3>
 
-              {item.subtitle && (
-                <p
-                  className={`mt-1 text-white/80 ${
-                    isSmall
-                      ? "line-clamp-1 text-xs"
-                      : "line-clamp-2 text-sm"
-                  }`}
-                >
-                  {item.subtitle}
-                </p>
-              )}
-            </div>
+        {item.subtitle && (
+          <p
+            className={`mt-1 text-white/75 ${
+              isSmall ? "line-clamp-1 text-xs" : "line-clamp-2 text-sm"
+            }`}
+          >
+            {item.subtitle}
+          </p>
+        )}
 
-            {showFullBadges ? (
-              <div className="flex flex-wrap gap-2">
-                {priorityLabel && (
-                  <StatusBadge label={priorityLabel} variant="priority" />
-                )}
+        {showFullBadges ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {priorityLabel && <StatusBadge label={priorityLabel} variant="priority" />}
 
-                {progressLabel && (
-                  <StatusBadge label={progressLabel} variant="progress" />
-                )}
+            {progressLabel && <StatusBadge label={progressLabel} variant="progress" />}
 
-                {item.mediaFormats?.map((format) => (
-                  <StatusBadge
-                    key={format}
-                    label={formatMediaLabel(format)}
-                    variant="media"
-                  />
-                ))}
+            {item.mediaFormats?.map((format) => (
+              <StatusBadge
+                key={format}
+                label={formatMediaLabel(format)}
+                variant="media"
+              />
+            ))}
 
-                {item.rarityTags?.map((tag) => (
-                  <StatusBadge
-                    key={tag}
-                    label={formatRarityLabel(tag)}
-                    variant="rarity"
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {item.mediaFormats?.map((format) => (
-                  <StatusBadge
-                    key={format}
-                    label={formatMediaLabel(format)}
-                    variant="media"
-                  />
-                ))}
-              </div>
-            )}
+            {item.rarityTags?.map((tag) => (
+              <StatusBadge key={tag} label={formatRarityLabel(tag)} variant="rarity" />
+            ))}
           </div>
-        </div>
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {item.mediaFormats?.map((format) => (
+              <StatusBadge
+                key={format}
+                label={formatMediaLabel(format)}
+                variant="media"
+              />
+            ))}
+          </div>
+        )}
       </div>
     </button>
   );

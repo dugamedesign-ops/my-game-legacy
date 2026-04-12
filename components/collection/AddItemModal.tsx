@@ -203,7 +203,7 @@ export function AddItemModal({
 
   function getIsFormValid() {
     if (form.type === "console") {
-      return !!form.platform.trim() && !!form.subtitle.trim();
+      return !!form.platform.trim();
     }
 
     if (form.type === "accessory") {
@@ -470,7 +470,7 @@ export function AddItemModal({
                     />
                   </FieldBlock>
 
-                  <FieldBlock label="Versão *">
+                  <FieldBlock label="Versão">
                     <input
                       value={form.subtitle}
                       onChange={(e) => updateField("subtitle", e.target.value)}
