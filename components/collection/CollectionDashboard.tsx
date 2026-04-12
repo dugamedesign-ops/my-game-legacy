@@ -95,6 +95,13 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     setIsAddModalOpen(true);
   }
 
+
+  function handleOpenQuickAdd(type: "console" | "accessory" | "game") {
+    setPrefilledType(type);
+    setPrefilledPlatform(null);
+    setIsAddModalOpen(true);
+  }
+
   const filteredItems = useMemo(() => {
     const base = collectionItems.filter((item) => {
       const normalizedSearch = search.trim().toLowerCase();
@@ -139,14 +146,29 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     <>
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_25%),radial-gradient(circle_at_80%_20%,_rgba(168,85,247,0.12),_transparent_20%),linear-gradient(180deg,_#09090b_0%,_#111827_100%)] text-white">
         <div className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 lg:px-8">
+          <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-6">
+            <aside className="mb-6 lg:sticky lg:top-6 lg:mb-0 lg:h-fit">
+              <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
+                <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/80">Coleção gamer</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">My Game Legacy</h2>
+                <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                  <AuthPanel />
+                  {isSyncing && (
+                    <p className="mt-2 text-xs text-white/50">Sincronizando coleção online...</p>
+                  )}
+                </div>
+                <div className="mt-4 space-y-2">
+                  <button type="button" onClick={handleOpenDefaultAdd} className="w-full rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black hover:bg-white/90">+ Adicionar</button>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button type="button" onClick={() => handleOpenQuickAdd("game")} className="rounded-xl border border-white/15 px-2 py-2 text-xs text-white/85 hover:bg-white/10">Jogo</button>
+                    <button type="button" onClick={() => handleOpenQuickAdd("console")} className="rounded-xl border border-white/15 px-2 py-2 text-xs text-white/85 hover:bg-white/10">Console</button>
+                    <button type="button" onClick={() => handleOpenQuickAdd("accessory")} className="rounded-xl border border-white/15 px-2 py-2 text-xs text-white/85 hover:bg-white/10">Acessório</button>
+                  </div>
+                </div>
+              </div>
+            </aside>
+            <div>
           <header className="mb-8 overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.05] p-6 shadow-[0_8px_40px_rgb(0,0,0,0.25)] backdrop-blur">
-            <div className="mb-6 rounded-2xl border border-white/10 bg-black/20 p-4">
-              <AuthPanel />
-              {isSyncing && (
-                <p className="mt-2 text-xs text-white/50">Sincronizando coleção online...</p>
-              )}
-            </div>
-
             {hasLocalDataToImport && user && (
               <div className="mb-6 rounded-2xl border border-cyan-400/30 bg-cyan-500/10 p-4 text-sm text-cyan-50">
                 <p className="font-medium">Encontramos dados locais no seu navegador.</p>
@@ -249,6 +271,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           ) : (
             <NoResultsState />
           )}
+
+            </div>
+          </div>
 
           <button
             type="button"
