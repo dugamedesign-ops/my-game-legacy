@@ -215,12 +215,15 @@ export function ItemDetailsModal({
   }
 
   async function handleSearchCoverAgain() {
-    if (!isGame) return;
+    if (!isGame || !item) return;
+
+    const currentTitle = nameInput.trim() || item.title;
+    const currentPlatform = item.platform;
 
     setIsSearchingCover(true);
 
     try {
-      const coverUrl = await searchIgdbCover(nameInput || item.title, item.platform);
+      const coverUrl = await searchIgdbCover(currentTitle, currentPlatform);
 
       if (!coverUrl) {
         alert("Não encontrei uma capa nova para esse jogo agora.");
@@ -283,6 +286,8 @@ export function ItemDetailsModal({
   }
 
   function handleSaveAll() {
+    if (!item) return;
+
     const year = purchaseYearInput.trim() ? Number(purchaseYearInput.trim()) : undefined;
     const month = purchaseMonthInput.trim() ? Number(purchaseMonthInput.trim()) : undefined;
     const day = purchaseDayInput.trim() ? Number(purchaseDayInput.trim()) : undefined;
