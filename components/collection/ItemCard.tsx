@@ -34,7 +34,7 @@ function getCornerSeal(item: Item) {
 }
 
 function hasMedia(item: Item, media: "physical" | "digital") {
-  return item.mediaFormats?.includes(media);
+  return !!item.mediaFormats?.includes(media);
 }
 
 function MediaSeal({
