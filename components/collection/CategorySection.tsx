@@ -145,6 +145,7 @@ export function CategorySection({
               onClick={onItemClick}
               onContextMenu={onItemContextMenu}
               size={cardSize}
+              showMediaSeals={category === "game"}
             />
           ))}
         </div>

@@ -8,6 +8,7 @@ type ItemCardProps = {
   onClick?: (item: Item) => void;
   onContextMenu?: (item: Item, x: number, y: number) => void;
   size?: CardSize;
+  showMediaSeals?: boolean;
 };
 
 const sizeConfig: Record<CardSize, string> = {
@@ -57,12 +58,13 @@ export function ItemCard({
   onClick,
   onContextMenu,
   size = "medium",
+  showMediaSeals = true,
 }: ItemCardProps) {
   const isSmall = size === "small";
   const cornerSeal = getCornerSeal(item);
 
-  const showPhysicalSeal = item.type === "game" && hasMedia(item, "physical");
-  const showDigitalSeal = item.type === "game" && hasMedia(item, "digital");
+  const showPhysicalSeal = showMediaSeals && hasMedia(item, "physical");
+  const showDigitalSeal = showMediaSeals && hasMedia(item, "digital");
   const shouldRenderMediaSeals = showPhysicalSeal || showDigitalSeal;
 
   return (
