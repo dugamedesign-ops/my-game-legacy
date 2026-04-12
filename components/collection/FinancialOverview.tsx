@@ -9,7 +9,7 @@ type FinancialOverviewProps = {
 };
 
 export function FinancialOverview({ items }: FinancialOverviewProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const summary = getFinancialSummary(items);
 
   const missingMessages = [

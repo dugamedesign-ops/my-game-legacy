@@ -63,7 +63,7 @@ export function CategorySection({
         <div className="flex items-start gap-3">
           <div>
             <div className="flex items-center gap-3">
-              <h3 className="text-lg font-semibold text-white">
+              <h3 className="text-base font-semibold text-white sm:text-lg">
                 {CATEGORY_LABELS[category]}
               </h3>
 
