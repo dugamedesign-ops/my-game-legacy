@@ -49,6 +49,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isEditingLegacyTitle, setIsEditingLegacyTitle] = useState(false);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
@@ -132,6 +133,11 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     setIsMobileSidebarOpen(false);
   }
 
+  function handleLegacyTitleSave() {
+    setLegacyTitleOverride((current) => current.trim());
+    setIsEditingLegacyTitle(false);
+  }
+
   const filteredItems = useMemo(() => {
     const base = collectionItems.filter((item) => {
       const normalizedSearch = search.trim().toLowerCase();
@@ -204,11 +210,11 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               id="mobile-sidebar"
               className={`mb-6 lg:sticky lg:top-6 lg:mb-0 lg:h-fit ${
                 isMobileSidebarOpen
-                  ? "fixed inset-y-0 left-0 z-50 w-[86vw] max-w-[320px] overflow-y-auto p-4 sm:w-[380px] lg:static lg:inset-auto lg:z-auto lg:w-auto lg:max-w-none lg:overflow-visible lg:p-0"
+                  ? "fixed inset-y-0 left-0 z-50 w-[86vw] max-w-[320px] overflow-y-auto border-r border-white/10 bg-[#0b1220] p-4 shadow-2xl sm:w-[380px] lg:static lg:inset-auto lg:z-auto lg:w-auto lg:max-w-none lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
                   : "hidden lg:block"
               }`}
             >
-              <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
+              <div className={`rounded-[28px] border border-white/10 p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)] ${isMobileSidebarOpen ? "bg-[#0f172a]" : "bg-white/[0.04]"}`}>
                 <div className="flex items-center justify-between lg:block">
                   <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/80">My Game Legacy</p>
                   <button
@@ -219,15 +225,35 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     Fechar
                   </button>
                 </div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">My Game Legacy</h2>
-                <div className="mt-3">
-                  <label className="text-xs text-white/50">Nome da coleção</label>
-                  <input
-                    value={legacyTitle}
-                    onChange={(event) => setLegacyTitleOverride(event.target.value)}
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-white/35"
-                    placeholder="Seu nome Legacy"
-                  />
+                <div className="mt-2 flex items-center gap-2">
+                  {isEditingLegacyTitle ? (
+                    <input
+                      value={legacyTitle}
+                      onChange={(event) => setLegacyTitleOverride(event.target.value)}
+                      onBlur={handleLegacyTitleSave}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") handleLegacyTitleSave();
+                        if (event.key === "Escape") setIsEditingLegacyTitle(false);
+                      }}
+                      className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xl font-semibold text-white outline-none placeholder:text-white/35"
+                      placeholder="Seu nome Legacy"
+                      autoFocus
+                    />
+                  ) : (
+                    <>
+                      <h2 className="truncate text-2xl font-semibold text-white">
+                        {legacyTitle}
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingLegacyTitle(true)}
+                        className="rounded-lg border border-white/15 px-2 py-1 text-sm text-white/75 transition hover:bg-white/10"
+                        aria-label="Editar nome da coleção"
+                      >
+                        ✏️
+                      </button>
+                    </>
+                  )}
                 </div>
                 <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
                   <AuthPanel />
@@ -238,9 +264,18 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                 <div className="mt-4 space-y-2">
                   <button type="button" onClick={handleOpenDefaultAdd} className="w-full rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black transition hover:bg-white/90 active:scale-[0.98]">+ Adicionar</button>
                   <div className="grid grid-cols-3 gap-2">
-                    <button type="button" onClick={() => handleOpenQuickAdd("game")} className="rounded-xl border border-white/15 px-2 py-2 text-xs text-white/85 transition hover:bg-white/10 active:scale-[0.97]">+ Jogo 🎮</button>
-                    <button type="button" onClick={() => handleOpenQuickAdd("console")} className="rounded-xl border border-white/15 px-2 py-2 text-xs text-white/85 transition hover:bg-white/10 active:scale-[0.97]">+ Console 🕹️</button>
-                    <button type="button" onClick={() => handleOpenQuickAdd("accessory")} className="rounded-xl border border-white/15 px-2 py-2 text-xs text-white/85 transition hover:bg-white/10 active:scale-[0.97]">+ Acessório 🎧</button>
+                    <button type="button" onClick={() => handleOpenQuickAdd("game")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-2 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
+                      <span className="whitespace-nowrap text-[11px] font-medium">+ Jogo</span>
+                      <span className="mt-1 text-base leading-none">🎮</span>
+                    </button>
+                    <button type="button" onClick={() => handleOpenQuickAdd("console")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-2 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
+                      <span className="whitespace-nowrap text-[11px] font-medium">+ Console</span>
+                      <span className="mt-1 text-base leading-none">🕹️</span>
+                    </button>
+                    <button type="button" onClick={() => handleOpenQuickAdd("accessory")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-2 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
+                      <span className="whitespace-nowrap text-[11px] font-medium">+ Acessório</span>
+                      <span className="mt-1 text-base leading-none">🎧</span>
+                    </button>
                   </div>
                 </div>
                 {authUser && (
