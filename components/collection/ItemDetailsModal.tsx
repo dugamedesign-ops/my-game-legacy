@@ -215,27 +215,30 @@ export function ItemDetailsModal({
   }
 
   async function handleSearchCoverAgain() {
-    if (!isGame) return;
+  if (!isGame) return;
 
-    setIsSearchingCover(true);
+  const currentTitle = nameInput.trim() || item.title;
+  const currentPlatform = item.platform;
 
-    try {
-      const coverUrl = await searchIgdbCover(nameInput || item.title, item.platform);
+  setIsSearchingCover(true);
 
-      if (!coverUrl) {
-        alert("Não encontrei uma capa nova para esse jogo agora.");
-        return;
-      }
+  try {
+    const coverUrl = await searchIgdbCover(currentTitle, currentPlatform);
 
-      setImageUrlInput(coverUrl);
-      setIsEditingImage(false);
-    } catch (error) {
-      console.error(error);
-      alert("Não foi possível buscar a capa agora.");
-    } finally {
-      setIsSearchingCover(false);
+    if (!coverUrl) {
+      alert("Não encontrei uma capa nova para esse jogo agora.");
+      return;
     }
+
+    setImageUrlInput(coverUrl);
+    setIsEditingImage(false);
+  } catch (error) {
+    console.error(error);
+    alert("Não foi possível buscar a capa agora.");
+  } finally {
+    setIsSearchingCover(false);
   }
+}
 
   function handlePickImageFromComputer() {
     fileInputRef.current?.click();
