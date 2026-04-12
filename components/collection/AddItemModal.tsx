@@ -166,6 +166,10 @@ export function AddItemModal({
       type: form.type,
       title: comparableTitle,
       platform: form.platform,
+      subtitle:
+        form.type === "console" || form.type === "accessory"
+          ? form.subtitle
+          : undefined,
       ownershipStatus: form.ownershipStatus,
       mediaFormats: form.type === "game" ? mediaFormats : undefined,
     });
@@ -174,6 +178,7 @@ export function AddItemModal({
     form.type,
     form.title,
     form.platform,
+    form.subtitle,
     form.ownershipStatus,
     mediaFormats,
   ]);
@@ -292,7 +297,7 @@ export function AddItemModal({
 
     if (duplicateCheck.exactDuplicates.length > 0) {
       alert(
-        "Esse item já existe com a mesma plataforma, mesmo status e mesma mídia. Altere a mídia ou o status para cadastrar uma nova posse.",
+        "Esse item já existe com a mesma plataforma, status e variação. Para console/acessório, altere a versão/subtítulo para cadastrar outro.",
       );
       return;
     }
