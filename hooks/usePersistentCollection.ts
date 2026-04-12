@@ -89,7 +89,7 @@ export function usePersistentCollection(initialItems: Item[]) {
         }
       } catch (error) {
         console.error("Erro ao carregar coleção online:", error);
-        setItems(localItems ?? initialItems);
+        setItems([]);
       } finally {
         if (!isCancelled) {
           setIsLoaded(true);
@@ -107,8 +107,12 @@ export function usePersistentCollection(initialItems: Item[]) {
 
   useEffect(() => {
     if (!isLoaded) return;
+
+    const isAuthenticatedOnline = !!(isEnabled && user && session?.access_token);
+    if (isAuthenticatedOnline) return;
+
     writeLocalItems(items);
-  }, [items, isLoaded]);
+  }, [isEnabled, isLoaded, items, session?.access_token, user]);
 
   async function upsertCloudItem(item: Item) {
     if (!session?.access_token || !user) return;
