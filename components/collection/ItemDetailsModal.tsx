@@ -97,6 +97,13 @@ function formatPurchaseDate(
   return `${purchaseDate.year}`;
 }
 
+function formatReleaseDate(releaseDate?: string): string | null {
+  if (!releaseDate) return null;
+  const date = new Date(releaseDate);
+  if (Number.isNaN(date.getTime())) return releaseDate;
+  return date.toLocaleDateString("pt-BR");
+}
+
 export function ItemDetailsModal({
   item,
   isOpen,
@@ -832,6 +839,10 @@ export function ItemDetailsModal({
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <InfoCard label="Tipo" value={getTypeLabel(item.type)} />
                 <InfoCard label="Plataforma" value={item.platform} />
+                <InfoCard
+                  label="Data de lançamento"
+                  value={formatReleaseDate(item.releaseDate) || "—"}
+                />
                 <InfoCard label="Franquia" value={item.franchise || "—"} />
                 <InfoCard label="Gênero" value={item.genre || "—"} />
                 <InfoCard
