@@ -40,8 +40,8 @@ function hasMedia(item: Item, media: "physical" | "digital") {
 
 function MediaSeal({ icon, label }: { icon: string; label: string }) {
   return (
-    <span className="inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-white/35 bg-black/55 backdrop-blur">
-      <span className="text-3xl leading-none" aria-label={label} role="img">
+    <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/35 bg-black/55 backdrop-blur">
+      <span className="text-xl leading-none" aria-label={label} role="img">
         {icon}
       </span>
     </span>
