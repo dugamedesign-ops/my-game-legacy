@@ -49,7 +49,7 @@ function MediaSeal({
 }) {
   return (
     <span
-      className={`inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border backdrop-blur ${
+      className={`inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border backdrop-blur ${
         active
           ? "border-white/30 bg-black/45"
           : "border-white/12 bg-black/20 opacity-45"
@@ -58,9 +58,9 @@ function MediaSeal({
       <Image
         src={src}
         alt={alt}
-        width={20}
-        height={20}
-        className={`h-5 w-5 object-contain ${active ? "opacity-100" : "opacity-30"}`}
+        width={24}
+        height={24}
+        className={`h-6 w-6 object-contain ${active ? "opacity-100" : "opacity-30"}`}
       />
     </span>
   );
@@ -99,23 +99,27 @@ export function ItemCard({
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
 
         {cornerSeal && (
-          <span className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-black/40 text-sm text-white/95 backdrop-blur">
+          <span className="absolute right-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-black/40 text-sm text-white/95 backdrop-blur">
             {cornerSeal}
           </span>
         )}
 
-        {item.type === "game" && (
+        {item.type === "game" && (item.mediaFormats?.length ?? 0) > 0 && (
           <div className="absolute bottom-3 left-3 flex items-center gap-2">
-            <MediaSeal
-              active={hasMedia(item, "physical")}
-              src="/icons/media-physical.png"
-              alt="Mídia física"
-            />
-            <MediaSeal
-              active={hasMedia(item, "digital")}
-              src="/icons/media-digital.png"
-              alt="Mídia digital"
-            />
+            {hasMedia(item, "physical") && (
+              <MediaSeal
+                active
+                src="/icons/media-physical.png"
+                alt="Mídia física"
+              />
+            )}
+            {hasMedia(item, "digital") && (
+              <MediaSeal
+                active
+                src="/icons/media-digital.png"
+                alt="Mídia digital"
+              />
+            )}
           </div>
         )}
       </div>
