@@ -48,6 +48,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
@@ -94,10 +95,24 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isMobileSidebarOpen) return;
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsMobileSidebarOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isMobileSidebarOpen]);
+
   function handleOpenDefaultAdd() {
     setPrefilledType(null);
     setPrefilledPlatform(null);
     setIsAddModalOpen(true);
+    setIsMobileSidebarOpen(false);
   }
 
   function handleOpenContextualAdd(
@@ -114,6 +129,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     setPrefilledType(type);
     setPrefilledPlatform(null);
     setIsAddModalOpen(true);
+    setIsMobileSidebarOpen(false);
   }
 
   const filteredItems = useMemo(() => {
@@ -160,10 +176,49 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     <>
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_25%),radial-gradient(circle_at_80%_20%,_rgba(168,85,247,0.12),_transparent_20%),linear-gradient(180deg,_#09090b_0%,_#111827_100%)] text-white">
         <div className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 lg:px-8">
+          <div className="mb-4 flex items-center justify-between lg:hidden">
+            <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/80">
+              {legacyTitle}
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsMobileSidebarOpen((open) => !open)}
+              aria-expanded={isMobileSidebarOpen}
+              aria-controls="mobile-sidebar"
+              className="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 p-2 text-white transition hover:bg-white/10 active:scale-95"
+            >
+              <span className="sr-only">Abrir funções da barra lateral</span>
+              <span className="text-xl leading-none">☰</span>
+            </button>
+          </div>
+
+          {isMobileSidebarOpen && (
+            <div
+              className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+              onClick={() => setIsMobileSidebarOpen(false)}
+            />
+          )}
+
           <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-6">
-            <aside className="mb-6 lg:sticky lg:top-6 lg:mb-0 lg:h-fit">
+            <aside
+              id="mobile-sidebar"
+              className={`mb-6 lg:sticky lg:top-6 lg:mb-0 lg:h-fit ${
+                isMobileSidebarOpen
+                  ? "fixed inset-y-0 left-0 z-50 w-[86vw] max-w-[320px] overflow-y-auto p-4 sm:w-[380px] lg:static lg:inset-auto lg:z-auto lg:w-auto lg:max-w-none lg:overflow-visible lg:p-0"
+                  : "hidden lg:block"
+              }`}
+            >
               <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
-                <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/80">My Game Legacy</p>
+                <div className="flex items-center justify-between lg:block">
+                  <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/80">My Game Legacy</p>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                    className="rounded-lg border border-white/15 px-2 py-1 text-xs text-white/75 transition hover:bg-white/10 lg:hidden"
+                  >
+                    Fechar
+                  </button>
+                </div>
                 <h2 className="mt-2 text-2xl font-semibold text-white">My Game Legacy</h2>
                 <div className="mt-3">
                   <label className="text-xs text-white/50">Nome da coleção</label>
@@ -192,7 +247,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                   <div className="mt-4 border-t border-white/10 pt-3">
                     <button
                       type="button"
-                      onClick={() => void signOut()}
+                      onClick={() => {
+                        setIsMobileSidebarOpen(false);
+                        void signOut();
+                      }}
                       className="w-full rounded-xl border border-white/20 px-3 py-2 text-sm text-white/85 transition hover:bg-white/10 active:scale-[0.98]"
                     >
                       Sair
