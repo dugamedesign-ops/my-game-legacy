@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Item } from "@/types/collection";
 
 type CardSize = "large" | "medium" | "small";
@@ -39,16 +38,12 @@ function hasMedia(item: Item, media: "physical" | "digital") {
   return !!item.mediaFormats?.includes(media);
 }
 
-function MediaSeal({ src, alt }: { src: string; alt: string }) {
+function MediaSeal({ icon, label }: { icon: string; label: string }) {
   return (
     <span className="inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-white/35 bg-black/55 backdrop-blur">
-      <Image
-        src={src}
-        alt={alt}
-        width={64}
-        height={64}
-        className="h-12 w-12 scale-[2.2] object-contain"
-      />
+      <span className="text-3xl leading-none" aria-label={label} role="img">
+        {icon}
+      </span>
     </span>
   );
 }
@@ -99,10 +94,10 @@ export function ItemCard({
         {shouldRenderMediaSeals && (
           <div className="absolute bottom-3 left-3 flex items-center gap-2.5">
             {showPhysicalSeal && (
-              <MediaSeal src="/icons/media-physical.png" alt="Mídia física" />
+              <MediaSeal icon="💿" label="Mídia física" />
             )}
             {showDigitalSeal && (
-              <MediaSeal src="/icons/media-digital.png" alt="Mídia digital" />
+              <MediaSeal icon="☁️" label="Mídia digital" />
             )}
           </div>
         )}
