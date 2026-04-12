@@ -194,6 +194,7 @@ export function ItemDetailsModal({
   const previewPriorityLabel = formatPriorityLabel(
     purchasePriorityInput || undefined,
   );
+  const previewReleaseDateLabel = formatReleaseDate(item.releaseDate);
   const previewPurchaseDateLabel = formatPurchaseDate(
     purchaseYearInput || purchaseMonthInput || purchaseDayInput
       ? {
@@ -397,6 +398,9 @@ export function ItemDetailsModal({
                 {subtitleInput && (
                   <p className="mt-2 text-lg text-white/65">{subtitleInput}</p>
                 )}
+                <p className="mt-2 text-sm text-white/55">
+                  Data de lançamento: {previewReleaseDateLabel || "—"}
+                </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -839,10 +843,6 @@ export function ItemDetailsModal({
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <InfoCard label="Tipo" value={getTypeLabel(item.type)} />
                 <InfoCard label="Plataforma" value={item.platform} />
-                <InfoCard
-                  label="Data de lançamento"
-                  value={formatReleaseDate(item.releaseDate) || "—"}
-                />
                 <InfoCard label="Franquia" value={item.franchise || "—"} />
                 <InfoCard label="Gênero" value={item.genre || "—"} />
                 <InfoCard

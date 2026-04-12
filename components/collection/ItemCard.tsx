@@ -38,13 +38,6 @@ function hasMedia(item: Item, media: "physical" | "digital") {
   return !!item.mediaFormats?.includes(media);
 }
 
-function formatReleaseDateLabel(releaseDate?: string) {
-  if (!releaseDate) return null;
-  const date = new Date(releaseDate);
-  if (Number.isNaN(date.getTime())) return releaseDate;
-  return date.toLocaleDateString("pt-BR");
-}
-
 function MediaSeal({ icon, label }: { icon: string; label: string }) {
   return (
     <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/35 bg-black/55 backdrop-blur">
@@ -123,11 +116,6 @@ export function ItemCard({
           <p className="mt-0.5 line-clamp-1 text-xs text-white/72">{item.subtitle}</p>
         )}
 
-        {item.type === "game" && (
-          <p className="mt-1 text-[11px] text-white/50">
-            Lançamento: {formatReleaseDateLabel(item.releaseDate) ?? "—"}
-          </p>
-        )}
       </div>
     </button>
   );
