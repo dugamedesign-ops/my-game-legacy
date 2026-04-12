@@ -307,8 +307,8 @@ export function AddItemModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6 backdrop-blur-sm">
-      <div className="w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/10 bg-[#0b1020] text-white shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 px-3 py-4 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:px-4 sm:py-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#0b1020] text-white shadow-[0_20px_80px_rgba(0,0,0,0.45)] max-h-[calc(100dvh-2rem)]">
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-white/40">
@@ -326,7 +326,7 @@ export function AddItemModal({
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="overflow-y-auto p-6">
           {step === 1 && (
             <div className="space-y-5">
               <div>
@@ -630,7 +630,7 @@ export function AddItemModal({
                 </div>
               )}
 
-              <div className="flex items-center justify-between gap-3">
+              <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-2xl bg-[#0b1020]/95 py-2 backdrop-blur">
                 <button
                   type="button"
                   onClick={() => setStep(1)}
