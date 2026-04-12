@@ -25,6 +25,7 @@ type AddItemModalProps = {
   existingItems: Item[];
   initialType?: ItemType | null;
   initialPlatform?: string | null;
+  currentUserId?: string | null;
 };
 
 type FormState = {
@@ -61,6 +62,7 @@ export function AddItemModal({
   existingItems,
   initialType = null,
   initialPlatform = null,
+  currentUserId = null,
 }: AddItemModalProps) {
   const [step, setStep] = useState<1 | 2>(1);
   const [isSearchingCover, setIsSearchingCover] = useState(false);
@@ -217,7 +219,7 @@ export function AddItemModal({
 
     return {
       id: crypto.randomUUID(),
-      userId: "demo-user",
+      userId: currentUserId ?? "local-user",
       type: form.type,
       platform: form.platform.trim(),
       title,
