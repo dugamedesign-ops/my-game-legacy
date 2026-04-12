@@ -49,7 +49,7 @@ function MediaSeal({
 }) {
   return (
     <span
-      className={`inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border backdrop-blur ${
+      className={`inline-flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border backdrop-blur ${
         active
           ? "border-white/30 bg-black/45"
           : "border-white/12 bg-black/20 opacity-45"
@@ -58,9 +58,9 @@ function MediaSeal({
       <Image
         src={src}
         alt={alt}
-        width={24}
-        height={24}
-        className={`h-6 w-6 object-contain ${active ? "opacity-100" : "opacity-30"}`}
+        width={36}
+        height={36}
+        className={`h-10 w-10 object-contain ${active ? "opacity-100 scale-[1.35]" : "opacity-30"}`}
       />
     </span>
   );
@@ -99,13 +99,13 @@ export function ItemCard({
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
 
         {cornerSeal && (
-          <span className="absolute right-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-black/40 text-sm text-white/95 backdrop-blur">
+          <span className="absolute right-3 top-3 inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-black/40 text-sm text-white/95 backdrop-blur">
             {cornerSeal}
           </span>
         )}
 
         {item.type === "game" && (item.mediaFormats?.length ?? 0) > 0 && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-2">
+          <div className="absolute bottom-3 left-3 flex items-center gap-2.5">
             {hasMedia(item, "physical") && (
               <MediaSeal
                 active
