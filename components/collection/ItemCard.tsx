@@ -48,9 +48,9 @@ function MediaSeal({ icon, label }: { icon: string; label: string }) {
   return (
     <span
       title={label}
-      className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/35 bg-black/55 backdrop-blur"
+      className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-white/25 bg-black/45"
     >
-      <span className="text-xl leading-none" aria-label={label} role="img">
+      <span className="text-sm leading-none" aria-label={label} role="img">
         {icon}
       </span>
     </span>
@@ -91,43 +91,43 @@ export function ItemCard({
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-slate-700/70 to-slate-900/90" />
         )}
-
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-
-        {cornerSeal && (
-          <span
-            title={getCornerSealLabel(item)}
-            className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/40 text-sm text-white/95 backdrop-blur"
-          >
-            {cornerSeal}
-          </span>
-        )}
-
-        {shouldRenderMediaSeals && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-2.5">
-            {showPhysicalSeal && (
-              <MediaSeal icon="💿" label="Mídia física" />
-            )}
-            {showDigitalSeal && (
-              <MediaSeal icon="☁️" label="Mídia digital" />
-            )}
-          </div>
-        )}
       </div>
 
-      <div className="mx-1 mt-1 rounded-lg border border-white/10 bg-[#0b1020]/92 px-2.5 py-2">
+      <div className="mx-1 mt-1 flex h-[78px] flex-col justify-between rounded-lg border border-white/10 bg-[#0b1020]/95 px-2.5 py-2">
         <h3
-          className={`font-semibold leading-snug text-white ${
-            isSmall ? "line-clamp-2 text-sm" : "line-clamp-2 text-[15px]"
+          className={`line-clamp-1 font-semibold leading-snug text-white ${
+            isSmall ? "text-sm" : "text-[15px]"
           }`}
         >
           {item.title}
         </h3>
 
-        {item.subtitle && (
-          <p className="mt-0.5 line-clamp-1 text-xs text-white/72">{item.subtitle}</p>
-        )}
+        <div className="mt-2 flex min-h-[32px] items-center justify-between gap-2">
+          <p
+            className={`line-clamp-1 pr-2 ${
+              isSmall ? "text-[11px]" : "text-xs"
+            } text-white/65`}
+          >
+            {item.subtitle || item.platform}
+          </p>
 
+          <div className="flex shrink-0 items-center gap-1.5">
+            {shouldRenderMediaSeals && (
+              <>
+                {showPhysicalSeal && <MediaSeal icon="💿" label="Mídia física" />}
+                {showDigitalSeal && <MediaSeal icon="☁️" label="Mídia digital" />}
+              </>
+            )}
+            {cornerSeal && (
+              <span
+                title={getCornerSealLabel(item)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/25 bg-black/45 text-sm text-white/95"
+              >
+                {cornerSeal}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </button>
   );
