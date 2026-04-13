@@ -25,7 +25,6 @@ export function PlatformSection({
   onAddItem,
 }: PlatformSectionProps) {
   const [isOpen, setIsOpen] = useState(true);
-  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const theme = getPlatformTheme(platform);
 
   const categoryData = useMemo(() => {
@@ -68,60 +67,28 @@ export function PlatformSection({
           <div className="relative flex flex-wrap items-center gap-2 text-sm text-white/70">
             <button
               type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setIsAddMenuOpen((prev) => !prev);
-              }}
-              className="rounded-full border border-white/15 bg-black/25 px-3 py-1 text-sm font-medium text-white transition hover:bg-black/35"
+              onClick={() => onAddItem?.("console", platform)}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 transition hover:bg-white/10"
+              title={`Adicionar console em ${platform}`}
             >
-              + Adicionar em {platform}
-            </button>
-            {isAddMenuOpen && (
-              <div
-                className="absolute right-0 top-11 z-20 min-w-[220px] rounded-2xl border border-white/10 bg-[#0d1326] p-2 shadow-2xl"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    onAddItem?.("game", platform);
-                    setIsAddMenuOpen(false);
-                  }}
-                  className="block w-full rounded-xl px-3 py-2 text-left text-sm text-white/85 transition hover:bg-white/10"
-                >
-                  + Jogo 🎮
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onAddItem?.("accessory", platform);
-                    setIsAddMenuOpen(false);
-                  }}
-                  className="block w-full rounded-xl px-3 py-2 text-left text-sm text-white/85 transition hover:bg-white/10"
-                >
-                  + Acessório 🎧
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onAddItem?.("console", platform);
-                    setIsAddMenuOpen(false);
-                  }}
-                  className="block w-full rounded-xl px-3 py-2 text-left text-sm text-white/85 transition hover:bg-white/10"
-                >
-                  + Console 🕹️
-                </button>
-              </div>
-            )}
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
               Consoles: {categoryData.consoles.length}
-            </span>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+            </button>
+            <button
+              type="button"
+              onClick={() => onAddItem?.("accessory", platform)}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 transition hover:bg-white/10"
+              title={`Adicionar acessório em ${platform}`}
+            >
               Acessórios: {categoryData.accessories.length}
-            </span>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+            </button>
+            <button
+              type="button"
+              onClick={() => onAddItem?.("game", platform)}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 transition hover:bg-white/10"
+              title={`Adicionar jogo em ${platform}`}
+            >
               Jogos: {categoryData.games.length}
-            </span>
+            </button>
             <button
               type="button"
               onClick={() => setIsOpen((prev) => !prev)}

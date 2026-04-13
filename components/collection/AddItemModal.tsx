@@ -409,6 +409,7 @@ export function AddItemModal({
                     }}
                     placeholder="Pesquisar por um jogo..."
                     className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                    autoFocus
                   />
 
                   {showResults && (searchResults.length > 0 || isSearchingGames) && (
@@ -527,6 +528,7 @@ export function AddItemModal({
                       onChange={(e) => updateField("subtitle", e.target.value)}
                       placeholder="Ex: Slim 30 anos"
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      autoFocus
                     />
                   </FieldBlock>
                 </div>
@@ -538,6 +540,7 @@ export function AddItemModal({
                       onChange={(e) => updateField("title", e.target.value)}
                       placeholder="Ex: DualSense"
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      autoFocus
                     />
                   </FieldBlock>
 
