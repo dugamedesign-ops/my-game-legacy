@@ -419,12 +419,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                   vitrine
                 </span>
               </div>
-              <div className="flex gap-4 overflow-x-auto pb-2">
+              <div className="mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
                 {latestAddedItems.map((item) => (
-                  <div key={item.id} className="w-[180px] shrink-0">
+                  <div key={item.id} className="w-[148px] shrink-0 snap-start sm:w-[156px]">
                     <ItemCard
                       item={item}
-                      size="medium"
+                      size="small"
                       onClick={setSelectedItem}
                       showMediaSeals={false}
                     />

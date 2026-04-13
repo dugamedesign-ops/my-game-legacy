@@ -51,7 +51,7 @@ export function CategorySection({
 
       {isOpen && items.length > 0 && (
         <div
-          className="grid grid-cols-2 gap-4 p-4 md:grid-cols-3 xl:grid-cols-4"
+          className="grid grid-cols-2 gap-4 p-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
         >
           {items.map((item) => (
             <ItemCard
@@ -59,7 +59,7 @@ export function CategorySection({
               item={item}
               onClick={onItemClick}
               onContextMenu={onItemContextMenu}
-              size="medium"
+              size="small"
               showMediaSeals={category === "game"}
             />
           ))}
