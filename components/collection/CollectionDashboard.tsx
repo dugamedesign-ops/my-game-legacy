@@ -112,6 +112,17 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [isMobileSidebarOpen]);
 
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      if (isFinancialOpen) setIsFinancialOpen(false);
+      if (isPendingOpen) setIsPendingOpen(false);
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isFinancialOpen, isPendingOpen]);
+
   function handleOpenDefaultAdd() {
     setPrefilledType(null);
     setPrefilledPlatform(null);
@@ -211,7 +222,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-6">
             <aside
               id="mobile-sidebar"
-              className={`mb-6 lg:sticky lg:top-6 lg:mb-0 lg:h-fit ${
+              className={`mb-6 lg:sticky lg:top-6 lg:mb-0 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto ${
                 isMobileSidebarOpen
                   ? "fixed inset-y-0 left-0 z-50 w-[86vw] max-w-[320px] overflow-y-auto border-r border-white/10 bg-[#0b1220] p-4 shadow-2xl sm:w-[380px] lg:static lg:inset-auto lg:z-auto lg:w-auto lg:max-w-none lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
                   : "hidden lg:block"
@@ -266,16 +277,16 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                 </div>
                 <div className="mt-4 space-y-2">
                   <div className="grid grid-cols-3 gap-2">
-                    <button type="button" onClick={() => handleOpenQuickAdd("game")} className="flex min-h-[74px] flex-col items-center justify-center rounded-xl border border-white/15 px-2 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
-                      <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide">+ Jogo</span>
+                    <button type="button" onClick={() => handleOpenQuickAdd("game")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-1.5 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
+                      <span className="text-center text-[10px] font-semibold leading-tight">+ Jogo</span>
                       <span className="mt-1 text-lg leading-none">🎮</span>
                     </button>
-                    <button type="button" onClick={() => handleOpenQuickAdd("console")} className="flex min-h-[74px] flex-col items-center justify-center rounded-xl border border-white/15 px-2 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
-                      <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide">+ Console</span>
+                    <button type="button" onClick={() => handleOpenQuickAdd("console")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-1.5 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
+                      <span className="text-center text-[10px] font-semibold leading-tight">+ Console</span>
                       <span className="mt-1 text-lg leading-none">🕹️</span>
                     </button>
-                    <button type="button" onClick={() => handleOpenQuickAdd("accessory")} className="flex min-h-[74px] flex-col items-center justify-center rounded-xl border border-white/15 px-2 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
-                      <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide">+ Acessório</span>
+                    <button type="button" onClick={() => handleOpenQuickAdd("accessory")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-1.5 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
+                      <span className="text-center text-[10px] font-semibold leading-tight">+ Acessório</span>
                       <span className="mt-1 text-lg leading-none">🎧</span>
                     </button>
                   </div>
@@ -553,8 +564,11 @@ function OverlayPanel({
   children: ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4">
-      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[30px] border border-white/10 bg-[#0b1220] p-4 sm:p-6">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4" onClick={onClose}>
+      <div
+        className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[30px] border border-white/10 bg-[#0b1220] p-4 sm:p-6"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-xl font-semibold text-white">{title}</h3>
           <button
