@@ -65,6 +65,9 @@ export function PlatformSection({
           </div>
 
           <div className="relative flex flex-wrap items-center gap-2 text-sm text-white/70">
+            <span className="mr-1 text-[11px] uppercase tracking-[0.12em] text-white/45">
+              Clique para adicionar:
+            </span>
             <button
               type="button"
               onClick={() => onAddItem?.("console", platform)}
