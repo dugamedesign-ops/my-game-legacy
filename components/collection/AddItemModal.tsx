@@ -54,6 +54,7 @@ const PLATFORM_OPTIONS = [
   "Xbox Series X",
   "PC",
 ];
+const NEW_PLATFORM_OPTION = "__new_platform__";
 
 export function AddItemModal({
   isOpen,
@@ -70,6 +71,7 @@ export function AddItemModal({
   const [isSearchingGames, setIsSearchingGames] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [isGameSelectionDone, setIsGameSelectionDone] = useState(false);
+  const [platformOptions, setPlatformOptions] = useState<string[]>(PLATFORM_OPTIONS);
 
   const skipNextAutoSearchRef = useRef(false);
 
@@ -106,6 +108,24 @@ export function AddItemModal({
   useEffect(() => {
     if (!isOpen) return;
 
+    const customPlatformsRaw =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("my-game-legacy-custom-platforms")
+        : null;
+    let customPlatforms: string[] = [];
+    if (customPlatformsRaw) {
+      try {
+        customPlatforms = JSON.parse(customPlatformsRaw) as string[];
+      } catch {
+        customPlatforms = [];
+      }
+    }
+    const fromExistingItems = existingItems
+      .map((item) => item.platform?.trim())
+      .filter(Boolean) as string[];
+    const merged = [...new Set([...PLATFORM_OPTIONS, ...fromExistingItems, ...customPlatforms])];
+    setPlatformOptions(merged.sort((a, b) => a.localeCompare(b)));
+
     setForm(getInitialForm(initialType, initialPlatform));
     setSearchResults([]);
     setShowResults(false);
@@ -116,7 +136,7 @@ export function AddItemModal({
     } else {
       setStep(1);
     }
-  }, [isOpen, initialType, initialPlatform]);
+  }, [existingItems, isOpen, initialType, initialPlatform]);
 
   useEffect(() => {
     if (form.type !== "game") return;
@@ -313,6 +333,44 @@ export function AddItemModal({
     setIsGameSelectionDone(true);
   }
 
+  function handlePlatformSelect(value: string) {
+    if (value !== NEW_PLATFORM_OPTION) {
+      updateField("platform", value);
+      return;
+    }
+
+    const typedName = window.prompt("Digite o nome da nova plataforma:");
+    if (!typedName) return;
+
+    const normalized = typedName.trim();
+    if (!normalized) return;
+
+    const alreadyExists = platformOptions.some(
+      (option) => option.toLowerCase() === normalized.toLowerCase(),
+    );
+
+    if (alreadyExists) {
+      alert("Essa plataforma já existe na lista.");
+      updateField(
+        "platform",
+        platformOptions.find(
+          (option) => option.toLowerCase() === normalized.toLowerCase(),
+        ) || "",
+      );
+      return;
+    }
+
+    const updated = [...platformOptions, normalized].sort((a, b) =>
+      a.localeCompare(b),
+    );
+    setPlatformOptions(updated);
+    updateField("platform", normalized);
+    window.localStorage.setItem(
+      "my-game-legacy-custom-platforms",
+      JSON.stringify(updated.filter((platform) => !PLATFORM_OPTIONS.includes(platform))),
+    );
+  }
+
   function handleSave() {
     if (!getIsFormValid()) return;
 
@@ -479,15 +537,18 @@ export function AddItemModal({
                 <FieldBlock label="Plataforma *">
                   <select
                     value={form.platform}
-                    onChange={(e) => updateField("platform", e.target.value)}
+                    onChange={(e) => handlePlatformSelect(e.target.value)}
                     className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
                   >
                     <option value="">Selecione a plataforma</option>
-                    {PLATFORM_OPTIONS.map((platform) => (
+                    {platformOptions.map((platform) => (
                       <option key={platform} value={platform} className="text-black">
                         {platform}
                       </option>
                     ))}
+                    <option value={NEW_PLATFORM_OPTION} className="text-black">
+                      + Cadastrar nova plataforma
+                    </option>
                   </select>
                 </FieldBlock>
 
