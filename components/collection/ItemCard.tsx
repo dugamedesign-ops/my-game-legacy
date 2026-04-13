@@ -108,7 +108,7 @@ export function ItemCard({
               isSmall ? "text-[11px]" : "text-xs"
             } text-white/65`}
           >
-            {item.subtitle || item.platform}
+            {item.subtitle ?? ""}
           </p>
 
           <div className="flex shrink-0 items-center gap-1.5">
