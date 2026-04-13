@@ -70,7 +70,6 @@ export function AddItemModal({
   const [isSearchingGames, setIsSearchingGames] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [isGameSelectionDone, setIsGameSelectionDone] = useState(false);
-  const isGameSearchStep = step === 2 && form.type === "game" && !isGameSelectionDone;
 
   const skipNextAutoSearchRef = useRef(false);
 
@@ -96,6 +95,7 @@ export function AddItemModal({
   const [form, setForm] = useState<FormState>(
     getInitialForm(initialType, initialPlatform),
   );
+  const isGameSearchStep = step === 2 && form.type === "game" && !isGameSelectionDone;
 
   const modalTitle = useMemo(() => {
     if (form.type === "console") return "Novo console";
