@@ -50,6 +50,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isEditingLegacyTitle, setIsEditingLegacyTitle] = useState(false);
+  const [isFinancialOpen, setIsFinancialOpen] = useState(false);
+  const [isPendingOpen, setIsPendingOpen] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
@@ -240,19 +243,19 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                       autoFocus
                     />
                   ) : (
-                    <>
-                      <h2 className="truncate text-2xl font-semibold text-white">
+                    <div className="min-w-0">
+                      <h2 className="text-[1.7rem] font-semibold leading-tight text-white sm:text-3xl">
                         {legacyTitle}
                       </h2>
                       <button
                         type="button"
                         onClick={() => setIsEditingLegacyTitle(true)}
-                        className="rounded-lg border border-white/15 px-2 py-1 text-sm text-white/75 transition hover:bg-white/10"
+                        className="mt-1 inline-flex rounded-md border border-white/15 px-1.5 py-0.5 text-[11px] text-white/70 transition hover:bg-white/10"
                         aria-label="Editar nome da coleção"
                       >
-                        ✏️
+                        ✏️ editar
                       </button>
-                    </>
+                    </div>
                   )}
                 </div>
                 <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
@@ -262,21 +265,49 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                   )}
                 </div>
                 <div className="mt-4 space-y-2">
-                  <button type="button" onClick={handleOpenDefaultAdd} className="w-full rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black transition hover:bg-white/90 active:scale-[0.98]">+ Adicionar</button>
                   <div className="grid grid-cols-3 gap-2">
-                    <button type="button" onClick={() => handleOpenQuickAdd("game")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-2 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
-                      <span className="whitespace-nowrap text-[11px] font-medium">+ Jogo</span>
-                      <span className="mt-1 text-base leading-none">🎮</span>
+                    <button type="button" onClick={() => handleOpenQuickAdd("game")} className="flex min-h-[74px] flex-col items-center justify-center rounded-xl border border-white/15 px-2 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
+                      <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide">+ Jogo</span>
+                      <span className="mt-1 text-lg leading-none">🎮</span>
                     </button>
-                    <button type="button" onClick={() => handleOpenQuickAdd("console")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-2 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
-                      <span className="whitespace-nowrap text-[11px] font-medium">+ Console</span>
-                      <span className="mt-1 text-base leading-none">🕹️</span>
+                    <button type="button" onClick={() => handleOpenQuickAdd("console")} className="flex min-h-[74px] flex-col items-center justify-center rounded-xl border border-white/15 px-2 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
+                      <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide">+ Console</span>
+                      <span className="mt-1 text-lg leading-none">🕹️</span>
                     </button>
-                    <button type="button" onClick={() => handleOpenQuickAdd("accessory")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-2 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
-                      <span className="whitespace-nowrap text-[11px] font-medium">+ Acessório</span>
-                      <span className="mt-1 text-base leading-none">🎧</span>
+                    <button type="button" onClick={() => handleOpenQuickAdd("accessory")} className="flex min-h-[74px] flex-col items-center justify-center rounded-xl border border-white/15 px-2 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
+                      <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide">+ Acessório</span>
+                      <span className="mt-1 text-lg leading-none">🎧</span>
                     </button>
                   </div>
+                </div>
+                <div className="mt-4 space-y-2 border-t border-white/10 pt-3">
+                  <SidebarActionButton
+                    label="Financeiro"
+                    onClick={() => {
+                      setIsFinancialOpen(true);
+                      setIsMobileSidebarOpen(false);
+                    }}
+                  />
+                  <SidebarActionButton
+                    label="Completar depois"
+                    onClick={() => {
+                      setIsPendingOpen(true);
+                      setIsMobileSidebarOpen(false);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsFiltersOpen((open) => !open)}
+                    className="flex w-full items-center justify-between rounded-xl border border-white/15 px-3 py-2 text-sm text-white/85 transition hover:bg-white/10"
+                  >
+                    <span>Filtros inteligentes</span>
+                    <span className="text-xs">{isFiltersOpen ? "▲" : "▼"}</span>
+                  </button>
+                  {isFiltersOpen && (
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-2">
+                      <FiltersBar filters={filters} setFilters={setFilters} compact />
+                    </div>
+                  )}
                 </div>
                 {authUser && (
                   <div className="mt-4 border-t border-white/10 pt-3">
@@ -352,30 +383,16 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               </div>
             </div>
           </header>
-
-          {!isEmpty && <FinancialOverview items={collectionItems} />}
-
           {!isEmpty && (
-            <PendingItemsOverview
-              items={collectionItems}
-              onOpenItem={(item) => setSelectedItem(item)}
-            />
-          )}
-
-          {!isEmpty && (
-            <>
-              <FiltersBar filters={filters} setFilters={setFilters} />
-
-              <section className="mb-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
-                <input
-                  type="text"
-                  placeholder="Buscar por nome, plataforma ou versão..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/20"
-                />
-              </section>
-            </>
+            <section className="mb-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
+              <input
+                type="text"
+                placeholder="Buscar por nome, plataforma ou versão..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/20"
+              />
+            </section>
           )}
 
           {isEmpty ? (
@@ -466,17 +483,90 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           </button>
         </div>
       )}
+
+      {isFinancialOpen && (
+        <OverlayPanel title="Financeiro" onClose={() => setIsFinancialOpen(false)}>
+          <FinancialOverview items={collectionItems} defaultOpen hideToggle />
+        </OverlayPanel>
+      )}
+
+      {isPendingOpen && (
+        <OverlayPanel title="Completar depois" onClose={() => setIsPendingOpen(false)}>
+          <PendingItemsOverview
+            items={collectionItems}
+            onOpenItem={(item) => {
+              setSelectedItem(item);
+              setIsPendingOpen(false);
+            }}
+            defaultOpen
+            hideToggle
+          />
+        </OverlayPanel>
+      )}
     </>
   );
 }
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
+  const tone =
+    label === "Wishlist"
+      ? "border-amber-300/80 shadow-[0_0_0_1px_rgba(252,211,77,0.35)]"
+      : label === "Pré-venda"
+        ? "border-fuchsia-400/80 shadow-[0_0_0_1px_rgba(232,121,249,0.35)]"
+        : "border-white/10";
+
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-      <p className="text-xs uppercase tracking-[0.25em] text-white/40">
+    <div className={`flex min-h-[130px] flex-col items-center justify-center rounded-2xl border bg-black/20 p-4 text-center ${tone}`}>
+      <p className="text-xs uppercase tracking-[0.25em] text-white/45">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+      <p className="mt-3 text-4xl font-semibold leading-none text-white">{value}</p>
+    </div>
+  );
+}
+
+function SidebarActionButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full rounded-xl border border-white/15 px-3 py-2 text-left text-sm text-white/85 transition hover:bg-white/10"
+    >
+      {label}
+    </button>
+  );
+}
+
+function OverlayPanel({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4">
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[30px] border border-white/10 bg-[#0b1220] p-4 sm:p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-xl font-semibold text-white">{title}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-white/20 px-3 py-1 text-sm text-white/80 transition hover:bg-white/10"
+          >
+            Fechar
+          </button>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }

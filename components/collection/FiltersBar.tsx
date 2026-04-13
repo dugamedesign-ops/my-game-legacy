@@ -11,9 +11,10 @@ import type {
 type Props = {
   filters: Filters;
   setFilters: (filters: Filters) => void;
+  compact?: boolean;
 };
 
-export function FiltersBar({ filters, setFilters }: Props) {
+export function FiltersBar({ filters, setFilters, compact = false }: Props) {
   function toggleValue<T>(array: T[], value: T): T[] {
     return array.includes(value)
       ? array.filter((v) => v !== value)
@@ -82,7 +83,7 @@ export function FiltersBar({ filters, setFilters }: Props) {
     filters.missing.length > 0;
 
   return (
-    <section className="mb-6 rounded-3xl border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
+    <section className={compact ? "" : "mb-6 rounded-3xl border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]"}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-[0.25em] text-white/40">

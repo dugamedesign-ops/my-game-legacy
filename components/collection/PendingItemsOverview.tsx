@@ -10,13 +10,17 @@ import {
 type PendingItemsOverviewProps = {
   items: Item[];
   onOpenItem: (item: Item) => void;
+  defaultOpen?: boolean;
+  hideToggle?: boolean;
 };
 
 export function PendingItemsOverview({
   items,
   onOpenItem,
+  defaultOpen = false,
+  hideToggle = false,
 }: PendingItemsOverviewProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   const pendingInfos = getPendingItems(items);
 
   return (
@@ -35,13 +39,15 @@ export function PendingItemsOverview({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsOpen((prev) => !prev)}
-          className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 transition hover:bg-white/10"
-        >
-          {isOpen ? "Fechar" : "Abrir"}
-        </button>
+        {!hideToggle && (
+          <button
+            type="button"
+            onClick={() => setIsOpen((prev) => !prev)}
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 transition hover:bg-white/10"
+          >
+            {isOpen ? "Fechar" : "Abrir"}
+          </button>
+        )}
       </div>
 
       {isOpen && (
