@@ -70,6 +70,7 @@ export function AddItemModal({
   const [isSearchingGames, setIsSearchingGames] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [isGameSelectionDone, setIsGameSelectionDone] = useState(false);
+  const isGameSearchStep = step === 2 && form.type === "game" && !isGameSelectionDone;
 
   const skipNextAutoSearchRef = useRef(false);
 
@@ -328,7 +329,13 @@ export function AddItemModal({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 px-3 py-4 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:px-4 sm:py-6">
-      <div className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#0b1020] text-white shadow-[0_20px_80px_rgba(0,0,0,0.45)] max-h-[calc(100dvh-2rem)]">
+      <div
+        className={`mx-auto flex w-full flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#0b1020] text-white shadow-[0_20px_80px_rgba(0,0,0,0.45)] ${
+          isGameSearchStep
+            ? "max-w-6xl max-h-[calc(100dvh-1.5rem)]"
+            : "max-w-4xl max-h-[calc(100dvh-2rem)]"
+        }`}
+      >
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-white/40">
@@ -389,61 +396,59 @@ export function AddItemModal({
           {step === 2 && (
             <div className="space-y-5">
               {form.type === "game" && !isGameSelectionDone ? (
-                <div className="space-y-4 rounded-3xl border border-white/10 bg-black/20 p-4">
+                <div className="space-y-4 rounded-3xl border border-white/10 bg-black/20 p-4 sm:p-5">
                   <p className="text-sm text-white/70">
                     Pesquise e selecione seu jogo primeiro para continuar o cadastro.
                   </p>
 
-                  <div className="relative">
-                    <input
-                      value={form.title}
-                      onChange={(e) => {
-                        updateField("title", e.target.value);
-                        setShowResults(true);
-                      }}
-                      placeholder="Pesquisar por um jogo..."
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
+                  <input
+                    value={form.title}
+                    onChange={(e) => {
+                      updateField("title", e.target.value);
+                      setShowResults(true);
+                    }}
+                    placeholder="Pesquisar por um jogo..."
+                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                  />
 
-                    {showResults && (searchResults.length > 0 || isSearchingGames) && (
-                      <div className="absolute z-20 mt-2 max-h-80 w-full overflow-y-auto rounded-2xl border border-white/10 bg-[#0d1326] shadow-2xl">
-                        {isSearchingGames ? (
-                          <div className="px-4 py-3 text-sm text-white/65">
-                            Buscando na IGDB...
-                          </div>
-                        ) : (
-                          searchResults.map((result) => (
-                            <button
-                              key={result.id}
-                              type="button"
-                              onClick={() => applySearchResult(result)}
-                              className="flex w-full items-center gap-3 border-b border-white/5 px-4 py-3 text-left transition hover:bg-white/[0.04]"
-                            >
-                              <div className="h-16 w-12 overflow-hidden rounded-lg bg-white/5">
-                                {result.coverUrl ? (
-                                  <img
-                                    src={result.coverUrl}
-                                    alt={result.name}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : null}
-                              </div>
+                  {showResults && (searchResults.length > 0 || isSearchingGames) && (
+                    <div className="max-h-[52dvh] min-h-[240px] overflow-y-auto rounded-2xl border border-white/10 bg-[#0d1326] shadow-2xl">
+                      {isSearchingGames ? (
+                        <div className="px-4 py-3 text-sm text-white/65">
+                          Buscando na IGDB...
+                        </div>
+                      ) : (
+                        searchResults.map((result) => (
+                          <button
+                            key={result.id}
+                            type="button"
+                            onClick={() => applySearchResult(result)}
+                            className="flex w-full items-center gap-3 border-b border-white/5 px-4 py-3 text-left transition hover:bg-white/[0.04]"
+                          >
+                            <div className="h-16 w-12 overflow-hidden rounded-lg bg-white/5">
+                              {result.coverUrl ? (
+                                <img
+                                  src={result.coverUrl}
+                                  alt={result.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : null}
+                            </div>
 
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium text-white">
-                                  {result.name}
-                                </p>
-                                <p className="mt-1 truncate text-xs text-white/55">
-                                  {result.platforms.join(" • ") ||
-                                    "Plataforma não identificada"}
-                                </p>
-                              </div>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-white">
+                                {result.name}
+                              </p>
+                              <p className="mt-1 truncate text-xs text-white/55">
+                                {result.platforms.join(" • ") ||
+                                  "Plataforma não identificada"}
+                              </p>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex justify-end">
                     <button
