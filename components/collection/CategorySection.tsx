@@ -2,30 +2,25 @@
 
 import { useState } from "react";
 import { Item, ItemType } from "@/types/collection";
-import { CATEGORY_LABELS, getPlatformTheme } from "@/lib/collection-utils";
+import { CATEGORY_LABELS } from "@/lib/collection-utils";
 import { ItemCard } from "./ItemCard";
 
 type CategorySectionProps = {
   category: ItemType;
   items: Item[];
-  platform: string;
   defaultOpen?: boolean;
   onItemClick?: (item: Item) => void;
   onItemContextMenu?: (item: Item, x: number, y: number) => void;
-  onAddItem?: (type: ItemType, platform: string) => void;
 };
 
 export function CategorySection({
   category,
   items,
-  platform,
   defaultOpen = true,
   onItemClick,
   onItemContextMenu,
-  onAddItem,
 }: CategorySectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const theme = getPlatformTheme(platform);
   const itemCountLabel = `${items.length} ${items.length === 1 ? "item" : "itens"}`;
 
   return (
@@ -37,16 +32,6 @@ export function CategorySection({
               <h3 className="text-base font-semibold text-white sm:text-lg">
                 {CATEGORY_LABELS[category]}
               </h3>
-
-              <button
-                type="button"
-                onClick={() => onAddItem?.(category, platform)}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border text-lg font-semibold transition hover:scale-[1.03] ${theme.accentSoft}`}
-                aria-label={`Adicionar item em ${CATEGORY_LABELS[category]}`}
-                title={`Adicionar em ${CATEGORY_LABELS[category]}`}
-              >
-                +
-              </button>
             </div>
 
             <p className="mt-1 text-sm text-white/50">{itemCountLabel}</p>

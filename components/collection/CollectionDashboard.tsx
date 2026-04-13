@@ -17,6 +17,7 @@ import { FiltersBar } from "./FiltersBar";
 import { applyFilters, type Filters } from "@/lib/filter-utils";
 import { AuthPanel } from "@/components/auth/AuthPanel";
 import { useAuth } from "@/providers/AuthProvider";
+import { ItemCard } from "./ItemCard";
 
 type CollectionDashboardProps = {
   items: Item[];
@@ -177,6 +178,15 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     () => getCollectionSummary(collectionItems),
     [collectionItems],
   );
+  const latestAddedItems = useMemo(() => {
+    return [...collectionItems]
+      .sort((a, b) => {
+        const aDate = new Date(a.createdAt ?? a.updatedAt ?? 0).getTime();
+        const bDate = new Date(b.createdAt ?? b.updatedAt ?? 0).getTime();
+        return bDate - aDate;
+      })
+      .slice(0, 10);
+  }, [collectionItems]);
 
   const isEmpty = collectionItems.length === 0;
 
@@ -337,7 +347,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               </div>
             </aside>
             <div>
-          <header className="mb-8 overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.05] p-6 shadow-[0_8px_40px_rgb(0,0,0,0.25)] backdrop-blur">
+          <header className="mb-6 overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.05] p-4 shadow-[0_8px_30px_rgb(0,0,0,0.22)] backdrop-blur sm:p-5">
             {hasLocalDataToImport && user && (
               <div className="mb-6 rounded-2xl border border-cyan-400/30 bg-cyan-500/10 p-4 text-sm text-cyan-50">
                 <p className="font-medium">Encontramos dados locais no seu navegador.</p>
@@ -371,22 +381,17 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               </div>
             )}
 
-            <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
-              <div className="space-y-3">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+              <div className="space-y-2">
                 <p className="text-sm uppercase tracking-[0.3em] text-white/45">
                   {legacyTitle}
                 </p>
-                <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                  Sua vitrine digital
-                </h1>
-                <p className="max-w-2xl text-sm leading-6 text-white/65 sm:text-base">
-                  Organize sua coleção por plataforma, acompanhe wishlist,
-                  pré-vendas e construa uma base linda, clara e pronta para
-                  evoluir.
+                <p className="max-w-2xl text-sm leading-6 text-white/65">
+                  Sua coleção organizada por plataforma, com foco total nas capas e na vitrine.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:min-w-[480px]">
                 <SummaryCard label="Itens" value={summary.totalItems} />
                 <SummaryCard label="Na coleção" value={summary.collectionCount} />
                 <SummaryCard label="Wishlist" value={summary.wishlistCount} />
@@ -403,6 +408,29 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/20"
               />
+            </section>
+          )}
+
+          {!isEmpty && latestAddedItems.length > 0 && (
+            <section className="mb-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-white">Últimos adicionados</h2>
+                <span className="text-xs uppercase tracking-[0.18em] text-white/45">
+                  vitrine
+                </span>
+              </div>
+              <div className="flex gap-4 overflow-x-auto pb-2">
+                {latestAddedItems.map((item) => (
+                  <div key={item.id} className="w-[180px] shrink-0">
+                    <ItemCard
+                      item={item}
+                      size="medium"
+                      onClick={setSelectedItem}
+                      showMediaSeals={false}
+                    />
+                  </div>
+                ))}
+              </div>
             </section>
           )}
 
