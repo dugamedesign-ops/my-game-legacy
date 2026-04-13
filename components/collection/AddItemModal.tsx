@@ -38,7 +38,8 @@ type FormState = {
   digital: boolean;
   imageUrl: string;
   franchise: string;
-  genre: string;
+  genrePrimary: string;
+  genreSecondary: string;
   releaseDate: string;
 };
 
@@ -55,6 +56,27 @@ const PLATFORM_OPTIONS = [
   "PC",
 ];
 const NEW_PLATFORM_OPTION = "__new_platform__";
+const IGDB_GENRE_OPTIONS = [
+  "Action",
+  "Adventure",
+  "Role-playing (RPG)",
+  "Strategy",
+  "Shooter",
+  "Puzzle",
+  "Platform",
+  "Fighting",
+  "Racing",
+  "Sports",
+  "Simulation",
+  "Turn-based strategy (TBS)",
+  "Hack and slash/Beat 'em up",
+  "Tactical",
+  "Visual Novel",
+  "Point-and-click",
+  "Survival",
+  "Horror",
+  "Arcade",
+];
 
 export function AddItemModal({
   isOpen,
@@ -89,7 +111,8 @@ export function AddItemModal({
       digital: false,
       imageUrl: "",
       franchise: "",
-      genre: "",
+      genrePrimary: "",
+      genreSecondary: "",
       releaseDate: "",
     };
   }
@@ -273,7 +296,12 @@ export function AddItemModal({
       mediaFormats: form.type === "game" ? mediaFormats : undefined,
       franchise:
         form.type === "game" ? form.franchise.trim() || undefined : undefined,
-      genre: form.type === "game" ? form.genre.trim() || undefined : undefined,
+      genre:
+        form.type === "game"
+          ? [form.genrePrimary.trim(), form.genreSecondary.trim()]
+              .filter(Boolean)
+              .join(" / ") || undefined
+          : undefined,
       releaseDate:
         form.type === "game" && form.releaseDate
           ? form.releaseDate
@@ -309,7 +337,7 @@ export function AddItemModal({
   } finally {
     setIsSearchingCover(false);
   }
-}
+  }
 
   function applySearchResult(result: IgdbSearchResult) {
     skipNextAutoSearchRef.current = true;
@@ -318,9 +346,9 @@ export function AddItemModal({
       ...prev,
       title: result.name || prev.title,
       imageUrl: result.coverUrl || prev.imageUrl,
-      releaseDate: result.releaseDate || prev.releaseDate,
+      releaseDate: prev.releaseDate || result.releaseDate || prev.releaseDate,
       franchise: result.franchise || prev.franchise,
-      genre: result.genre || prev.genre,
+      genrePrimary: prev.genrePrimary || result.genre || prev.genrePrimary,
       platform:
         prev.platform ||
         result.platforms.find((platform) =>
@@ -523,11 +551,22 @@ export function AddItemModal({
               ) : (
                 <>
                   {form.type === "game" && (
-                    <FieldBlock label="Nome do jogo *">
+                    <FieldBlock label="Título do jogo *">
                       <input
                         value={form.title}
                         onChange={(e) => updateField("title", e.target.value)}
                         placeholder="Nome do jogo"
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      />
+                    </FieldBlock>
+                  )}
+
+                  {form.type === "game" && (
+                    <FieldBlock label="Subtítulo / versão">
+                      <input
+                        value={form.subtitle}
+                        onChange={(e) => updateField("subtitle", e.target.value)}
+                        placeholder="Opcional"
                         className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                       />
                     </FieldBlock>
@@ -551,27 +590,16 @@ export function AddItemModal({
                     </option>
                   </select>
                 </FieldBlock>
-
-                <FieldBlock label="Status de posse">
-                  <select
-                    value={form.ownershipStatus}
-                    onChange={(e) =>
-                      updateField("ownershipStatus", e.target.value as OwnershipStatus)
-                    }
-                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                  >
-                    <option value="collection" className="text-black">
-                      Na coleção
-                    </option>
-                    <option value="wishlist" className="text-black">
-                      Wishlist
-                    </option>
-                    <option value="preorder" className="text-black">
-                      Pré-venda
-                    </option>
-                  </select>
-                </FieldBlock>
               </div>
+
+              {form.type !== "game" && (
+                <FieldBlock label="Status de posse">
+                  <OwnershipStatusButtons
+                    value={form.ownershipStatus}
+                    onChange={(value) => updateField("ownershipStatus", value)}
+                  />
+                </FieldBlock>
+              )}
 
               {form.type === "console" ? (
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -614,7 +642,7 @@ export function AddItemModal({
                     />
                   </FieldBlock>
                 </div>
-              ) : (
+              ) : form.type !== "game" ? (
                 <FieldBlock label="Subtítulo / versão">
                   <input
                     value={form.subtitle}
@@ -623,10 +651,36 @@ export function AddItemModal({
                     className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                   />
                 </FieldBlock>
-              )}
+              ) : null}
 
               {form.type === "game" && (
                 <>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+                      <p className="mb-3 text-sm font-medium text-white">Mídia</p>
+
+                      <div className="flex flex-wrap gap-3">
+                        <ToggleChip
+                          label="Física"
+                          active={form.physical}
+                          onClick={() => updateField("physical", !form.physical)}
+                        />
+                        <ToggleChip
+                          label="Digital"
+                          active={form.digital}
+                          onClick={() => updateField("digital", !form.digital)}
+                        />
+                      </div>
+                    </div>
+
+                    <FieldBlock label="Status de posse">
+                      <OwnershipStatusButtons
+                        value={form.ownershipStatus}
+                        onChange={(value) => updateField("ownershipStatus", value)}
+                      />
+                    </FieldBlock>
+                  </div>
+
                   <div className="grid gap-4 sm:grid-cols-2">
                     <FieldBlock label="Franquia">
                       <input
@@ -637,32 +691,43 @@ export function AddItemModal({
                       />
                     </FieldBlock>
 
-                    <FieldBlock label="Gênero">
-                      <input
-                        value={form.genre}
-                        onChange={(e) => updateField("genre", e.target.value)}
-                        placeholder="Ex: Action"
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                      />
+                    <FieldBlock label="Gênero 1">
+                      <select
+                        value={form.genrePrimary}
+                        onChange={(e) => {
+                          const nextGenrePrimary = e.target.value;
+                          updateField("genrePrimary", nextGenrePrimary);
+                          if (nextGenrePrimary === form.genreSecondary) {
+                            updateField("genreSecondary", "");
+                          }
+                        }}
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
+                      >
+                        <option value="" className="text-black">Em branco</option>
+                        {IGDB_GENRE_OPTIONS.map((genre) => (
+                          <option key={genre} value={genre} className="text-black">
+                            {genre}
+                          </option>
+                        ))}
+                      </select>
                     </FieldBlock>
                   </div>
-
-                  <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
-                    <p className="mb-3 text-sm font-medium text-white">Mídia</p>
-
-                    <div className="flex flex-wrap gap-3">
-                      <ToggleChip
-                        label="Física"
-                        active={form.physical}
-                        onClick={() => updateField("physical", !form.physical)}
-                      />
-                      <ToggleChip
-                        label="Digital"
-                        active={form.digital}
-                        onClick={() => updateField("digital", !form.digital)}
-                      />
-                    </div>
-                  </div>
+                  {form.genrePrimary && (
+                    <FieldBlock label="Gênero 2 (opcional)">
+                      <select
+                        value={form.genreSecondary}
+                        onChange={(e) => updateField("genreSecondary", e.target.value)}
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
+                      >
+                        <option value="" className="text-black">Em branco</option>
+                        {IGDB_GENRE_OPTIONS.filter((genre) => genre !== form.genrePrimary).map((genre) => (
+                          <option key={genre} value={genre} className="text-black">
+                            {genre}
+                          </option>
+                        ))}
+                      </select>
+                    </FieldBlock>
+                  )}
                 </>
               )}
 
@@ -794,6 +859,52 @@ function TypeCard({
     >
       <h3 className="text-lg font-semibold text-white">{title}</h3>
     </button>
+  );
+}
+
+function OwnershipStatusButtons({
+  value,
+  onChange,
+}: {
+  value: OwnershipStatus;
+  onChange: (value: OwnershipStatus) => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <button
+        type="button"
+        onClick={() => onChange("collection")}
+        className={`rounded-xl border px-3 py-2 text-sm transition ${
+          value === "collection"
+            ? "border-white/20 bg-white text-black"
+            : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
+        }`}
+      >
+        Na coleção
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("wishlist")}
+        className={`rounded-xl border px-3 py-2 text-sm transition ${
+          value === "wishlist"
+            ? "border-amber-300 bg-amber-300 text-black"
+            : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
+        }`}
+      >
+        Wishlist
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("preorder")}
+        className={`rounded-xl border px-3 py-2 text-sm transition ${
+          value === "preorder"
+            ? "border-fuchsia-400 bg-fuchsia-500 text-white"
+            : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
+        }`}
+      >
+        Pré-venda
+      </button>
+    </div>
   );
 }
 
