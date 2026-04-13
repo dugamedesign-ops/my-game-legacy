@@ -59,7 +59,7 @@ export function CategorySection({
               item={item}
               onClick={onItemClick}
               onContextMenu={onItemContextMenu}
-              size="small"
+              size="medium"
               showMediaSeals={category === "game"}
             />
           ))}
