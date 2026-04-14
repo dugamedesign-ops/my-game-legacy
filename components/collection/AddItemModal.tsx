@@ -307,6 +307,53 @@ export function AddItemModal({
     return () => window.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function isTypingTarget(target: EventTarget | null) {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName.toLowerCase();
+      return (
+        tag === "input" ||
+        tag === "textarea" ||
+        tag === "select" ||
+        target.isContentEditable
+      );
+    }
+
+    function handleShortcuts(event: KeyboardEvent) {
+      if (!isOpen || event.defaultPrevented) return;
+
+      if (step === 1 && !isTypingTarget(event.target)) {
+        if (event.key === "1") {
+          updateField("type", "game");
+          setStep(2);
+          return;
+        }
+        if (event.key === "2") {
+          updateField("type", "console");
+          setStep(2);
+          return;
+        }
+        if (event.key === "3") {
+          updateField("type", "accessory");
+          setStep(2);
+          return;
+        }
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        if (step === 2 && getIsFormValid()) {
+          event.preventDefault();
+          handleSave();
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleShortcuts);
+    return () => window.removeEventListener("keydown", handleShortcuts);
+  }, [isOpen, step, form, duplicateCheck, getIsFormValid, handleSave]);
+
   if (!isOpen) return null;
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -615,19 +662,19 @@ export function AddItemModal({
 
                 <div className="grid gap-3 sm:grid-cols-3">
                   <TypeCard
-                    title="Console"
+                    title="1. Jogo"
+                    active={form.type === "game"}
+                    onClick={() => updateField("type", "game")}
+                  />
+                  <TypeCard
+                    title="2. Console"
                     active={form.type === "console"}
                     onClick={() => updateField("type", "console")}
                   />
                   <TypeCard
-                    title="Acessório"
+                    title="3. Acessório"
                     active={form.type === "accessory"}
                     onClick={() => updateField("type", "accessory")}
-                  />
-                  <TypeCard
-                    title="Jogo"
-                    active={form.type === "game"}
-                    onClick={() => updateField("type", "game")}
                   />
                 </div>
               </div>

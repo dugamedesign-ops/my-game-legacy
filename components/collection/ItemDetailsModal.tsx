@@ -112,6 +112,28 @@ const PURCHASE_ORIGIN_OPTIONS = [
   "Presente",
   "Outro",
 ];
+const GENRE_OPTIONS = [
+  "Action",
+  "Adventure",
+  "Role-playing (RPG)",
+  "Strategy",
+  "Shooter",
+  "Puzzle",
+  "Platform",
+  "Fighting",
+  "Racing",
+  "Sports",
+  "Simulation",
+  "Turn-based strategy (TBS)",
+  "Hack and slash/Beat 'em up",
+  "Tactical",
+  "Visual Novel",
+  "Point-and-click",
+  "Survival",
+  "Horror",
+  "Arcade",
+];
+const NEW_GENRE_OPTION = "__new_genre__";
 
 export function ItemDetailsModal({
   item,
@@ -153,6 +175,10 @@ export function ItemDetailsModal({
   const [purchaseOriginOptions, setPurchaseOriginOptions] = useState<string[]>(
     PURCHASE_ORIGIN_OPTIONS,
   );
+  const [genrePrimaryInput, setGenrePrimaryInput] = useState("");
+  const [genreSecondaryInput, setGenreSecondaryInput] = useState("");
+  const [genreOptions, setGenreOptions] = useState<string[]>(GENRE_OPTIONS);
+  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [notesInput, setNotesInput] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -182,11 +208,18 @@ export function ItemDetailsModal({
     setPurchasePriorityInput(item.purchasePriority ?? "");
     setRarityInput(item.rarityTags?.[0] ?? "");
 
-    setPurchaseYearInput(item.purchaseDate?.year ? String(item.purchaseDate.year) : "");
+    setPurchaseYearInput(item.purchaseDate?.year ? String(item.purchaseDate.year) : "2026");
     setPurchaseMonthInput(item.purchaseDate?.month ? String(item.purchaseDate.month) : "");
     setPurchaseDayInput(item.purchaseDate?.day ? String(item.purchaseDate.day) : "");
     setPurchaseOriginInput(item.purchaseOrigin ?? "");
     setNotesInput(item.notes ?? "");
+    setSaveFeedback(null);
+    const [primary = "", secondary = ""] = (item.genre ?? "")
+      .split("/")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    setGenrePrimaryInput(primary);
+    setGenreSecondaryInput(secondary);
 
     setIsEditingImage(false);
     setIsSearchingCover(false);
@@ -208,6 +241,10 @@ export function ItemDetailsModal({
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
     setPurchaseOriginOptions(merged);
+    const mergedGenres = [...new Set([...GENRE_OPTIONS, primary, secondary])]
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+    setGenreOptions(mergedGenres);
   }, [item, isOpen]);
 
   useEffect(() => {
@@ -217,11 +254,15 @@ export function ItemDetailsModal({
       if (event.key === "Escape") {
         onClose();
       }
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        handleSaveAll();
+      }
     }
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, handleSaveAll]);
 
   if (!isOpen || !item) return null;
 
@@ -239,6 +280,25 @@ export function ItemDetailsModal({
     { value: "", label: "Em branco" },
     ...purchaseOriginOptions.map((origin) => ({ value: origin, label: origin })),
     { value: "__new_origin__", label: "+ Cadastrar nova origem" },
+  ];
+  const genrePrimaryOptions: CustomSelectOption[] = [
+    { value: "", label: "Em branco" },
+    ...genreOptions.map((genre) => ({ value: genre, label: genre })),
+    { value: NEW_GENRE_OPTION, label: "+ Cadastrar novo gênero" },
+  ];
+  const genreSecondaryOptions: CustomSelectOption[] = [
+    { value: "", label: "Em branco" },
+    ...genreOptions
+      .filter((genre) => genre !== genrePrimaryInput)
+      .map((genre) => ({ value: genre, label: genre })),
+    { value: NEW_GENRE_OPTION, label: "+ Cadastrar novo gênero" },
+  ];
+  const purchaseYearOptions: CustomSelectOption[] = [
+    { value: "", label: "Em branco" },
+    ...Array.from({ length: 47 }, (_, index) => {
+      const year = 2026 - index;
+      return { value: String(year), label: String(year) };
+    }),
   ];
 
   const previewProgressLabel = formatProgressLabel(
@@ -393,8 +453,52 @@ export function ItemDetailsModal({
     setPurchaseOriginInput(finalValue);
   }
 
+  function handleGenreChange(
+    field: "primary" | "secondary",
+    value: string,
+  ) {
+    const setField = field === "primary" ? setGenrePrimaryInput : setGenreSecondaryInput;
+    const otherValue = field === "primary" ? genreSecondaryInput : genrePrimaryInput;
+    const setOther = field === "primary" ? setGenreSecondaryInput : setGenrePrimaryInput;
+
+    if (value !== NEW_GENRE_OPTION) {
+      setField(value);
+      if (value && value === otherValue) {
+        setOther("");
+      }
+      return;
+    }
+
+    const typed = window.prompt("Digite o nome do novo gênero:");
+    if (!typed) return;
+    const normalized = typed.trim();
+    if (!normalized) return;
+
+    const exists = genreOptions.find(
+      (option) => option.toLowerCase() === normalized.toLowerCase(),
+    );
+    const finalValue = exists ?? normalized;
+
+    if (!exists) {
+      const next = [...genreOptions, normalized].sort((a, b) =>
+        a.localeCompare(b),
+      );
+      setGenreOptions(next);
+      window.localStorage.setItem(
+        "my-game-legacy-custom-genres",
+        JSON.stringify(next.filter((genre) => !GENRE_OPTIONS.includes(genre))),
+      );
+    }
+
+    setField(finalValue);
+    if (finalValue === otherValue) {
+      setOther("");
+    }
+  }
+
   function handleSaveAll() {
     if (!item) return;
+    setSaveFeedback(null);
 
     const year = purchaseYearInput.trim() ? Number(purchaseYearInput.trim()) : undefined;
     const month = purchaseMonthInput.trim() ? Number(purchaseMonthInput.trim()) : undefined;
@@ -439,11 +543,23 @@ export function ItemDetailsModal({
           : undefined,
       purchaseOrigin: purchaseOriginInput.trim() || undefined,
       notes: notesInput.trim() || undefined,
+      genre:
+        isGame
+          ? [genrePrimaryInput.trim(), genreSecondaryInput.trim()]
+              .filter(Boolean)
+              .join(" / ") || undefined
+          : item.genre,
 
       updatedAt: new Date().toISOString(),
     };
 
-    onUpdateItem(updatedItem);
+    try {
+      onUpdateItem(updatedItem);
+      onClose();
+    } catch (error) {
+      console.error(error);
+      setSaveFeedback("Não foi possível salvar agora. Tente novamente.");
+    }
   }
 
   return (
@@ -672,6 +788,28 @@ export function ItemDetailsModal({
                     </div>
                   </div>
                 )}
+                {isGame && (
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/70">Gênero 1</span>
+                      <CustomSelect
+                        value={genrePrimaryInput}
+                        onChange={(value) => handleGenreChange("primary", value)}
+                        options={genrePrimaryOptions}
+                        placeholder="Em branco"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/70">Gênero 2</span>
+                      <CustomSelect
+                        value={genreSecondaryInput}
+                        onChange={(value) => handleGenreChange("secondary", value)}
+                        options={genreSecondaryOptions}
+                        placeholder="Em branco"
+                      />
+                    </label>
+                  </div>
+                )}
               </section>
 
               <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
@@ -738,36 +876,39 @@ export function ItemDetailsModal({
                   </label>
                 </div>
 
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">Data da compra (ano)</span>
-                    <input
-                      value={purchaseYearInput}
-                      onChange={(e) => setPurchaseYearInput(e.target.value)}
-                      placeholder="2026"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">Mês</span>
-                    <input
-                      value={purchaseMonthInput}
-                      onChange={(e) => setPurchaseMonthInput(e.target.value)}
-                      placeholder="04"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">Dia</span>
-                    <input
-                      value={purchaseDayInput}
-                      onChange={(e) => setPurchaseDayInput(e.target.value)}
-                      placeholder="11"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
-                  </label>
+                <div className="mt-4">
+                  <span className="mb-2 block text-sm text-white/70">
+                    Data da compra (data do lançamento do item, puxado do database)
+                  </span>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/60">Dia</span>
+                      <input
+                        value={purchaseDayInput}
+                        onChange={(e) => setPurchaseDayInput(e.target.value)}
+                        placeholder="11"
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/60">Mês</span>
+                      <input
+                        value={purchaseMonthInput}
+                        onChange={(e) => setPurchaseMonthInput(e.target.value)}
+                        placeholder="04"
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/60">Ano</span>
+                      <CustomSelect
+                        value={purchaseYearInput}
+                        onChange={setPurchaseYearInput}
+                        options={purchaseYearOptions}
+                        placeholder="2026"
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 <div className="mt-4 grid gap-4">
@@ -842,6 +983,7 @@ export function ItemDetailsModal({
                   Salvar alterações
                 </button>
               </div>
+              {saveFeedback && <p className="text-sm text-rose-200">{saveFeedback}</p>}
 
               <div className="grid gap-6 xl:grid-cols-2">
                 <HistorySection

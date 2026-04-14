@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Item } from "@/types/collection";
 import {
@@ -54,6 +54,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [isFinancialOpen, setIsFinancialOpen] = useState(false);
   const [isPendingOpen, setIsPendingOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [activeQuickFilter, setActiveQuickFilter] = useState<
+    "all" | "collection" | "wishlist" | "preorder"
+  >("all");
+  const latestCarouselRef = useRef<HTMLDivElement | null>(null);
+  const isCarouselPointerDownRef = useRef(false);
+  const collectionSectionRef = useRef<HTMLElement | null>(null);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
@@ -124,6 +130,35 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [isFinancialOpen, isPendingOpen]);
 
+  useEffect(() => {
+    function isTypingTarget(target: EventTarget | null) {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName.toLowerCase();
+      return (
+        tag === "input" ||
+        tag === "textarea" ||
+        tag === "select" ||
+        target.isContentEditable
+      );
+    }
+
+    function handleShortcut(event: KeyboardEvent) {
+      if (event.defaultPrevented) return;
+      if (isTypingTarget(event.target)) return;
+
+      if (event.key.toLowerCase() === "a" && !event.metaKey && !event.ctrlKey) {
+        event.preventDefault();
+        setPrefilledType(null);
+        setPrefilledPlatform(null);
+        setIsAddModalOpen(true);
+        setIsMobileSidebarOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+
   function handleOpenDefaultAdd() {
     setPrefilledType(null);
     setPrefilledPlatform(null);
@@ -187,6 +222,53 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       })
       .slice(0, 10);
   }, [collectionItems]);
+
+  useEffect(() => {
+    const container = latestCarouselRef.current;
+    if (!container || latestAddedItems.length <= 1) return;
+
+    let rafId = 0;
+    let lastTime = performance.now();
+    const speedPxPerSecond = 18;
+
+    function animate(time: number) {
+      const elapsed = time - lastTime;
+      lastTime = time;
+
+      if (!isCarouselPointerDownRef.current) {
+        const delta = (speedPxPerSecond * elapsed) / 1000;
+        const maxScroll = container.scrollWidth - container.clientWidth;
+        if (maxScroll > 0) {
+          const next = container.scrollLeft + delta;
+          container.scrollLeft = next >= maxScroll ? 0 : next;
+        }
+      }
+
+      rafId = window.requestAnimationFrame(animate);
+    }
+
+    rafId = window.requestAnimationFrame(animate);
+    return () => window.cancelAnimationFrame(rafId);
+  }, [latestAddedItems.length]);
+
+  function applyQuickFilter(next: "all" | "collection" | "wishlist" | "preorder") {
+    setActiveQuickFilter(next);
+    setFilters((prev) => ({
+      ...prev,
+      ownership:
+        next === "all"
+          ? []
+          : [next as "collection" | "wishlist" | "preorder"],
+    }));
+
+    setTimeout(() => {
+      collectionSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      window.scrollBy({ top: -72, behavior: "smooth" });
+    }, 60);
+  }
 
   const isEmpty = collectionItems.length === 0;
 
@@ -301,7 +383,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     </button>
                   </div>
                 </div>
-                <div className="mt-4 space-y-2 border-t border-white/10 pt-3">
+                <div className="mt-4 space-y-2 pt-1">
                   <SidebarActionButton
                     label="Financeiro"
                     onClick={() => {
@@ -404,24 +486,33 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               </div>
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:min-w-[480px]">
-                <SummaryCard label="Itens" value={summary.totalItems} />
-                <SummaryCard label="Na coleção" value={summary.collectionCount} />
-                <SummaryCard label="Wishlist" value={summary.wishlistCount} />
-                <SummaryCard label="Pré-venda" value={summary.preorderCount} />
+                <SummaryCard
+                  label="Itens"
+                  value={summary.totalItems}
+                  isActive={activeQuickFilter === "all"}
+                  onClick={() => applyQuickFilter("all")}
+                />
+                <SummaryCard
+                  label="Na coleção"
+                  value={summary.collectionCount}
+                  isActive={activeQuickFilter === "collection"}
+                  onClick={() => applyQuickFilter("collection")}
+                />
+                <SummaryCard
+                  label="Wishlist"
+                  value={summary.wishlistCount}
+                  isActive={activeQuickFilter === "wishlist"}
+                  onClick={() => applyQuickFilter("wishlist")}
+                />
+                <SummaryCard
+                  label="Pré-venda"
+                  value={summary.preorderCount}
+                  isActive={activeQuickFilter === "preorder"}
+                  onClick={() => applyQuickFilter("preorder")}
+                />
               </div>
             </div>
           </header>
-          {!isEmpty && (
-            <section className="mb-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
-              <input
-                type="text"
-                placeholder="Buscar por nome, plataforma ou versão..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/20"
-              />
-            </section>
-          )}
 
           {!isEmpty && latestAddedItems.length > 0 && (
             <section className="mb-8 rounded-[28px] border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.03] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
@@ -431,7 +522,25 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                   vitrine
                 </span>
               </div>
-              <div className="mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+              <div
+                ref={latestCarouselRef}
+                onMouseDown={() => {
+                  isCarouselPointerDownRef.current = true;
+                }}
+                onMouseUp={() => {
+                  isCarouselPointerDownRef.current = false;
+                }}
+                onMouseLeave={() => {
+                  isCarouselPointerDownRef.current = false;
+                }}
+                onTouchStart={() => {
+                  isCarouselPointerDownRef.current = true;
+                }}
+                onTouchEnd={() => {
+                  isCarouselPointerDownRef.current = false;
+                }}
+                className="mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2 snap-x snap-mandatory"
+              >
                 {latestAddedItems.map((item) => (
                   <div key={item.id} className="w-[148px] shrink-0 snap-start sm:w-[156px]">
                     <ItemCard
@@ -446,10 +555,22 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             </section>
           )}
 
+          {!isEmpty && (
+            <section className="mb-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
+              <input
+                type="text"
+                placeholder="Buscar por nome, plataforma ou versão..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/20"
+              />
+            </section>
+          )}
+
           {isEmpty ? (
             <EmptyCollectionState onAddClick={handleOpenDefaultAdd} />
           ) : groupedPlatforms.length > 0 ? (
-            <section className="space-y-6">
+            <section ref={collectionSectionRef} className="space-y-6">
               {groupedPlatforms.map((group) => (
                 <PlatformSection
                   key={group.platform}
@@ -558,7 +679,17 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: number }) {
+function SummaryCard({
+  label,
+  value,
+  isActive,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  isActive: boolean;
+  onClick: () => void;
+}) {
   const tone =
     label === "Wishlist"
       ? "border-amber-300/80 shadow-[0_0_0_1px_rgba(252,211,77,0.35)]"
@@ -567,12 +698,16 @@ function SummaryCard({ label, value }: { label: string; value: number }) {
         : "border-white/10";
 
   return (
-    <div className={`flex min-h-[130px] flex-col items-center justify-center rounded-2xl border bg-black/20 p-4 text-center ${tone}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-[130px] flex-col items-center justify-center rounded-2xl border bg-black/20 p-4 text-center transition hover:bg-white/10 ${tone} ${isActive ? "ring-2 ring-cyan-300/50" : ""}`}
+    >
       <p className="text-xs uppercase tracking-[0.25em] text-white/45">
         {label}
       </p>
       <p className="mt-3 text-4xl font-semibold leading-none text-white">{value}</p>
-    </div>
+    </button>
   );
 }
 
