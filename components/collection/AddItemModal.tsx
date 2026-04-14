@@ -17,6 +17,7 @@ import {
   formatMediaList,
   formatOwnershipLabel,
 } from "@/lib/duplicate-utils";
+import { CustomSelect, type CustomSelectOption } from "@/components/ui/CustomSelect";
 
 type AddItemModalProps = {
   isOpen: boolean;
@@ -127,6 +128,14 @@ export function AddItemModal({
     getInitialForm(initialType, initialPlatform),
   );
   const isGameSearchStep = step === 2 && form.type === "game" && !isGameSelectionDone;
+  const gameProgressOptions: CustomSelectOption[] = [
+    { value: "", label: "Não definido" },
+    { value: "backlog", label: "Backlog" },
+    { value: "playing", label: "Jogando" },
+    { value: "paused", label: "Pausado" },
+    { value: "finished", label: "Terminado" },
+    { value: "platinum", label: "Platinado" },
+  ];
 
   const modalTitle = useMemo(() => {
     if (form.type === "console") return "Novo console";
@@ -547,6 +556,29 @@ export function AddItemModal({
     resetAndClose();
   }
 
+  const platformSelectOptions: CustomSelectOption[] = [
+    { value: "", label: "Selecione a plataforma" },
+    ...platformOptions.map((platform) => ({ value: platform, label: platform })),
+    { value: NEW_PLATFORM_OPTION, label: "+ Cadastrar nova plataforma" },
+  ];
+  const franchiseSelectOptions: CustomSelectOption[] = [
+    { value: "", label: "Em branco" },
+    ...franchiseOptions.map((franchise) => ({ value: franchise, label: franchise })),
+    { value: NEW_FRANCHISE_OPTION, label: "+ Cadastrar nova franquia" },
+  ];
+  const primaryGenreOptions: CustomSelectOption[] = [
+    { value: "", label: "Em branco" },
+    ...genreOptions.map((genre) => ({ value: genre, label: genre })),
+    { value: NEW_GENRE_OPTION, label: "+ Cadastrar novo gênero" },
+  ];
+  const secondaryGenreOptions: CustomSelectOption[] = [
+    { value: "", label: "Em branco" },
+    ...genreOptions
+      .filter((genre) => genre !== form.genrePrimary)
+      .map((genre) => ({ value: genre, label: genre })),
+    { value: NEW_GENRE_OPTION, label: "+ Cadastrar novo gênero" },
+  ];
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 px-3 py-4 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:px-4 sm:py-6">
       <div
@@ -709,21 +741,12 @@ export function AddItemModal({
               {form.type === "game" ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FieldBlock label="Plataforma *">
-                    <select
+                    <CustomSelect
                       value={form.platform}
-                      onChange={(e) => handlePlatformSelect(e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                    >
-                      <option value="">Selecione a plataforma</option>
-                      {platformOptions.map((platform) => (
-                        <option key={platform} value={platform} className="text-black">
-                          {platform}
-                        </option>
-                      ))}
-                      <option value={NEW_PLATFORM_OPTION} className="text-black">
-                        + Cadastrar nova plataforma
-                      </option>
-                    </select>
+                      onChange={handlePlatformSelect}
+                      options={platformSelectOptions}
+                      placeholder="Selecione a plataforma"
+                    />
                   </FieldBlock>
 
                   <FieldBlock label="Status de posse">
@@ -736,21 +759,12 @@ export function AddItemModal({
               ) : (
                 <>
                   <FieldBlock label="Plataforma *">
-                    <select
+                    <CustomSelect
                       value={form.platform}
-                      onChange={(e) => handlePlatformSelect(e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                    >
-                      <option value="">Selecione a plataforma</option>
-                      {platformOptions.map((platform) => (
-                        <option key={platform} value={platform} className="text-black">
-                          {platform}
-                        </option>
-                      ))}
-                      <option value={NEW_PLATFORM_OPTION} className="text-black">
-                        + Cadastrar nova plataforma
-                      </option>
-                    </select>
+                      onChange={handlePlatformSelect}
+                      options={platformSelectOptions}
+                      placeholder="Selecione a plataforma"
+                    />
                   </FieldBlock>
 
                   <FieldBlock label="Status de posse">
@@ -835,106 +849,50 @@ export function AddItemModal({
                     </div>
 
                     <FieldBlock label="Status do jogo">
-                      <select
+                      <CustomSelect
                         value={form.gameProgressStatus}
-                        onChange={(e) =>
+                        onChange={(value) =>
                           updateField(
                             "gameProgressStatus",
-                            (e.target.value as Item["gameProgressStatus"] | "") ?? "",
+                            (value as Item["gameProgressStatus"] | "") ?? "",
                           )
                         }
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                      >
-                        <option value="" className="text-black">
-                          Não definido
-                        </option>
-                        <option value="backlog" className="text-black">
-                          Backlog
-                        </option>
-                        <option value="playing" className="text-black">
-                          Jogando
-                        </option>
-                        <option value="paused" className="text-black">
-                          Pausado
-                        </option>
-                        <option value="finished" className="text-black">
-                          Terminado
-                        </option>
-                        <option value="platinum" className="text-black">
-                          Platinado
-                        </option>
-                      </select>
+                        options={gameProgressOptions}
+                        placeholder="Não definido"
+                      />
                     </FieldBlock>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <FieldBlock label="Franquia">
-                      <select
+                      <CustomSelect
                         value={form.franchise}
-                        onChange={(e) => handleFranchiseSelect(e.target.value)}
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                      >
-                        <option value="" className="text-black">Em branco</option>
-                        {franchiseOptions.map((franchise) => (
-                          <option key={franchise} value={franchise} className="text-black">
-                            {franchise}
-                          </option>
-                        ))}
-                        <option value={NEW_FRANCHISE_OPTION} className="text-black">
-                          + Cadastrar nova franquia
-                        </option>
-                      </select>
+                        onChange={handleFranchiseSelect}
+                        options={franchiseSelectOptions}
+                        placeholder="Em branco"
+                      />
                     </FieldBlock>
 
                     <FieldBlock label="Gênero 1">
-                      <select
+                      <CustomSelect
                         value={form.genrePrimary}
-                        onChange={(e) => handleGenreSelect("genrePrimary", e.target.value)}
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                      >
-                        <option value="" className="text-black">Em branco</option>
-                        {genreOptions.map((genre) => (
-                          <option key={genre} value={genre} className="text-black">
-                            {genre}
-                          </option>
-                        ))}
-                        <option value={NEW_GENRE_OPTION} className="text-black">
-                          + Cadastrar novo gênero
-                        </option>
-                      </select>
+                        onChange={(value) => handleGenreSelect("genrePrimary", value)}
+                        options={primaryGenreOptions}
+                        placeholder="Em branco"
+                      />
                     </FieldBlock>
                   </div>
                   {form.genrePrimary && (
                     <FieldBlock label="Gênero 2 (opcional)">
-                      <select
+                      <CustomSelect
                         value={form.genreSecondary}
-                        onChange={(e) => handleGenreSelect("genreSecondary", e.target.value)}
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                      >
-                        <option value="" className="text-black">Em branco</option>
-                        {genreOptions.filter((genre) => genre !== form.genrePrimary).map((genre) => (
-                          <option key={genre} value={genre} className="text-black">
-                            {genre}
-                          </option>
-                        ))}
-                        <option value={NEW_GENRE_OPTION} className="text-black">
-                          + Cadastrar novo gênero
-                        </option>
-                      </select>
+                        onChange={(value) => handleGenreSelect("genreSecondary", value)}
+                        options={secondaryGenreOptions}
+                        placeholder="Em branco"
+                      />
                     </FieldBlock>
                   )}
                 </>
-              )}
-
-              {(form.type === "game" || form.ownershipStatus === "preorder") && (
-                <FieldBlock label="Data de lançamento">
-                  <input
-                    type="date"
-                    value={form.releaseDate}
-                    onChange={(e) => updateField("releaseDate", e.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                  />
-                </FieldBlock>
               )}
 
               <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">

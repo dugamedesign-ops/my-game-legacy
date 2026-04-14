@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Item } from "@/types/collection";
 import { StatusBadge } from "./StatusBadge";
 import { searchIgdbCover } from "@/lib/igdb";
+import { CustomSelect, type CustomSelectOption } from "@/components/ui/CustomSelect";
 
 type ItemDetailsModalProps = {
   item: Item | null;
@@ -226,6 +227,19 @@ export function ItemDetailsModal({
 
   const isGame = item.type === "game";
   const isWishlist = ownershipStatusInput === "wishlist";
+  const gameProgressOptions: CustomSelectOption[] = [
+    { value: "", label: "Não definido" },
+    { value: "backlog", label: "Backlog" },
+    { value: "playing", label: "Jogando" },
+    { value: "paused", label: "Pausado" },
+    { value: "finished", label: "Terminado" },
+    { value: "platinum", label: "Platinado" },
+  ];
+  const purchaseOriginSelectOptions: CustomSelectOption[] = [
+    { value: "", label: "Em branco" },
+    ...purchaseOriginOptions.map((origin) => ({ value: origin, label: origin })),
+    { value: "__new_origin__", label: "+ Cadastrar nova origem" },
+  ];
 
   const previewProgressLabel = formatProgressLabel(
     gameProgressStatusInput || undefined,
@@ -626,34 +640,16 @@ export function ItemDetailsModal({
                       <span className="mb-2 block text-sm text-white/70">
                         Status do jogo
                       </span>
-                      <select
+                      <CustomSelect
                         value={gameProgressStatusInput}
-                        onChange={(e) =>
+                        onChange={(value) =>
                           setGameProgressStatusInput(
-                            (e.target.value as Item["gameProgressStatus"] | "") ?? "",
+                            (value as Item["gameProgressStatus"] | "") ?? "",
                           )
                         }
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                      >
-                        <option value="" className="text-black">
-                          Não definido
-                        </option>
-                        <option value="backlog" className="text-black">
-                          Backlog
-                        </option>
-                        <option value="playing" className="text-black">
-                          Jogando
-                        </option>
-                        <option value="paused" className="text-black">
-                          Pausado
-                        </option>
-                        <option value="finished" className="text-black">
-                          Terminado
-                        </option>
-                        <option value="platinum" className="text-black">
-                          Platinado
-                        </option>
-                      </select>
+                        options={gameProgressOptions}
+                        placeholder="Não definido"
+                      />
                     </label>
                   )}
                 </div>
@@ -779,21 +775,12 @@ export function ItemDetailsModal({
                     <span className="mb-2 block text-sm text-white/70">
                       Origem da compra
                     </span>
-                    <select
+                    <CustomSelect
                       value={purchaseOriginInput}
-                      onChange={(e) => handlePurchaseOriginChange(e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                    >
-                      <option value="" className="text-black">Em branco</option>
-                      {purchaseOriginOptions.map((origin) => (
-                        <option key={origin} value={origin} className="text-black">
-                          {origin}
-                        </option>
-                      ))}
-                      <option value="__new_origin__" className="text-black">
-                        + Cadastrar nova origem
-                      </option>
-                    </select>
+                      onChange={handlePurchaseOriginChange}
+                      options={purchaseOriginSelectOptions}
+                      placeholder="Em branco"
+                    />
                   </label>
 
                   <label className="block">
