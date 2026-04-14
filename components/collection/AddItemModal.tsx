@@ -34,6 +34,7 @@ type FormState = {
   title: string;
   subtitle: string;
   ownershipStatus: OwnershipStatus;
+  gameProgressStatus: Item["gameProgressStatus"] | "";
   physical: boolean;
   digital: boolean;
   imageUrl: string;
@@ -57,6 +58,7 @@ const PLATFORM_OPTIONS = [
 ];
 const NEW_PLATFORM_OPTION = "__new_platform__";
 const NEW_GENRE_OPTION = "__new_genre__";
+const NEW_FRANCHISE_OPTION = "__new_franchise__";
 const IGDB_GENRE_OPTIONS = [
   "Action",
   "Adventure",
@@ -96,6 +98,7 @@ export function AddItemModal({
   const [isGameSelectionDone, setIsGameSelectionDone] = useState(false);
   const [platformOptions, setPlatformOptions] = useState<string[]>(PLATFORM_OPTIONS);
   const [genreOptions, setGenreOptions] = useState<string[]>(IGDB_GENRE_OPTIONS);
+  const [franchiseOptions, setFranchiseOptions] = useState<string[]>([]);
 
   const skipNextAutoSearchRef = useRef(false);
 
@@ -109,6 +112,7 @@ export function AddItemModal({
       title: "",
       subtitle: "",
       ownershipStatus: "collection",
+      gameProgressStatus: "",
       physical: false,
       digital: false,
       imageUrl: "",
@@ -166,6 +170,25 @@ export function AddItemModal({
       a.localeCompare(b),
     );
     setGenreOptions(mergedGenres);
+    const customFranchisesRaw =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("my-game-legacy-custom-franchises")
+        : null;
+    let customFranchises: string[] = [];
+    if (customFranchisesRaw) {
+      try {
+        customFranchises = JSON.parse(customFranchisesRaw) as string[];
+      } catch {
+        customFranchises = [];
+      }
+    }
+    const franchisesFromItems = existingItems
+      .map((item) => item.franchise?.trim())
+      .filter(Boolean) as string[];
+    const mergedFranchises = [...new Set([...franchisesFromItems, ...customFranchises])].sort(
+      (a, b) => a.localeCompare(b),
+    );
+    setFranchiseOptions(mergedFranchises);
 
     setForm(getInitialForm(initialType, initialPlatform));
     setSearchResults([]);
@@ -235,6 +258,8 @@ export function AddItemModal({
           ? form.subtitle
           : undefined,
       ownershipStatus: form.ownershipStatus,
+      gameProgressStatus:
+        form.type === "game" ? form.gameProgressStatus || undefined : undefined,
       mediaFormats: form.type === "game" ? mediaFormats : undefined,
     });
   }, [
@@ -244,6 +269,7 @@ export function AddItemModal({
     form.platform,
     form.subtitle,
     form.ownershipStatus,
+    form.gameProgressStatus,
     mediaFormats,
   ]);
 
@@ -311,6 +337,8 @@ export function AddItemModal({
       title,
       subtitle,
       ownershipStatus: form.ownershipStatus,
+      gameProgressStatus:
+        form.type === "game" ? form.gameProgressStatus || undefined : undefined,
       mediaFormats: form.type === "game" ? mediaFormats : undefined,
       franchise:
         form.type === "game" ? form.franchise.trim() || undefined : undefined,
@@ -374,6 +402,15 @@ export function AddItemModal({
         ) ||
         prev.platform,
     }));
+    if (result.franchise?.trim()) {
+      const normalized = result.franchise.trim();
+      setFranchiseOptions((prev) => {
+        if (prev.some((option) => option.toLowerCase() === normalized.toLowerCase())) {
+          return prev;
+        }
+        return [...prev, normalized].sort((a, b) => a.localeCompare(b));
+      });
+    }
 
     setShowResults(false);
     setIsGameSelectionDone(true);
@@ -458,6 +495,42 @@ export function AddItemModal({
     if (field === "genrePrimary" && finalValue === form.genreSecondary) {
       updateField("genreSecondary", "");
     }
+  }
+
+  function handleFranchiseSelect(value: string) {
+    if (value === "") {
+      updateField("franchise", "");
+      return;
+    }
+
+    if (value !== NEW_FRANCHISE_OPTION) {
+      updateField("franchise", value);
+      return;
+    }
+
+    const typed = window.prompt("Digite o nome da nova franquia:");
+    if (!typed) return;
+    const normalized = typed.trim();
+    if (!normalized) return;
+
+    const exists = franchiseOptions.some(
+      (option) => option.toLowerCase() === normalized.toLowerCase(),
+    );
+    const finalValue = exists
+      ? franchiseOptions.find(
+          (option) => option.toLowerCase() === normalized.toLowerCase(),
+        ) ?? normalized
+      : normalized;
+
+    if (!exists) {
+      const next = [...franchiseOptions, normalized].sort((a, b) =>
+        a.localeCompare(b),
+      );
+      setFranchiseOptions(next);
+      window.localStorage.setItem("my-game-legacy-custom-franchises", JSON.stringify(next));
+    }
+
+    updateField("franchise", finalValue);
   }
 
   function handleSave() {
@@ -633,33 +706,60 @@ export function AddItemModal({
                     </FieldBlock>
                   )}
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FieldBlock label="Plataforma *">
-                  <select
-                    value={form.platform}
-                    onChange={(e) => handlePlatformSelect(e.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                  >
-                    <option value="">Selecione a plataforma</option>
-                    {platformOptions.map((platform) => (
-                      <option key={platform} value={platform} className="text-black">
-                        {platform}
+              {form.type === "game" ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FieldBlock label="Plataforma *">
+                    <select
+                      value={form.platform}
+                      onChange={(e) => handlePlatformSelect(e.target.value)}
+                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
+                    >
+                      <option value="">Selecione a plataforma</option>
+                      {platformOptions.map((platform) => (
+                        <option key={platform} value={platform} className="text-black">
+                          {platform}
+                        </option>
+                      ))}
+                      <option value={NEW_PLATFORM_OPTION} className="text-black">
+                        + Cadastrar nova plataforma
                       </option>
-                    ))}
-                    <option value={NEW_PLATFORM_OPTION} className="text-black">
-                      + Cadastrar nova plataforma
-                    </option>
-                  </select>
-                </FieldBlock>
-              </div>
+                    </select>
+                  </FieldBlock>
 
-              {form.type !== "game" && (
-                <FieldBlock label="Status de posse">
-                  <OwnershipStatusButtons
-                    value={form.ownershipStatus}
-                    onChange={(value) => updateField("ownershipStatus", value)}
-                  />
-                </FieldBlock>
+                  <FieldBlock label="Status de posse">
+                    <OwnershipStatusButtons
+                      value={form.ownershipStatus}
+                      onChange={(value) => updateField("ownershipStatus", value)}
+                    />
+                  </FieldBlock>
+                </div>
+              ) : (
+                <>
+                  <FieldBlock label="Plataforma *">
+                    <select
+                      value={form.platform}
+                      onChange={(e) => handlePlatformSelect(e.target.value)}
+                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
+                    >
+                      <option value="">Selecione a plataforma</option>
+                      {platformOptions.map((platform) => (
+                        <option key={platform} value={platform} className="text-black">
+                          {platform}
+                        </option>
+                      ))}
+                      <option value={NEW_PLATFORM_OPTION} className="text-black">
+                        + Cadastrar nova plataforma
+                      </option>
+                    </select>
+                  </FieldBlock>
+
+                  <FieldBlock label="Status de posse">
+                    <OwnershipStatusButtons
+                      value={form.ownershipStatus}
+                      onChange={(value) => updateField("ownershipStatus", value)}
+                    />
+                  </FieldBlock>
+                </>
               )}
 
               {form.type === "console" ? (
@@ -716,8 +816,8 @@ export function AddItemModal({
 
               {form.type === "game" && (
                 <>
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 sm:h-full">
                       <p className="mb-3 text-sm font-medium text-white">Mídia</p>
 
                       <div className="flex flex-wrap gap-3">
@@ -734,22 +834,56 @@ export function AddItemModal({
                       </div>
                     </div>
 
-                    <FieldBlock label="Status de posse">
-                      <OwnershipStatusButtons
-                        value={form.ownershipStatus}
-                        onChange={(value) => updateField("ownershipStatus", value)}
-                      />
+                    <FieldBlock label="Status do jogo">
+                      <select
+                        value={form.gameProgressStatus}
+                        onChange={(e) =>
+                          updateField(
+                            "gameProgressStatus",
+                            (e.target.value as Item["gameProgressStatus"] | "") ?? "",
+                          )
+                        }
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
+                      >
+                        <option value="" className="text-black">
+                          Não definido
+                        </option>
+                        <option value="backlog" className="text-black">
+                          Backlog
+                        </option>
+                        <option value="playing" className="text-black">
+                          Jogando
+                        </option>
+                        <option value="paused" className="text-black">
+                          Pausado
+                        </option>
+                        <option value="finished" className="text-black">
+                          Terminado
+                        </option>
+                        <option value="platinum" className="text-black">
+                          Platinado
+                        </option>
+                      </select>
                     </FieldBlock>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <FieldBlock label="Franquia">
-                      <input
+                      <select
                         value={form.franchise}
-                        onChange={(e) => updateField("franchise", e.target.value)}
-                        placeholder="Ex: Devil May Cry"
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                      />
+                        onChange={(e) => handleFranchiseSelect(e.target.value)}
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
+                      >
+                        <option value="" className="text-black">Em branco</option>
+                        {franchiseOptions.map((franchise) => (
+                          <option key={franchise} value={franchise} className="text-black">
+                            {franchise}
+                          </option>
+                        ))}
+                        <option value={NEW_FRANCHISE_OPTION} className="text-black">
+                          + Cadastrar nova franquia
+                        </option>
+                      </select>
                     </FieldBlock>
 
                     <FieldBlock label="Gênero 1">

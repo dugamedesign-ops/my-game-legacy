@@ -329,6 +329,18 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                       <FiltersBar filters={filters} setFilters={setFilters} compact />
                     </div>
                   )}
+                  <button
+                    type="button"
+                    disabled
+                    aria-disabled="true"
+                    className="flex w-full items-center justify-between rounded-xl border border-white/10 px-3 py-2 text-sm text-white/40"
+                    title="Área em breve"
+                  >
+                    <span>Configurações</span>
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-white/30">
+                      Em breve
+                    </span>
+                  </button>
                 </div>
                 {authUser && (
                   <div className="mt-4 border-t border-white/10 pt-3">
