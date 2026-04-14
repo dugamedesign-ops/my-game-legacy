@@ -322,7 +322,7 @@ export function AddItemModal({
     }
 
     function handleShortcuts(event: KeyboardEvent) {
-      if (!isOpen || event.defaultPrevented) return;
+      if (!isOpen) return;
 
       if (step === 1 && !isTypingTarget(event.target)) {
         if (event.key === "1") {
@@ -351,13 +351,17 @@ export function AddItemModal({
       if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
         if (step === 2 && getIsFormValid()) {
           event.preventDefault();
+          event.stopPropagation();
           handleSave();
         }
+        return;
       }
+
+      if (event.defaultPrevented) return;
     }
 
-    window.addEventListener("keydown", handleShortcuts);
-    return () => window.removeEventListener("keydown", handleShortcuts);
+    window.addEventListener("keydown", handleShortcuts, true);
+    return () => window.removeEventListener("keydown", handleShortcuts, true);
   }, [isOpen, step, form, duplicateCheck, getIsFormValid, handleSave]);
 
   if (!isOpen) return null;

@@ -29,6 +29,14 @@ type ContextMenuState = {
   y: number;
 } | null;
 
+type HeaderFilterKey =
+  | "all"
+  | "collection"
+  | "wishlist"
+  | "preorder"
+  | "playing"
+  | "finished";
+
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const { user: authUser, signOut } = useAuth();
   const {
@@ -54,9 +62,8 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [isFinancialOpen, setIsFinancialOpen] = useState(false);
   const [isPendingOpen, setIsPendingOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [activeQuickFilter, setActiveQuickFilter] = useState<
-    "all" | "collection" | "wishlist" | "preorder"
-  >("all");
+  const [activeQuickFilter, setActiveQuickFilter] =
+    useState<HeaderFilterKey>("all");
   const collectionSectionRef = useRef<HTMLElement | null>(null);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
@@ -221,14 +228,20 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       .slice(0, 10);
   }, [collectionItems]);
 
-  function applyQuickFilter(next: "all" | "collection" | "wishlist" | "preorder") {
+  function applyQuickFilter(next: HeaderFilterKey) {
     setActiveQuickFilter(next);
     setFilters((prev) => ({
       ...prev,
       ownership:
-        next === "all"
-          ? []
-          : [next as "collection" | "wishlist" | "preorder"],
+        next === "collection" || next === "wishlist" || next === "preorder"
+          ? [next]
+          : [],
+      gameStatus:
+        next === "playing"
+          ? ["playing"]
+          : next === "finished"
+            ? ["finished", "platinum"]
+            : [],
     }));
 
     setTimeout(() => {
@@ -239,6 +252,69 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       window.scrollBy({ top: -72, behavior: "smooth" });
     }, 60);
   }
+
+  const headerFilters: {
+    key: HeaderFilterKey;
+    label: string;
+    value: number;
+    icon: string;
+    activeClassName: string;
+  }[] = [
+    {
+      key: "all",
+      label: "Todos",
+      value: summary.totalItems,
+      icon: "✦",
+      activeClassName:
+        "border-white/55 bg-white/10 text-white shadow-[0_8px_26px_rgba(255,255,255,0.15)]",
+    },
+    {
+      key: "collection",
+      label: "Na coleção",
+      value: summary.collectionCount,
+      icon: "🗂",
+      activeClassName:
+        "border-cyan-300/70 bg-cyan-500/10 text-cyan-100 shadow-[0_8px_26px_rgba(34,211,238,0.2)]",
+    },
+    {
+      key: "wishlist",
+      label: "Wishlist",
+      value: summary.wishlistCount,
+      icon: "★",
+      activeClassName:
+        "border-yellow-300/80 bg-yellow-400/10 text-yellow-100 shadow-[0_8px_26px_rgba(250,204,21,0.25)]",
+    },
+    {
+      key: "preorder",
+      label: "Pré-venda",
+      value: summary.preorderCount,
+      icon: "⚡",
+      activeClassName:
+        "border-violet-300/80 bg-violet-500/10 text-violet-100 shadow-[0_8px_26px_rgba(168,85,247,0.24)]",
+    },
+    {
+      key: "playing",
+      label: "Jogando",
+      value: collectionItems.filter((item) => item.gameProgressStatus === "playing").length,
+      icon: "◔",
+      activeClassName:
+        "border-fuchsia-300/80 bg-fuchsia-500/10 text-fuchsia-100 shadow-[0_8px_26px_rgba(217,70,239,0.24)]",
+    },
+    {
+      key: "finished",
+      label: "Terminado",
+      value: collectionItems.filter(
+        (item) =>
+          item.gameProgressStatus === "finished" ||
+          item.gameProgressStatus === "platinum",
+      ).length,
+      icon: "✓",
+      activeClassName:
+        "border-emerald-300/80 bg-emerald-500/10 text-emerald-100 shadow-[0_8px_26px_rgba(16,185,129,0.24)]",
+    },
+  ];
+
+  const legacyName = legacyTitle.replace(/'s Legacy$/i, "").trim();
 
   const isEmpty = collectionItems.length === 0;
 
@@ -445,41 +521,31 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               </div>
             )}
 
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-              <div className="space-y-2">
-                <p className="text-sm uppercase tracking-[0.3em] text-white/45">
-                  {legacyTitle}
+            <div className="rounded-3xl border border-white/10 bg-gradient-to-r from-[#0c1222] via-[#10182b] to-[#111a2d] p-4 sm:p-5">
+              <div className="space-y-1">
+                <h1 className="text-xl font-semibold leading-tight text-white sm:text-2xl">
+                  {legacyName}
+                </h1>
+                <p className="text-sm text-cyan-100/80">
+                  @{legacyName.replace(/\s+/g, "")}Legacy
                 </p>
-                <p className="max-w-2xl text-sm leading-6 text-white/65">
-                  Sua coleção organizada por plataforma, com foco total nas capas e na vitrine.
+                <p className="text-xs uppercase tracking-[0.26em] text-white/35">
+                  {legacyTitle}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:min-w-[480px]">
-                <SummaryCard
-                  label="Itens"
-                  value={summary.totalItems}
-                  isActive={activeQuickFilter === "all"}
-                  onClick={() => applyQuickFilter("all")}
-                />
-                <SummaryCard
-                  label="Na coleção"
-                  value={summary.collectionCount}
-                  isActive={activeQuickFilter === "collection"}
-                  onClick={() => applyQuickFilter("collection")}
-                />
-                <SummaryCard
-                  label="Wishlist"
-                  value={summary.wishlistCount}
-                  isActive={activeQuickFilter === "wishlist"}
-                  onClick={() => applyQuickFilter("wishlist")}
-                />
-                <SummaryCard
-                  label="Pré-venda"
-                  value={summary.preorderCount}
-                  isActive={activeQuickFilter === "preorder"}
-                  onClick={() => applyQuickFilter("preorder")}
-                />
+              <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                {headerFilters.map((filter) => (
+                  <HeaderFilterButton
+                    key={filter.key}
+                    label={filter.label}
+                    icon={filter.icon}
+                    value={filter.value}
+                    isActive={activeQuickFilter === filter.key}
+                    activeClassName={filter.activeClassName}
+                    onClick={() => applyQuickFilter(filter.key)}
+                  />
+                ))}
               </div>
             </div>
           </header>
@@ -631,34 +697,41 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   );
 }
 
-function SummaryCard({
+function HeaderFilterButton({
   label,
+  icon,
   value,
   isActive,
+  activeClassName,
   onClick,
 }: {
   label: string;
+  icon: string;
   value: number;
   isActive: boolean;
+  activeClassName: string;
   onClick: () => void;
 }) {
-  const tone =
-    label === "Wishlist"
-      ? "border-amber-300/80 shadow-[0_0_0_1px_rgba(252,211,77,0.35)]"
-      : label === "Pré-venda"
-        ? "border-fuchsia-400/80 shadow-[0_0_0_1px_rgba(232,121,249,0.35)]"
-        : "border-white/10";
-
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-h-[130px] flex-col items-center justify-center rounded-2xl border bg-black/20 p-4 text-center transition hover:bg-white/10 ${tone} ${isActive ? "ring-2 ring-cyan-300/50" : ""}`}
+      className={`rounded-2xl border px-3 py-2 text-left transition ${
+        isActive
+          ? activeClassName
+          : "border-white/10 bg-black/15 text-white/75 hover:bg-white/10"
+      }`}
     >
-      <p className="text-xs uppercase tracking-[0.25em] text-white/45">
-        {label}
-      </p>
-      <p className="mt-3 text-4xl font-semibold leading-none text-white">{value}</p>
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em]">
+        <span aria-hidden>{icon}</span>
+        <span>{label}</span>
+      </div>
+      <p className="mt-1 text-2xl font-semibold leading-none">{value}</p>
+      <div
+        className={`mt-2 h-0.5 w-full rounded-full transition ${
+          isActive ? "bg-current/95" : "bg-white/10"
+        }`}
+      />
     </button>
   );
 }
