@@ -130,7 +130,7 @@ export function ItemDetailsModal({
   const [ownershipStatusInput, setOwnershipStatusInput] =
     useState<Item["ownershipStatus"]>("collection");
   const [gameProgressStatusInput, setGameProgressStatusInput] = useState<
-    Item["gameProgressStatus"] | ""
+    NonNullable<Item["gameProgressStatus"]> | ""
   >("");
   const [mediaFormatsInput, setMediaFormatsInput] = useState<
     Item["mediaFormats"]
@@ -644,7 +644,7 @@ export function ItemDetailsModal({
                         value={gameProgressStatusInput}
                         onChange={(value) =>
                           setGameProgressStatusInput(
-                            (value as Item["gameProgressStatus"] | "") ?? "",
+                            (value as NonNullable<Item["gameProgressStatus"]> | "") ?? "",
                           )
                         }
                         options={gameProgressOptions}

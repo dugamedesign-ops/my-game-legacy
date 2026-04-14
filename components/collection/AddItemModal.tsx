@@ -35,7 +35,7 @@ type FormState = {
   title: string;
   subtitle: string;
   ownershipStatus: OwnershipStatus;
-  gameProgressStatus: Item["gameProgressStatus"] | "";
+  gameProgressStatus: NonNullable<Item["gameProgressStatus"]> | "";
   physical: boolean;
   digital: boolean;
   imageUrl: string;
@@ -854,7 +854,7 @@ export function AddItemModal({
                         onChange={(value) =>
                           updateField(
                             "gameProgressStatus",
-                            (value as Item["gameProgressStatus"] | "") ?? "",
+                            (value as NonNullable<Item["gameProgressStatus"]> | "") ?? "",
                           )
                         }
                         options={gameProgressOptions}
