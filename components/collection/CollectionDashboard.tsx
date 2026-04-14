@@ -16,6 +16,8 @@ import { PendingItemsOverview } from "./PendingItemsOverview";
 import { FiltersBar } from "./FiltersBar";
 import { applyFilters, type Filters } from "@/lib/filter-utils";
 import { AuthPanel } from "@/components/auth/AuthPanel";
+import { useAuth } from "@/providers/AuthProvider";
+import { ItemCard } from "./ItemCard";
 
 type CollectionDashboardProps = {
   items: Item[];
@@ -28,6 +30,7 @@ type ContextMenuState = {
 } | null;
 
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
+  const { user: authUser, signOut } = useAuth();
   const {
     items: collectionItems,
     addItem,
@@ -42,9 +45,15 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   } = usePersistentCollection(items);
 
   const [search, setSearch] = useState("");
+  const [legacyTitleOverride, setLegacyTitleOverride] = useState("");
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isEditingLegacyTitle, setIsEditingLegacyTitle] = useState(false);
+  const [isFinancialOpen, setIsFinancialOpen] = useState(false);
+  const [isPendingOpen, setIsPendingOpen] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
@@ -64,6 +73,17 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     missing: [],
   });
 
+  const legacyTitle = useMemo(() => {
+    if (legacyTitleOverride.trim()) return legacyTitleOverride;
+    const rawName =
+      authUser?.user_metadata?.full_name ??
+      authUser?.user_metadata?.name ??
+      authUser?.email?.split("@")[0] ??
+      "My";
+    const firstName = rawName.split(" ")[0].replace(/[^a-zA-ZÀ-ÿ0-9]/g, "");
+    return `${firstName || "My"}'s Legacy`;
+  }, [authUser?.email, authUser?.user_metadata?.full_name, authUser?.user_metadata?.name, legacyTitleOverride]);
+
   useEffect(() => {
     function handleCloseContextMenu() {
       setContextMenu(null);
@@ -80,10 +100,35 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isMobileSidebarOpen) return;
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsMobileSidebarOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isMobileSidebarOpen]);
+
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      if (isFinancialOpen) setIsFinancialOpen(false);
+      if (isPendingOpen) setIsPendingOpen(false);
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isFinancialOpen, isPendingOpen]);
+
   function handleOpenDefaultAdd() {
     setPrefilledType(null);
     setPrefilledPlatform(null);
     setIsAddModalOpen(true);
+    setIsMobileSidebarOpen(false);
   }
 
   function handleOpenContextualAdd(
@@ -93,6 +138,19 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     setPrefilledType(type);
     setPrefilledPlatform(platform);
     setIsAddModalOpen(true);
+  }
+
+
+  function handleOpenQuickAdd(type: "console" | "accessory" | "game") {
+    setPrefilledType(type);
+    setPrefilledPlatform(null);
+    setIsAddModalOpen(true);
+    setIsMobileSidebarOpen(false);
+  }
+
+  function handleLegacyTitleSave() {
+    setLegacyTitleOverride((current) => current.trim());
+    setIsEditingLegacyTitle(false);
   }
 
   const filteredItems = useMemo(() => {
@@ -120,6 +178,15 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     () => getCollectionSummary(collectionItems),
     [collectionItems],
   );
+  const latestAddedItems = useMemo(() => {
+    return [...collectionItems]
+      .sort((a, b) => {
+        const aDate = new Date(a.createdAt ?? a.updatedAt ?? 0).getTime();
+        const bDate = new Date(b.createdAt ?? b.updatedAt ?? 0).getTime();
+        return bDate - aDate;
+      })
+      .slice(0, 10);
+  }, [collectionItems]);
 
   const isEmpty = collectionItems.length === 0;
 
@@ -139,14 +206,148 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     <>
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_25%),radial-gradient(circle_at_80%_20%,_rgba(168,85,247,0.12),_transparent_20%),linear-gradient(180deg,_#09090b_0%,_#111827_100%)] text-white">
         <div className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 lg:px-8">
-          <header className="mb-8 overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.05] p-6 shadow-[0_8px_40px_rgb(0,0,0,0.25)] backdrop-blur">
-            <div className="mb-6 rounded-2xl border border-white/10 bg-black/20 p-4">
-              <AuthPanel />
-              {isSyncing && (
-                <p className="mt-2 text-xs text-white/50">Sincronizando coleção online...</p>
-              )}
-            </div>
+          <div className="mb-4 flex items-center justify-between lg:hidden">
+            <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/80">
+              {legacyTitle}
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsMobileSidebarOpen((open) => !open)}
+              aria-expanded={isMobileSidebarOpen}
+              aria-controls="mobile-sidebar"
+              className="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 p-2 text-white transition hover:bg-white/10 active:scale-95"
+            >
+              <span className="sr-only">Abrir funções da barra lateral</span>
+              <span className="text-xl leading-none">☰</span>
+            </button>
+          </div>
 
+          {isMobileSidebarOpen && (
+            <div
+              className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+              onClick={() => setIsMobileSidebarOpen(false)}
+            />
+          )}
+
+          <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-6">
+            <aside
+              id="mobile-sidebar"
+              className={`mb-6 lg:sticky lg:top-6 lg:mb-0 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto ${
+                isMobileSidebarOpen
+                  ? "fixed inset-y-0 left-0 z-50 w-[86vw] max-w-[320px] overflow-y-auto border-r border-white/10 bg-[#0b1220] p-4 shadow-2xl sm:w-[380px] lg:static lg:inset-auto lg:z-auto lg:w-auto lg:max-w-none lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
+                  : "hidden lg:block"
+              }`}
+            >
+              <div className={`rounded-[28px] border border-white/10 p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)] ${isMobileSidebarOpen ? "bg-[#0f172a]" : "bg-white/[0.04]"}`}>
+                <div className="flex items-center justify-between lg:block">
+                  <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/80">My Game Legacy</p>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                    className="rounded-lg border border-white/15 px-2 py-1 text-xs text-white/75 transition hover:bg-white/10 lg:hidden"
+                  >
+                    Fechar
+                  </button>
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  {isEditingLegacyTitle ? (
+                    <input
+                      value={legacyTitle}
+                      onChange={(event) => setLegacyTitleOverride(event.target.value)}
+                      onBlur={handleLegacyTitleSave}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") handleLegacyTitleSave();
+                        if (event.key === "Escape") setIsEditingLegacyTitle(false);
+                      }}
+                      className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xl font-semibold text-white outline-none placeholder:text-white/35"
+                      placeholder="Seu nome Legacy"
+                      autoFocus
+                    />
+                  ) : (
+                    <div className="min-w-0">
+                      <h2 className="text-[1.7rem] font-semibold leading-tight text-white sm:text-3xl">
+                        {legacyTitle}
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingLegacyTitle(true)}
+                        className="mt-1 inline-flex rounded-md border border-white/15 px-1.5 py-0.5 text-[11px] text-white/70 transition hover:bg-white/10"
+                        aria-label="Editar nome da coleção"
+                      >
+                        ✏️ editar
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                  <AuthPanel />
+                  {isSyncing && (
+                    <p className="mt-2 text-xs text-white/50">Sincronizando coleção online...</p>
+                  )}
+                </div>
+                <div className="mt-4 space-y-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <button type="button" onClick={() => handleOpenQuickAdd("game")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-1.5 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
+                      <span className="text-center text-[10px] font-semibold leading-tight">+ Jogo</span>
+                      <span className="mt-1 text-lg leading-none">🎮</span>
+                    </button>
+                    <button type="button" onClick={() => handleOpenQuickAdd("console")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-1.5 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
+                      <span className="text-center text-[10px] font-semibold leading-tight">+ Console</span>
+                      <span className="mt-1 text-lg leading-none">🕹️</span>
+                    </button>
+                    <button type="button" onClick={() => handleOpenQuickAdd("accessory")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-1.5 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
+                      <span className="text-center text-[10px] font-semibold leading-tight">+ Acessório</span>
+                      <span className="mt-1 text-lg leading-none">🎧</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2 border-t border-white/10 pt-3">
+                  <SidebarActionButton
+                    label="Financeiro"
+                    onClick={() => {
+                      setIsFinancialOpen(true);
+                      setIsMobileSidebarOpen(false);
+                    }}
+                  />
+                  <SidebarActionButton
+                    label="Completar depois"
+                    onClick={() => {
+                      setIsPendingOpen(true);
+                      setIsMobileSidebarOpen(false);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsFiltersOpen((open) => !open)}
+                    className="flex w-full items-center justify-between rounded-xl border border-white/15 px-3 py-2 text-sm text-white/85 transition hover:bg-white/10"
+                  >
+                    <span>Filtros inteligentes</span>
+                    <span className="text-xs">{isFiltersOpen ? "▲" : "▼"}</span>
+                  </button>
+                  {isFiltersOpen && (
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-2">
+                      <FiltersBar filters={filters} setFilters={setFilters} compact />
+                    </div>
+                  )}
+                </div>
+                {authUser && (
+                  <div className="mt-4 border-t border-white/10 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMobileSidebarOpen(false);
+                        void signOut();
+                      }}
+                      className="w-full rounded-xl border border-white/20 px-3 py-2 text-sm text-white/85 transition hover:bg-white/10 active:scale-[0.98]"
+                    >
+                      Sair
+                    </button>
+                  </div>
+                )}
+              </div>
+            </aside>
+            <div>
+          <header className="mb-6 overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.05] p-4 shadow-[0_8px_30px_rgb(0,0,0,0.22)] backdrop-blur sm:p-5">
             {hasLocalDataToImport && user && (
               <div className="mb-6 rounded-2xl border border-cyan-400/30 bg-cyan-500/10 p-4 text-sm text-cyan-50">
                 <p className="font-medium">Encontramos dados locais no seu navegador.</p>
@@ -180,22 +381,17 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               </div>
             )}
 
-            <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
-              <div className="space-y-3">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+              <div className="space-y-2">
                 <p className="text-sm uppercase tracking-[0.3em] text-white/45">
-                  Coleção gamer
+                  {legacyTitle}
                 </p>
-                <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                  Sua vitrine digital
-                </h1>
-                <p className="max-w-2xl text-sm leading-6 text-white/65 sm:text-base">
-                  Organize sua coleção por plataforma, acompanhe wishlist,
-                  pré-vendas e construa uma base linda, clara e pronta para
-                  evoluir.
+                <p className="max-w-2xl text-sm leading-6 text-white/65">
+                  Sua coleção organizada por plataforma, com foco total nas capas e na vitrine.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:min-w-[480px]">
                 <SummaryCard label="Itens" value={summary.totalItems} />
                 <SummaryCard label="Na coleção" value={summary.collectionCount} />
                 <SummaryCard label="Wishlist" value={summary.wishlistCount} />
@@ -203,30 +399,39 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               </div>
             </div>
           </header>
-
-          {!isEmpty && <FinancialOverview items={collectionItems} />}
-
           {!isEmpty && (
-            <PendingItemsOverview
-              items={collectionItems}
-              onOpenItem={(item) => setSelectedItem(item)}
-            />
+            <section className="mb-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
+              <input
+                type="text"
+                placeholder="Buscar por nome, plataforma ou versão..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/20"
+              />
+            </section>
           )}
 
-          {!isEmpty && (
-            <>
-              <FiltersBar filters={filters} setFilters={setFilters} />
-
-              <section className="mb-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
-                <input
-                  type="text"
-                  placeholder="Buscar por nome, plataforma ou versão..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/20"
-                />
-              </section>
-            </>
+          {!isEmpty && latestAddedItems.length > 0 && (
+            <section className="mb-8 rounded-[28px] border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.03] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-base font-semibold tracking-wide text-white">Últimos adicionados</h2>
+                <span className="text-xs uppercase tracking-[0.18em] text-white/45">
+                  vitrine
+                </span>
+              </div>
+              <div className="mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+                {latestAddedItems.map((item) => (
+                  <div key={item.id} className="w-[148px] shrink-0 snap-start sm:w-[156px]">
+                    <ItemCard
+                      item={item}
+                      size="small"
+                      onClick={setSelectedItem}
+                      showMediaSeals={false}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
 
           {isEmpty ? (
@@ -249,6 +454,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           ) : (
             <NoResultsState />
           )}
+
+            </div>
+          </div>
 
           <button
             type="button"
@@ -314,17 +522,93 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           </button>
         </div>
       )}
+
+      {isFinancialOpen && (
+        <OverlayPanel title="Financeiro" onClose={() => setIsFinancialOpen(false)}>
+          <FinancialOverview items={collectionItems} defaultOpen hideToggle />
+        </OverlayPanel>
+      )}
+
+      {isPendingOpen && (
+        <OverlayPanel title="Completar depois" onClose={() => setIsPendingOpen(false)}>
+          <PendingItemsOverview
+            items={collectionItems}
+            onOpenItem={(item) => {
+              setSelectedItem(item);
+              setIsPendingOpen(false);
+            }}
+            defaultOpen
+            hideToggle
+          />
+        </OverlayPanel>
+      )}
     </>
   );
 }
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
+  const tone =
+    label === "Wishlist"
+      ? "border-amber-300/80 shadow-[0_0_0_1px_rgba(252,211,77,0.35)]"
+      : label === "Pré-venda"
+        ? "border-fuchsia-400/80 shadow-[0_0_0_1px_rgba(232,121,249,0.35)]"
+        : "border-white/10";
+
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-      <p className="text-xs uppercase tracking-[0.25em] text-white/40">
+    <div className={`flex min-h-[130px] flex-col items-center justify-center rounded-2xl border bg-black/20 p-4 text-center ${tone}`}>
+      <p className="text-xs uppercase tracking-[0.25em] text-white/45">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+      <p className="mt-3 text-4xl font-semibold leading-none text-white">{value}</p>
+    </div>
+  );
+}
+
+function SidebarActionButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full rounded-xl border border-white/15 px-3 py-2 text-left text-sm text-white/85 transition hover:bg-white/10"
+    >
+      {label}
+    </button>
+  );
+}
+
+function OverlayPanel({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4" onClick={onClose}>
+      <div
+        className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[30px] border border-white/10 bg-[#0b1220] p-4 sm:p-6"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-xl font-semibold text-white">{title}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-white/20 px-3 py-1 text-sm text-white/80 transition hover:bg-white/10"
+          >
+            Fechar
+          </button>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }

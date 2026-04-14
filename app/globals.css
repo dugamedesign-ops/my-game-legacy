@@ -24,3 +24,18 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+button {
+  transition: transform 140ms ease, filter 140ms ease, box-shadow 140ms ease;
+}
+
+button:active {
+  transform: scale(0.97);
+  filter: brightness(0.96);
+}
+
+:where(input, select, textarea, button):focus-visible {
+  outline: 2px solid #a855f7;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.28);
+}

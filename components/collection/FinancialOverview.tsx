@@ -6,10 +6,16 @@ import { formatCurrencyBRL, getFinancialSummary } from "@/lib/finance-utils";
 
 type FinancialOverviewProps = {
   items: Item[];
+  defaultOpen?: boolean;
+  hideToggle?: boolean;
 };
 
-export function FinancialOverview({ items }: FinancialOverviewProps) {
-  const [isOpen, setIsOpen] = useState(true);
+export function FinancialOverview({
+  items,
+  defaultOpen = false,
+  hideToggle = false,
+}: FinancialOverviewProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   const summary = getFinancialSummary(items);
 
   const missingMessages = [
@@ -43,13 +49,15 @@ export function FinancialOverview({ items }: FinancialOverviewProps) {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsOpen((prev) => !prev)}
-          className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 transition hover:bg-white/10"
-        >
-          {isOpen ? "Fechar" : "Abrir"}
-        </button>
+        {!hideToggle && (
+          <button
+            type="button"
+            onClick={() => setIsOpen((prev) => !prev)}
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 transition hover:bg-white/10"
+          >
+            {isOpen ? "Fechar" : "Abrir"}
+          </button>
+        )}
       </div>
 
       {isOpen && (
