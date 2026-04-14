@@ -121,7 +121,6 @@ export function ItemDetailsModal({
   const [isEditingImage, setIsEditingImage] = useState(false);
   const [isSearchingCover, setIsSearchingCover] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [showUploadTip, setShowUploadTip] = useState(false);
 
   const [nameInput, setNameInput] = useState("");
   const [subtitleInput, setSubtitleInput] = useState("");
@@ -191,7 +190,6 @@ export function ItemDetailsModal({
     setIsEditingImage(false);
     setIsSearchingCover(false);
     setIsUploadingImage(false);
-    setShowUploadTip(false);
 
     const storedRaw =
       typeof window !== "undefined"
@@ -582,10 +580,9 @@ export function ItemDetailsModal({
                 </div>
               </section>
 
-              <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                <h3 className="text-lg font-semibold text-white">Imagem do item</h3>
-
-                {isEditingImage && (
+              {isEditingImage && (
+                <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+                  <h3 className="text-lg font-semibold text-white">Ajustar imagem</h3>
                   <div className="mt-4 space-y-3">
                     <input
                       value={imageUrlInput}
@@ -593,37 +590,20 @@ export function ItemDetailsModal({
                       placeholder="Cole aqui a URL da nova imagem"
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                     />
-
                     <p className="text-sm text-white/55">
-                      Você pode colar a URL manualmente, buscar novamente via
-                      IGDB ou enviar do seu computador.
+                      Você pode colar a URL manualmente, buscar via IGDB ou enviar do computador.
                     </p>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onMouseEnter={() => setShowUploadTip(true)}
-                        onMouseLeave={() => setShowUploadTip(false)}
-                        className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10"
-                      >
-                        Dica de imagem
-                      </button>
-                      {showUploadTip && (
-                        <div className="absolute left-0 top-full z-20 mt-2 w-72 rounded-2xl border border-white/10 bg-[#0d1326] p-3 text-xs leading-5 text-white/75 shadow-2xl">
-                          Imagem recomendada: <strong>1200x1500 px</strong> (proporção 4:5).
-                        </div>
-                      )}
-                    </div>
                   </div>
-                )}
+                </section>
+              )}
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </section>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
 
               <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
                 <h3 className="text-lg font-semibold text-white">
@@ -958,7 +938,7 @@ function OwnershipStatusButtons({
           key={option.value}
           type="button"
           onClick={() => onChange(option.value as Item["ownershipStatus"])}
-          className={`rounded-xl border px-3 py-2 text-sm transition ${
+          className={`rounded-lg border px-2.5 py-2 text-xs transition ${
             value === option.value
               ? option.active
               : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"

@@ -6,6 +6,7 @@ import { supabaseRestRequest } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
 
 const STORAGE_KEY = "game-collection-items";
+const PENDING_SYNC_PREFIX = "game-collection-pending:";
 
 type CloudRow = {
   id: string;
@@ -28,6 +29,27 @@ function writeLocalItems(items: Item[]) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   } catch (error) {
     console.error("Erro ao salvar coleção local:", error);
+  }
+}
+
+function readPendingItems(userId: string): Item[] {
+  try {
+    const saved = window.localStorage.getItem(`${PENDING_SYNC_PREFIX}${userId}`);
+    return saved ? (JSON.parse(saved) as Item[]) : [];
+  } catch (error) {
+    console.error("Erro ao ler fila de sincronização:", error);
+    return [];
+  }
+}
+
+function writePendingItems(userId: string, items: Item[]) {
+  try {
+    window.localStorage.setItem(
+      `${PENDING_SYNC_PREFIX}${userId}`,
+      JSON.stringify(items),
+    );
+  } catch (error) {
+    console.error("Erro ao salvar fila de sincronização:", error);
   }
 }
 
@@ -71,8 +93,15 @@ export function usePersistentCollection(initialItems: Item[]) {
           id: entry.id,
           userId: currentUserId,
         }));
+        const pendingItems = readPendingItems(currentUserId);
+        const mergedItems = [...cloudItems];
+        pendingItems.forEach((pending) => {
+          if (!mergedItems.some((cloud) => cloud.id === pending.id)) {
+            mergedItems.unshift(pending);
+          }
+        });
 
-        setItems(cloudItems);
+        setItems(mergedItems);
 
         const dismissedKey = `game-collection-import-dismissed:${currentUserId}`;
         const wasDismissed =
@@ -80,16 +109,22 @@ export function usePersistentCollection(initialItems: Item[]) {
 
         if (
           (localItems?.length ?? 0) > 0 &&
-          cloudItems.length === 0 &&
+          mergedItems.length === 0 &&
           !wasDismissed
         ) {
           setHasLocalDataToImport(true);
         } else {
           setHasLocalDataToImport(false);
         }
+
+        if (pendingItems.length > 0) {
+          pendingItems.forEach((pending) => {
+            void upsertCloudItem({ ...pending, userId: currentUserId });
+          });
+        }
       } catch (error) {
         console.error("Erro ao carregar coleção online:", error);
-        setItems([]);
+        setItems(localItems ?? initialItems);
       } finally {
         if (!isCancelled) {
           setIsLoaded(true);
@@ -114,10 +149,27 @@ export function usePersistentCollection(initialItems: Item[]) {
     writeLocalItems(items);
   }, [isEnabled, isLoaded, items, session?.access_token, user]);
 
+  function queuePendingItem(item: Item) {
+    if (!user) return;
+    const current = readPendingItems(user.id);
+    const next = [...current.filter((pending) => pending.id !== item.id), item];
+    writePendingItems(user.id, next);
+  }
+
+  function unqueuePendingItem(itemId: string) {
+    if (!user) return;
+    const current = readPendingItems(user.id);
+    writePendingItems(
+      user.id,
+      current.filter((pending) => pending.id !== itemId),
+    );
+  }
+
   async function upsertCloudItem(item: Item) {
     if (!session?.access_token || !user) return;
 
     const normalized = { ...item, userId: user.id };
+    queuePendingItem(normalized);
 
     try {
       await supabaseRestRequest<CloudRow[]>(
@@ -138,6 +190,7 @@ export function usePersistentCollection(initialItems: Item[]) {
           ]),
         },
       );
+      unqueuePendingItem(normalized.id);
     } catch (error) {
       console.error("Erro ao sincronizar item online:", error);
     }

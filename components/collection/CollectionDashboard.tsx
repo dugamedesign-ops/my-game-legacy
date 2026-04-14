@@ -412,9 +412,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           )}
 
           {!isEmpty && latestAddedItems.length > 0 && (
-            <section className="mb-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
+            <section className="mb-8 rounded-[28px] border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.03] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">Últimos adicionados</h2>
+                <h2 className="text-base font-semibold tracking-wide text-white">Últimos adicionados</h2>
                 <span className="text-xs uppercase tracking-[0.18em] text-white/45">
                   vitrine
                 </span>
