@@ -179,16 +179,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session?.access_token]);
 
   useEffect(() => {
-    if (!session?.refresh_token) return;
+    const activeSession = session;
+    if (!activeSession?.refresh_token) return;
 
     let cancelled = false;
 
     async function refreshIfNeeded() {
-      const expiresAt = session.expires_at ?? 0;
+      const expiresAt = activeSession.expires_at ?? 0;
       const secondsLeft = expiresAt - Math.floor(Date.now() / 1000);
       if (secondsLeft > 5 * 60) return;
 
-      const refreshed = await refreshSession(session.refresh_token!);
+      const refreshed = await refreshSession(activeSession.refresh_token);
       if (cancelled || refreshed.error || !refreshed.session) return;
 
       const refreshedUser = await fetchSupabaseUser(refreshed.session.access_token);
@@ -210,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [session?.access_token, session?.expires_at, session?.refresh_token]);
+  }, [session]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
