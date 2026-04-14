@@ -17,6 +17,7 @@ import {
   formatMediaList,
   formatOwnershipLabel,
 } from "@/lib/duplicate-utils";
+import { CustomSelect, type CustomSelectOption } from "@/components/ui/CustomSelect";
 
 type AddItemModalProps = {
   isOpen: boolean;
@@ -34,6 +35,7 @@ type FormState = {
   title: string;
   subtitle: string;
   ownershipStatus: OwnershipStatus;
+  gameProgressStatus: NonNullable<Item["gameProgressStatus"]> | "";
   physical: boolean;
   digital: boolean;
   imageUrl: string;
@@ -57,6 +59,7 @@ const PLATFORM_OPTIONS = [
 ];
 const NEW_PLATFORM_OPTION = "__new_platform__";
 const NEW_GENRE_OPTION = "__new_genre__";
+const NEW_FRANCHISE_OPTION = "__new_franchise__";
 const IGDB_GENRE_OPTIONS = [
   "Action",
   "Adventure",
@@ -96,8 +99,10 @@ export function AddItemModal({
   const [isGameSelectionDone, setIsGameSelectionDone] = useState(false);
   const [platformOptions, setPlatformOptions] = useState<string[]>(PLATFORM_OPTIONS);
   const [genreOptions, setGenreOptions] = useState<string[]>(IGDB_GENRE_OPTIONS);
+  const [franchiseOptions, setFranchiseOptions] = useState<string[]>([]);
 
   const skipNextAutoSearchRef = useRef(false);
+  const handleSaveRef = useRef<() => void>(() => undefined);
 
   function getInitialForm(
     typeOverride?: ItemType | null,
@@ -109,6 +114,7 @@ export function AddItemModal({
       title: "",
       subtitle: "",
       ownershipStatus: "collection",
+      gameProgressStatus: "",
       physical: false,
       digital: false,
       imageUrl: "",
@@ -123,6 +129,14 @@ export function AddItemModal({
     getInitialForm(initialType, initialPlatform),
   );
   const isGameSearchStep = step === 2 && form.type === "game" && !isGameSelectionDone;
+  const gameProgressOptions: CustomSelectOption[] = [
+    { value: "", label: "Não definido" },
+    { value: "backlog", label: "Backlog" },
+    { value: "playing", label: "Jogando" },
+    { value: "paused", label: "Pausado" },
+    { value: "finished", label: "Terminado" },
+    { value: "platinum", label: "Platinado" },
+  ];
 
   const modalTitle = useMemo(() => {
     if (form.type === "console") return "Novo console";
@@ -166,6 +180,25 @@ export function AddItemModal({
       a.localeCompare(b),
     );
     setGenreOptions(mergedGenres);
+    const customFranchisesRaw =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("my-game-legacy-custom-franchises")
+        : null;
+    let customFranchises: string[] = [];
+    if (customFranchisesRaw) {
+      try {
+        customFranchises = JSON.parse(customFranchisesRaw) as string[];
+      } catch {
+        customFranchises = [];
+      }
+    }
+    const franchisesFromItems = existingItems
+      .map((item) => item.franchise?.trim())
+      .filter(Boolean) as string[];
+    const mergedFranchises = [...new Set([...franchisesFromItems, ...customFranchises])].sort(
+      (a, b) => a.localeCompare(b),
+    );
+    setFranchiseOptions(mergedFranchises);
 
     setForm(getInitialForm(initialType, initialPlatform));
     setSearchResults([]);
@@ -235,6 +268,8 @@ export function AddItemModal({
           ? form.subtitle
           : undefined,
       ownershipStatus: form.ownershipStatus,
+      gameProgressStatus:
+        form.type === "game" ? form.gameProgressStatus || undefined : undefined,
       mediaFormats: form.type === "game" ? mediaFormats : undefined,
     });
   }, [
@@ -244,6 +279,7 @@ export function AddItemModal({
     form.platform,
     form.subtitle,
     form.ownershipStatus,
+    form.gameProgressStatus,
     mediaFormats,
   ]);
 
@@ -265,12 +301,18 @@ export function AddItemModal({
         setShowResults(false);
         setForm(getInitialForm(null, null));
         onClose();
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && step === 2) {
+        event.preventDefault();
+        handleSaveRef.current();
       }
     }
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, step, form]);
 
   if (!isOpen) return null;
 
@@ -311,6 +353,8 @@ export function AddItemModal({
       title,
       subtitle,
       ownershipStatus: form.ownershipStatus,
+      gameProgressStatus:
+        form.type === "game" ? form.gameProgressStatus || undefined : undefined,
       mediaFormats: form.type === "game" ? mediaFormats : undefined,
       franchise:
         form.type === "game" ? form.franchise.trim() || undefined : undefined,
@@ -374,6 +418,15 @@ export function AddItemModal({
         ) ||
         prev.platform,
     }));
+    if (result.franchise?.trim()) {
+      const normalized = result.franchise.trim();
+      setFranchiseOptions((prev) => {
+        if (prev.some((option) => option.toLowerCase() === normalized.toLowerCase())) {
+          return prev;
+        }
+        return [...prev, normalized].sort((a, b) => a.localeCompare(b));
+      });
+    }
 
     setShowResults(false);
     setIsGameSelectionDone(true);
@@ -460,6 +513,42 @@ export function AddItemModal({
     }
   }
 
+  function handleFranchiseSelect(value: string) {
+    if (value === "") {
+      updateField("franchise", "");
+      return;
+    }
+
+    if (value !== NEW_FRANCHISE_OPTION) {
+      updateField("franchise", value);
+      return;
+    }
+
+    const typed = window.prompt("Digite o nome da nova franquia:");
+    if (!typed) return;
+    const normalized = typed.trim();
+    if (!normalized) return;
+
+    const exists = franchiseOptions.some(
+      (option) => option.toLowerCase() === normalized.toLowerCase(),
+    );
+    const finalValue = exists
+      ? franchiseOptions.find(
+          (option) => option.toLowerCase() === normalized.toLowerCase(),
+        ) ?? normalized
+      : normalized;
+
+    if (!exists) {
+      const next = [...franchiseOptions, normalized].sort((a, b) =>
+        a.localeCompare(b),
+      );
+      setFranchiseOptions(next);
+      window.localStorage.setItem("my-game-legacy-custom-franchises", JSON.stringify(next));
+    }
+
+    updateField("franchise", finalValue);
+  }
+
   function handleSave() {
     if (!getIsFormValid()) return;
 
@@ -473,6 +562,30 @@ export function AddItemModal({
     onSave(buildItem());
     resetAndClose();
   }
+  handleSaveRef.current = handleSave;
+
+  const platformSelectOptions: CustomSelectOption[] = [
+    { value: "", label: "Selecione a plataforma" },
+    ...platformOptions.map((platform) => ({ value: platform, label: platform })),
+    { value: NEW_PLATFORM_OPTION, label: "+ Cadastrar nova plataforma" },
+  ];
+  const franchiseSelectOptions: CustomSelectOption[] = [
+    { value: "", label: "Em branco" },
+    ...franchiseOptions.map((franchise) => ({ value: franchise, label: franchise })),
+    { value: NEW_FRANCHISE_OPTION, label: "+ Cadastrar nova franquia" },
+  ];
+  const primaryGenreOptions: CustomSelectOption[] = [
+    { value: "", label: "Em branco" },
+    ...genreOptions.map((genre) => ({ value: genre, label: genre })),
+    { value: NEW_GENRE_OPTION, label: "+ Cadastrar novo gênero" },
+  ];
+  const secondaryGenreOptions: CustomSelectOption[] = [
+    { value: "", label: "Em branco" },
+    ...genreOptions
+      .filter((genre) => genre !== form.genrePrimary)
+      .map((genre) => ({ value: genre, label: genre })),
+    { value: NEW_GENRE_OPTION, label: "+ Cadastrar novo gênero" },
+  ];
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 px-3 py-4 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:px-4 sm:py-6">
@@ -633,33 +746,42 @@ export function AddItemModal({
                     </FieldBlock>
                   )}
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FieldBlock label="Plataforma *">
-                  <select
-                    value={form.platform}
-                    onChange={(e) => handlePlatformSelect(e.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                  >
-                    <option value="">Selecione a plataforma</option>
-                    {platformOptions.map((platform) => (
-                      <option key={platform} value={platform} className="text-black">
-                        {platform}
-                      </option>
-                    ))}
-                    <option value={NEW_PLATFORM_OPTION} className="text-black">
-                      + Cadastrar nova plataforma
-                    </option>
-                  </select>
-                </FieldBlock>
-              </div>
+              {form.type === "game" ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FieldBlock label="Plataforma *">
+                    <CustomSelect
+                      value={form.platform}
+                      onChange={handlePlatformSelect}
+                      options={platformSelectOptions}
+                      placeholder="Selecione a plataforma"
+                    />
+                  </FieldBlock>
 
-              {form.type !== "game" && (
-                <FieldBlock label="Status de posse">
-                  <OwnershipStatusButtons
-                    value={form.ownershipStatus}
-                    onChange={(value) => updateField("ownershipStatus", value)}
-                  />
-                </FieldBlock>
+                  <FieldBlock label="Status de posse">
+                    <OwnershipStatusButtons
+                      value={form.ownershipStatus}
+                      onChange={(value) => updateField("ownershipStatus", value)}
+                    />
+                  </FieldBlock>
+                </div>
+              ) : (
+                <>
+                  <FieldBlock label="Plataforma *">
+                    <CustomSelect
+                      value={form.platform}
+                      onChange={handlePlatformSelect}
+                      options={platformSelectOptions}
+                      placeholder="Selecione a plataforma"
+                    />
+                  </FieldBlock>
+
+                  <FieldBlock label="Status de posse">
+                    <OwnershipStatusButtons
+                      value={form.ownershipStatus}
+                      onChange={(value) => updateField("ownershipStatus", value)}
+                    />
+                  </FieldBlock>
+                </>
               )}
 
               {form.type === "console" ? (
@@ -716,8 +838,8 @@ export function AddItemModal({
 
               {form.type === "game" && (
                 <>
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 sm:h-full">
                       <p className="mb-3 text-sm font-medium text-white">Mídia</p>
 
                       <div className="flex flex-wrap gap-3">
@@ -734,73 +856,51 @@ export function AddItemModal({
                       </div>
                     </div>
 
-                    <FieldBlock label="Status de posse">
-                      <OwnershipStatusButtons
-                        value={form.ownershipStatus}
-                        onChange={(value) => updateField("ownershipStatus", value)}
+                    <FieldBlock label="Status do jogo">
+                      <CustomSelect
+                        value={form.gameProgressStatus}
+                        onChange={(value) =>
+                          updateField(
+                            "gameProgressStatus",
+                            (value as NonNullable<Item["gameProgressStatus"]> | "") ?? "",
+                          )
+                        }
+                        options={gameProgressOptions}
+                        placeholder="Não definido"
                       />
                     </FieldBlock>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <FieldBlock label="Franquia">
-                      <input
+                      <CustomSelect
                         value={form.franchise}
-                        onChange={(e) => updateField("franchise", e.target.value)}
-                        placeholder="Ex: Devil May Cry"
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                        onChange={handleFranchiseSelect}
+                        options={franchiseSelectOptions}
+                        placeholder="Em branco"
                       />
                     </FieldBlock>
 
                     <FieldBlock label="Gênero 1">
-                      <select
+                      <CustomSelect
                         value={form.genrePrimary}
-                        onChange={(e) => handleGenreSelect("genrePrimary", e.target.value)}
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                      >
-                        <option value="" className="text-black">Em branco</option>
-                        {genreOptions.map((genre) => (
-                          <option key={genre} value={genre} className="text-black">
-                            {genre}
-                          </option>
-                        ))}
-                        <option value={NEW_GENRE_OPTION} className="text-black">
-                          + Cadastrar novo gênero
-                        </option>
-                      </select>
+                        onChange={(value) => handleGenreSelect("genrePrimary", value)}
+                        options={primaryGenreOptions}
+                        placeholder="Em branco"
+                      />
                     </FieldBlock>
                   </div>
                   {form.genrePrimary && (
                     <FieldBlock label="Gênero 2 (opcional)">
-                      <select
+                      <CustomSelect
                         value={form.genreSecondary}
-                        onChange={(e) => handleGenreSelect("genreSecondary", e.target.value)}
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                      >
-                        <option value="" className="text-black">Em branco</option>
-                        {genreOptions.filter((genre) => genre !== form.genrePrimary).map((genre) => (
-                          <option key={genre} value={genre} className="text-black">
-                            {genre}
-                          </option>
-                        ))}
-                        <option value={NEW_GENRE_OPTION} className="text-black">
-                          + Cadastrar novo gênero
-                        </option>
-                      </select>
+                        onChange={(value) => handleGenreSelect("genreSecondary", value)}
+                        options={secondaryGenreOptions}
+                        placeholder="Em branco"
+                      />
                     </FieldBlock>
                   )}
                 </>
-              )}
-
-              {(form.type === "game" || form.ownershipStatus === "preorder") && (
-                <FieldBlock label="Data de lançamento">
-                  <input
-                    type="date"
-                    value={form.releaseDate}
-                    onChange={(e) => updateField("releaseDate", e.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                  />
-                </FieldBlock>
               )}
 
               <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">

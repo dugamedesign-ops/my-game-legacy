@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Item } from "@/types/collection";
 import {
-  getCollectionSummary,
   groupItemsByPlatform,
 } from "@/lib/collection-utils";
 import { PlatformSection } from "./PlatformSection";
@@ -174,10 +173,67 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     [filteredItems],
   );
 
-  const summary = useMemo(
-    () => getCollectionSummary(collectionItems),
+  const legacyPersonName = useMemo(
+    () =>
+      authUser?.user_metadata?.full_name ??
+      authUser?.user_metadata?.name ??
+      authUser?.email?.split("@")[0] ??
+      "Usuário",
+    [authUser?.email, authUser?.user_metadata?.full_name, authUser?.user_metadata?.name],
+  );
+  const legacyHandle = useMemo(() => {
+    const normalized = legacyPersonName
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9]/g, "");
+    return `@${normalized || "mylegacy"}`;
+  }, [legacyPersonName]);
+  const headerFilterCounts = useMemo(
+    () => ({
+      all: collectionItems.length,
+      collection: collectionItems.filter((item) => item.ownershipStatus === "collection").length,
+      wishlist: collectionItems.filter((item) => item.ownershipStatus === "wishlist").length,
+      preorder: collectionItems.filter((item) => item.ownershipStatus === "preorder").length,
+      playing: collectionItems.filter((item) => item.gameProgressStatus === "playing").length,
+      finished: collectionItems.filter((item) => item.gameProgressStatus === "finished").length,
+    }),
     [collectionItems],
   );
+  const activeHeaderFilter = useMemo(() => {
+    const hasOnlyOwnership = filters.ownership.length === 1 && filters.gameStatus.length === 0;
+    const hasOnlyGameStatus = filters.gameStatus.length === 1 && filters.ownership.length === 0;
+    const hasOtherFilters =
+      filters.types.length > 0 ||
+      filters.priorities.length > 0 ||
+      filters.media.length > 0 ||
+      filters.missing.length > 0;
+
+    if (!hasOtherFilters && filters.ownership.length === 0 && filters.gameStatus.length === 0) {
+      return "all";
+    }
+    if (!hasOtherFilters && hasOnlyOwnership && filters.ownership[0] === "collection") return "collection";
+    if (!hasOtherFilters && hasOnlyOwnership && filters.ownership[0] === "wishlist") return "wishlist";
+    if (!hasOtherFilters && hasOnlyOwnership && filters.ownership[0] === "preorder") return "preorder";
+    if (!hasOtherFilters && hasOnlyGameStatus && filters.gameStatus[0] === "playing") return "playing";
+    if (!hasOtherFilters && hasOnlyGameStatus && filters.gameStatus[0] === "finished") return "finished";
+    return null;
+  }, [filters]);
+
+  function applyHeaderFilter(
+    target: "all" | "collection" | "wishlist" | "preorder" | "playing" | "finished",
+  ) {
+    setFilters({
+      types: [],
+      ownership:
+        target === "collection" || target === "wishlist" || target === "preorder"
+          ? [target]
+          : [],
+      priorities: [],
+      gameStatus: target === "playing" || target === "finished" ? [target] : [],
+      media: [],
+      missing: [],
+    });
+  }
   const latestAddedItems = useMemo(() => {
     return [...collectionItems]
       .sort((a, b) => {
@@ -329,6 +385,18 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                       <FiltersBar filters={filters} setFilters={setFilters} compact />
                     </div>
                   )}
+                  <button
+                    type="button"
+                    disabled
+                    aria-disabled="true"
+                    className="flex w-full items-center justify-between rounded-xl border border-white/10 px-3 py-2 text-sm text-white/40"
+                    title="Área em breve"
+                  >
+                    <span>Configurações</span>
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-white/30">
+                      Em breve
+                    </span>
+                  </button>
                 </div>
                 {authUser && (
                   <div className="mt-4 border-t border-white/10 pt-3">
@@ -381,21 +449,55 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               </div>
             )}
 
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-              <div className="space-y-2">
-                <p className="text-sm uppercase tracking-[0.3em] text-white/45">
-                  {legacyTitle}
-                </p>
-                <p className="max-w-2xl text-sm leading-6 text-white/65">
-                  Sua coleção organizada por plataforma, com foco total nas capas e na vitrine.
-                </p>
+            <div className="space-y-5">
+              <div>
+                <p className="text-2xl font-semibold leading-tight text-white">{legacyTitle}</p>
+                <p className="mt-1 text-sm text-white/60">{legacyHandle}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:min-w-[480px]">
-                <SummaryCard label="Itens" value={summary.totalItems} />
-                <SummaryCard label="Na coleção" value={summary.collectionCount} />
-                <SummaryCard label="Wishlist" value={summary.wishlistCount} />
-                <SummaryCard label="Pré-venda" value={summary.preorderCount} />
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                <HeaderFilterChip
+                  label="Todos"
+                  value={headerFilterCounts.all}
+                  active={activeHeaderFilter === "all"}
+                  color="white"
+                  onClick={() => applyHeaderFilter("all")}
+                />
+                <HeaderFilterChip
+                  label="Na coleção"
+                  value={headerFilterCounts.collection}
+                  active={activeHeaderFilter === "collection"}
+                  color="cyan"
+                  onClick={() => applyHeaderFilter("collection")}
+                />
+                <HeaderFilterChip
+                  label="Wishlist"
+                  value={headerFilterCounts.wishlist}
+                  active={activeHeaderFilter === "wishlist"}
+                  color="amber"
+                  onClick={() => applyHeaderFilter("wishlist")}
+                />
+                <HeaderFilterChip
+                  label="Pré-venda"
+                  value={headerFilterCounts.preorder}
+                  active={activeHeaderFilter === "preorder"}
+                  color="violet"
+                  onClick={() => applyHeaderFilter("preorder")}
+                />
+                <HeaderFilterChip
+                  label="Jogando"
+                  value={headerFilterCounts.playing}
+                  active={activeHeaderFilter === "playing"}
+                  color="fuchsia"
+                  onClick={() => applyHeaderFilter("playing")}
+                />
+                <HeaderFilterChip
+                  label="Terminado"
+                  value={headerFilterCounts.finished}
+                  active={activeHeaderFilter === "finished"}
+                  color="emerald"
+                  onClick={() => applyHeaderFilter("finished")}
+                />
               </div>
             </div>
           </header>
@@ -546,21 +648,49 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: number }) {
-  const tone =
-    label === "Wishlist"
-      ? "border-amber-300/80 shadow-[0_0_0_1px_rgba(252,211,77,0.35)]"
-      : label === "Pré-venda"
-        ? "border-fuchsia-400/80 shadow-[0_0_0_1px_rgba(232,121,249,0.35)]"
-        : "border-white/10";
+function HeaderFilterChip({
+  label,
+  value,
+  active,
+  color,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  active: boolean;
+  color: "white" | "cyan" | "amber" | "violet" | "fuchsia" | "emerald";
+  onClick: () => void;
+}) {
+  const tone = {
+    white: active
+      ? "border-white/80 bg-white/15 text-white"
+      : "border-white/20 text-white/75 hover:border-white/45 hover:bg-white/10",
+    cyan: active
+      ? "border-cyan-300/80 bg-cyan-500/15 text-cyan-100"
+      : "border-cyan-300/25 text-cyan-100/75 hover:border-cyan-300/45 hover:bg-cyan-500/10",
+    amber: active
+      ? "border-amber-300/85 bg-amber-500/15 text-amber-100"
+      : "border-amber-300/30 text-amber-100/75 hover:border-amber-300/45 hover:bg-amber-500/10",
+    violet: active
+      ? "border-violet-400/85 bg-violet-500/15 text-violet-100"
+      : "border-violet-400/30 text-violet-100/75 hover:border-violet-400/45 hover:bg-violet-500/10",
+    fuchsia: active
+      ? "border-fuchsia-400/85 bg-fuchsia-500/15 text-fuchsia-100"
+      : "border-fuchsia-400/30 text-fuchsia-100/75 hover:border-fuchsia-400/45 hover:bg-fuchsia-500/10",
+    emerald: active
+      ? "border-emerald-400/85 bg-emerald-500/15 text-emerald-100"
+      : "border-emerald-400/30 text-emerald-100/75 hover:border-emerald-400/45 hover:bg-emerald-500/10",
+  };
 
   return (
-    <div className={`flex min-h-[130px] flex-col items-center justify-center rounded-2xl border bg-black/20 p-4 text-center ${tone}`}>
-      <p className="text-xs uppercase tracking-[0.25em] text-white/45">
-        {label}
-      </p>
-      <p className="mt-3 text-4xl font-semibold leading-none text-white">{value}</p>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl border px-3 py-2 text-left transition ${tone[color]}`}
+    >
+      <p className="text-[11px] uppercase tracking-[0.16em]">{label}</p>
+      <p className="mt-1 text-xl font-semibold">{value}</p>
+    </button>
   );
 }
 
