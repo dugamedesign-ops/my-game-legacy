@@ -38,6 +38,8 @@ type FormState = {
   gameProgressStatus: NonNullable<Item["gameProgressStatus"]> | "";
   physical: boolean;
   digital: boolean;
+  pricePhysical: string;
+  priceDigital: string;
   imageUrl: string;
   franchise: string;
   genrePrimary: string;
@@ -116,6 +118,8 @@ export function AddItemModal({
       gameProgressStatus: "",
       physical: false,
       digital: false,
+      pricePhysical: "",
+      priceDigital: "",
       imageUrl: "",
       franchise: "",
       genrePrimary: "",
@@ -142,6 +146,7 @@ export function AddItemModal({
     if (form.type === "accessory") return "Novo acessório";
     return "Novo jogo";
   }, [form.type]);
+  const hasContextPlatform = Boolean(initialPlatform?.trim());
 
   useEffect(() => {
     if (!isOpen) return;
@@ -249,6 +254,31 @@ export function AddItemModal({
     if (form.digital) formats.push("digital");
     return formats.length > 0 ? formats : undefined;
   }, [form.physical, form.digital]);
+
+  const hasPhysicalSelected = form.physical;
+  const hasDigitalSelected = form.digital;
+  const hasBothMediaSelected = hasPhysicalSelected && hasDigitalSelected;
+
+  function parseOptionalNumber(value: string): number | undefined {
+    const normalized = value.replace(",", ".").trim();
+    if (!normalized) return undefined;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  function getConsolidatedAmountPaid() {
+    const physicalPrice = parseOptionalNumber(form.pricePhysical);
+    const digitalPrice = parseOptionalNumber(form.priceDigital);
+
+    if (hasBothMediaSelected) {
+      if (physicalPrice === undefined && digitalPrice === undefined) return undefined;
+      return (physicalPrice ?? 0) + (digitalPrice ?? 0);
+    }
+
+    if (hasPhysicalSelected) return physicalPrice;
+    if (hasDigitalSelected) return digitalPrice;
+    return undefined;
+  }
 
   const duplicateCheck = useMemo(() => {
     const isConsole = form.type === "console";
@@ -395,6 +425,9 @@ export function AddItemModal({
       ? form.subtitle.trim()
       : form.subtitle.trim() || undefined;
 
+    const pricePhysical = parseOptionalNumber(form.pricePhysical);
+    const priceDigital = parseOptionalNumber(form.priceDigital);
+
     return {
       id: crypto.randomUUID(),
       userId: currentUserId ?? "local-user",
@@ -406,6 +439,12 @@ export function AddItemModal({
       gameProgressStatus:
         form.type === "game" ? form.gameProgressStatus || undefined : undefined,
       mediaFormats: form.type === "game" ? mediaFormats : undefined,
+      pricePhysical: form.type === "game" && form.physical ? pricePhysical : undefined,
+      priceDigital: form.type === "game" && form.digital ? priceDigital : undefined,
+      amountPaid:
+        form.type === "game" && form.ownershipStatus !== "wishlist"
+          ? getConsolidatedAmountPaid()
+          : undefined,
       franchise:
         form.type === "game" ? form.franchise.trim() || undefined : undefined,
       genre:
@@ -803,6 +842,7 @@ export function AddItemModal({
                       onChange={handlePlatformSelect}
                       options={platformSelectOptions}
                       placeholder="Selecione a plataforma"
+                      autoFocus={form.type !== "game" && !hasContextPlatform}
                     />
                   </FieldBlock>
 
@@ -821,6 +861,7 @@ export function AddItemModal({
                       onChange={handlePlatformSelect}
                       options={platformSelectOptions}
                       placeholder="Selecione a plataforma"
+                      autoFocus={!hasContextPlatform}
                     />
                   </FieldBlock>
 
@@ -849,7 +890,7 @@ export function AddItemModal({
                       onChange={(e) => updateField("subtitle", e.target.value)}
                       placeholder="Ex: Slim 30 anos"
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                      autoFocus
+                      autoFocus={hasContextPlatform}
                     />
                   </FieldBlock>
                 </div>
@@ -861,7 +902,7 @@ export function AddItemModal({
                       onChange={(e) => updateField("title", e.target.value)}
                       placeholder="Ex: DualSense"
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                      autoFocus
+                      autoFocus={hasContextPlatform}
                     />
                   </FieldBlock>
 
@@ -919,6 +960,36 @@ export function AddItemModal({
                       />
                     </FieldBlock>
                   </div>
+
+                  {(hasPhysicalSelected || hasDigitalSelected) && (
+                    <div
+                      className={`grid gap-4 ${
+                        hasBothMediaSelected ? "sm:grid-cols-2" : "sm:grid-cols-1"
+                      }`}
+                    >
+                      {hasPhysicalSelected && (
+                        <FieldBlock label="Preço (Físico)">
+                          <input
+                            value={form.pricePhysical}
+                            onChange={(e) => updateField("pricePhysical", e.target.value)}
+                            placeholder="Ex: 299.90"
+                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                          />
+                        </FieldBlock>
+                      )}
+
+                      {hasDigitalSelected && (
+                        <FieldBlock label="Preço (Digital)">
+                          <input
+                            value={form.priceDigital}
+                            onChange={(e) => updateField("priceDigital", e.target.value)}
+                            placeholder="Ex: 249.90"
+                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                          />
+                        </FieldBlock>
+                      )}
+                    </div>
+                  )}
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <FieldBlock label="Franquia">

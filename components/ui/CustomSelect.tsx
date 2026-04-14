@@ -23,6 +23,7 @@ type CustomSelectProps = {
   options: CustomSelectOption[];
   placeholder?: string;
   disabled?: boolean;
+  autoFocus?: boolean;
   className?: string;
   menuClassName?: string;
 };
@@ -33,6 +34,7 @@ export function CustomSelect({
   options,
   placeholder = "Selecione",
   disabled = false,
+  autoFocus = false,
   className = "",
   menuClassName = "",
 }: CustomSelectProps) {
@@ -182,6 +184,7 @@ export function CustomSelect({
         ref={buttonRef}
         type="button"
         disabled={disabled}
+        autoFocus={autoFocus}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={isOpen ? listboxId : undefined}

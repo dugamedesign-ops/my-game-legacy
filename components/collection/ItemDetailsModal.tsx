@@ -159,6 +159,8 @@ export function ItemDetailsModal({
   >([]);
 
   const [amountPaidInput, setAmountPaidInput] = useState("");
+  const [pricePhysicalInput, setPricePhysicalInput] = useState("");
+  const [priceDigitalInput, setPriceDigitalInput] = useState("");
   const [currentValueInput, setCurrentValueInput] = useState("");
 
   const [purchasePriorityInput, setPurchasePriorityInput] = useState<
@@ -198,6 +200,26 @@ export function ItemDetailsModal({
       item.amountPaid !== undefined && item.amountPaid !== null
         ? String(item.amountPaid)
         : "",
+    );
+    const hasPhysical = item.mediaFormats?.includes("physical") ?? false;
+    const hasDigital = item.mediaFormats?.includes("digital") ?? false;
+    const fallbackAmount =
+      item.amountPaid !== undefined && item.amountPaid !== null
+        ? String(item.amountPaid)
+        : "";
+    setPricePhysicalInput(
+      item.pricePhysical !== undefined && item.pricePhysical !== null
+        ? String(item.pricePhysical)
+        : hasPhysical && !hasDigital
+          ? fallbackAmount
+          : "",
+    );
+    setPriceDigitalInput(
+      item.priceDigital !== undefined && item.priceDigital !== null
+        ? String(item.priceDigital)
+        : hasDigital && !hasPhysical
+          ? fallbackAmount
+          : "",
     );
     setCurrentValueInput(
       item.currentValue !== undefined && item.currentValue !== null
@@ -268,6 +290,9 @@ export function ItemDetailsModal({
 
   const isGame = item.type === "game";
   const isWishlist = ownershipStatusInput === "wishlist";
+  const hasPhysicalSelected = mediaFormatsInput?.includes("physical") ?? false;
+  const hasDigitalSelected = mediaFormatsInput?.includes("digital") ?? false;
+  const hasBothMediaSelected = hasPhysicalSelected && hasDigitalSelected;
   const gameProgressOptions: CustomSelectOption[] = [
     { value: "", label: "Não definido" },
     { value: "backlog", label: "Backlog" },
@@ -337,6 +362,20 @@ export function ItemDetailsModal({
 
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  function getConsolidatedAmountPaid() {
+    const physicalPrice = parseOptionalNumber(pricePhysicalInput);
+    const digitalPrice = parseOptionalNumber(priceDigitalInput);
+
+    if (hasBothMediaSelected) {
+      if (physicalPrice === undefined && digitalPrice === undefined) return undefined;
+      return (physicalPrice ?? 0) + (digitalPrice ?? 0);
+    }
+
+    if (hasPhysicalSelected) return physicalPrice;
+    if (hasDigitalSelected) return digitalPrice;
+    return parseOptionalNumber(amountPaidInput);
   }
 
   function toggleMediaFormat(format: "physical" | "digital") {
@@ -520,11 +559,21 @@ export function ItemDetailsModal({
           ? mediaFormatsInput
           : undefined
         : undefined,
+      pricePhysical:
+        isGame && hasPhysicalSelected
+          ? parseOptionalNumber(pricePhysicalInput)
+          : undefined,
+      priceDigital:
+        isGame && hasDigitalSelected
+          ? parseOptionalNumber(priceDigitalInput)
+          : undefined,
 
       amountPaid:
         ownershipStatusInput === "wishlist"
           ? undefined
-          : parseOptionalNumber(amountPaidInput),
+          : isGame
+            ? getConsolidatedAmountPaid()
+            : parseOptionalNumber(amountPaidInput),
       currentValue: parseOptionalNumber(currentValueInput),
 
       purchasePriority:
@@ -818,22 +867,72 @@ export function ItemDetailsModal({
                 </h3>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">
-                      {isWishlist ? "Valor de referência" : "Valor pago"}
-                    </span>
-                    <input
-                      value={amountPaidInput}
-                      onChange={(e) => setAmountPaidInput(e.target.value)}
-                      placeholder={
-                        isWishlist
-                          ? "Wishlist não usa valor pago"
-                          : "Ex: 299.90"
-                      }
-                      disabled={isWishlist}
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
-                    />
-                  </label>
+                  {isGame ? (
+                    <>
+                      {(hasPhysicalSelected || hasDigitalSelected) ? (
+                        <>
+                          {hasPhysicalSelected && (
+                            <label className="block">
+                              <span className="mb-2 block text-sm text-white/70">Preço (Físico)</span>
+                              <input
+                                value={pricePhysicalInput}
+                                onChange={(e) => setPricePhysicalInput(e.target.value)}
+                                placeholder={isWishlist ? "Opcional na wishlist" : "Ex: 299.90"}
+                                disabled={isWishlist}
+                                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
+                              />
+                            </label>
+                          )}
+                          {hasDigitalSelected && (
+                            <label className="block">
+                              <span className="mb-2 block text-sm text-white/70">Preço (Digital)</span>
+                              <input
+                                value={priceDigitalInput}
+                                onChange={(e) => setPriceDigitalInput(e.target.value)}
+                                placeholder={isWishlist ? "Opcional na wishlist" : "Ex: 249.90"}
+                                disabled={isWishlist}
+                                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
+                              />
+                            </label>
+                          )}
+                        </>
+                      ) : (
+                        <label className="block">
+                          <span className="mb-2 block text-sm text-white/70">
+                            {isWishlist ? "Valor de referência" : "Valor pago"}
+                          </span>
+                          <input
+                            value={amountPaidInput}
+                            onChange={(e) => setAmountPaidInput(e.target.value)}
+                            placeholder={
+                              isWishlist
+                                ? "Wishlist não usa valor pago"
+                                : "Ex: 299.90"
+                            }
+                            disabled={isWishlist}
+                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
+                          />
+                        </label>
+                      )}
+                    </>
+                  ) : (
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/70">
+                        {isWishlist ? "Valor de referência" : "Valor pago"}
+                      </span>
+                      <input
+                        value={amountPaidInput}
+                        onChange={(e) => setAmountPaidInput(e.target.value)}
+                        placeholder={
+                          isWishlist
+                            ? "Wishlist não usa valor pago"
+                            : "Ex: 299.90"
+                        }
+                        disabled={isWishlist}
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
+                      />
+                    </label>
+                  )}
 
                   <label className="block">
                     <span className="mb-2 block text-sm text-white/70">
@@ -960,14 +1059,39 @@ export function ItemDetailsModal({
               )}
 
               <div className="grid gap-4 md:grid-cols-2">
-                <MoneyCard
-                  label={isWishlist ? "Valor referência" : "Valor pago"}
-                  value={formatCurrency(
-                    isWishlist
-                      ? undefined
-                      : parseOptionalNumber(amountPaidInput),
-                  )}
-                />
+                {isGame && (hasPhysicalSelected || hasDigitalSelected) ? (
+                  <>
+                    {hasPhysicalSelected && (
+                      <MoneyCard
+                        label="Preço (Físico)"
+                        value={formatCurrency(
+                          isWishlist
+                            ? undefined
+                            : parseOptionalNumber(pricePhysicalInput),
+                        )}
+                      />
+                    )}
+                    {hasDigitalSelected && (
+                      <MoneyCard
+                        label="Preço (Digital)"
+                        value={formatCurrency(
+                          isWishlist
+                            ? undefined
+                            : parseOptionalNumber(priceDigitalInput),
+                        )}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <MoneyCard
+                    label={isWishlist ? "Valor referência" : "Valor pago"}
+                    value={formatCurrency(
+                      isWishlist
+                        ? undefined
+                        : parseOptionalNumber(amountPaidInput),
+                    )}
+                  />
+                )}
                 <MoneyCard
                   label="Valor atual"
                   value={formatCurrency(parseOptionalNumber(currentValueInput))}
