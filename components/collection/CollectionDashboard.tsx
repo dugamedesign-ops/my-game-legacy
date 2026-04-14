@@ -234,6 +234,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     const speedPxPerSecond = 18;
 
     function animate(time: number) {
+      const carousel = latestCarouselRef.current;
+      if (!carousel) return;
+
       const elapsed = time - lastTime;
       lastTime = time;
 
