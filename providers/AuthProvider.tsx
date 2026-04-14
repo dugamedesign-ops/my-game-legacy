@@ -13,8 +13,10 @@ import {
   extractSessionFromUrlHash,
   fetchSupabaseUser,
   getSupabaseEnv,
+  loadCachedUser,
   loadSession,
   refreshSession,
+  saveCachedUser,
   saveSession,
   sendMagicLink,
   signInWithPassword,
@@ -57,25 +59,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function bootstrapAuth() {
       const sessionFromUrl = extractSessionFromUrlHash();
       const storedSession = sessionFromUrl ?? loadSession();
+      const cachedUser = loadCachedUser();
 
       if (!storedSession?.access_token) {
+        saveCachedUser(null);
         setIsReady(true);
         return;
       }
 
-      let activeSession = storedSession;
-      let currentUser = await fetchSupabaseUser(activeSession.access_token);
+      if (cachedUser) {
+        setSession(storedSession);
+        setUser(cachedUser);
+        setIsReady(true);
+      }
 
-      if (!currentUser && activeSession.refresh_token) {
-        const refreshed = await refreshSession(activeSession.refresh_token);
-        if (!refreshed.error && refreshed.session) {
-          activeSession = refreshed.session;
-          currentUser = await fetchSupabaseUser(activeSession.access_token);
+      let activeSession = storedSession;
+      let currentUser: SupabaseUser | null = null;
+
+      try {
+        currentUser = await fetchSupabaseUser(activeSession.access_token);
+
+        if (!currentUser && activeSession.refresh_token) {
+          const refreshed = await refreshSession(activeSession.refresh_token);
+          if (!refreshed.error && refreshed.session) {
+            activeSession = refreshed.session;
+            currentUser = await fetchSupabaseUser(activeSession.access_token);
+          }
         }
+      } catch {
+        currentUser = cachedUser;
       }
 
       if (!currentUser) {
         saveSession(null);
+        saveCachedUser(null);
         setSession(null);
         setUser(null);
         setIsReady(true);
@@ -83,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       saveSession(activeSession);
+      saveCachedUser(currentUser);
       setSession(activeSession);
       setUser(currentUser);
       setIsReady(true);
@@ -107,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: "Não foi possível carregar o usuário autenticado." };
       }
 
+      saveCachedUser(nextUser);
       setUser(nextUser);
       return {};
     },
@@ -152,11 +171,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setUser(null);
     saveSession(null);
+    saveCachedUser(null);
 
     if (accessToken) {
       await signOutSupabase(accessToken);
     }
   }, [session?.access_token]);
+
+  useEffect(() => {
+    if (!session?.refresh_token) return;
+
+    let cancelled = false;
+
+    async function refreshIfNeeded() {
+      const expiresAt = session.expires_at ?? 0;
+      const secondsLeft = expiresAt - Math.floor(Date.now() / 1000);
+      if (secondsLeft > 5 * 60) return;
+
+      const refreshed = await refreshSession(session.refresh_token!);
+      if (cancelled || refreshed.error || !refreshed.session) return;
+
+      const refreshedUser = await fetchSupabaseUser(refreshed.session.access_token);
+      if (cancelled || !refreshedUser) return;
+
+      saveSession(refreshed.session);
+      saveCachedUser(refreshedUser);
+      setSession(refreshed.session);
+      setUser(refreshedUser);
+    }
+
+    const interval = window.setInterval(() => {
+      void refreshIfNeeded();
+    }, 60 * 1000);
+
+    void refreshIfNeeded();
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [session?.access_token, session?.expires_at, session?.refresh_token]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

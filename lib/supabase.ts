@@ -26,6 +26,8 @@ type AuthResponse = {
 };
 
 const SESSION_KEY = "supabase-rest-session";
+const USER_KEY = "supabase-rest-user";
+const SESSION_COOKIE_KEY = "mgl_session";
 
 const REQUIRED_SUPABASE_ENV_KEYS = [
   "NEXT_PUBLIC_SUPABASE_URL",
@@ -47,16 +49,47 @@ export function getSupabaseEnv() {
 export function saveSession(session: SupabaseSession | null) {
   if (!session) {
     window.localStorage.removeItem(SESSION_KEY);
+    window.localStorage.removeItem(USER_KEY);
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${SESSION_COOKIE_KEY}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
     return;
   }
 
   window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  const payload = encodeURIComponent(JSON.stringify(session));
+  document.cookie = `${SESSION_COOKIE_KEY}=${payload}; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax${secure}`;
 }
 
 export function loadSession(): SupabaseSession | null {
   try {
     const saved = window.localStorage.getItem(SESSION_KEY);
-    return saved ? (JSON.parse(saved) as SupabaseSession) : null;
+    if (saved) return JSON.parse(saved) as SupabaseSession;
+
+    const cookieEntry = document.cookie
+      .split("; ")
+      .find((entry) => entry.startsWith(`${SESSION_COOKIE_KEY}=`));
+    if (!cookieEntry) return null;
+
+    const encodedValue = cookieEntry.split("=").slice(1).join("=");
+    return JSON.parse(decodeURIComponent(encodedValue)) as SupabaseSession;
+  } catch {
+    return null;
+  }
+}
+
+export function saveCachedUser(user: SupabaseUser | null) {
+  if (!user) {
+    window.localStorage.removeItem(USER_KEY);
+    return;
+  }
+  window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+export function loadCachedUser(): SupabaseUser | null {
+  try {
+    const saved = window.localStorage.getItem(USER_KEY);
+    return saved ? (JSON.parse(saved) as SupabaseUser) : null;
   } catch {
     return null;
   }
