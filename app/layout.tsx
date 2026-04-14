@@ -16,14 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "My Game Legacy",
   description: "Sua vitrine digital para organizar a coleção gamer.",
-  icons: {
-    icon: [
-      { url: "/favicon.png", type: "image/png" },
-      { url: "/favicon.ico", sizes: "any" },
-    ],
-    shortcut: ["/favicon.ico"],
-    apple: [{ url: "/favicon.png", type: "image/png" }],
-  },
 };
 
 export default function RootLayout({
