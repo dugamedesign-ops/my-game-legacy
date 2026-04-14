@@ -4,6 +4,7 @@ type DraftComparable = {
   type: Item["type"];
   title: string;
   platform: string;
+  subtitle?: string;
   ownershipStatus: Item["ownershipStatus"];
   mediaFormats?: Item["mediaFormats"];
 };
@@ -28,7 +29,10 @@ export function checkForDuplicates(
 ): DuplicateCheckResult {
   const normalizedTitle = normalize(draft.title);
   const normalizedPlatform = normalize(draft.platform);
+  const normalizedSubtitle = normalize(draft.subtitle);
   const draftMediaSignature = getMediaSignature(draft.mediaFormats);
+  const requiresSubtitleMatch =
+    draft.type === "console" || draft.type === "accessory";
 
   const sameBaseItems = existingItems.filter((item) => {
     if (item.isRemoved) return false;
@@ -41,9 +45,12 @@ export function checkForDuplicates(
   });
 
   const exactDuplicates = sameBaseItems.filter((item) => {
+    const sameSubtitle = normalize(item.subtitle) === normalizedSubtitle;
+
     return (
       item.ownershipStatus === draft.ownershipStatus &&
-      getMediaSignature(item.mediaFormats) === draftMediaSignature
+      getMediaSignature(item.mediaFormats) === draftMediaSignature &&
+      (!requiresSubtitleMatch || sameSubtitle)
     );
   });
 

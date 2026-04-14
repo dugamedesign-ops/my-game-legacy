@@ -97,6 +97,21 @@ function formatPurchaseDate(
   return `${purchaseDate.year}`;
 }
 
+function formatReleaseDate(releaseDate?: string): string | null {
+  if (!releaseDate) return null;
+  const date = new Date(releaseDate);
+  if (Number.isNaN(date.getTime())) return releaseDate;
+  return date.toLocaleDateString("pt-BR");
+}
+const PURCHASE_ORIGIN_OPTIONS = [
+  "Loja física",
+  "Online BR",
+  "Online internacional",
+  "Paraguai",
+  "Presente",
+  "Outro",
+];
+
 export function ItemDetailsModal({
   item,
   isOpen,
@@ -106,7 +121,6 @@ export function ItemDetailsModal({
   const [isEditingImage, setIsEditingImage] = useState(false);
   const [isSearchingCover, setIsSearchingCover] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [showUploadTip, setShowUploadTip] = useState(false);
 
   const [nameInput, setNameInput] = useState("");
   const [subtitleInput, setSubtitleInput] = useState("");
@@ -135,6 +149,9 @@ export function ItemDetailsModal({
   const [purchaseMonthInput, setPurchaseMonthInput] = useState("");
   const [purchaseDayInput, setPurchaseDayInput] = useState("");
   const [purchaseOriginInput, setPurchaseOriginInput] = useState("");
+  const [purchaseOriginOptions, setPurchaseOriginOptions] = useState<string[]>(
+    PURCHASE_ORIGIN_OPTIONS,
+  );
   const [notesInput, setNotesInput] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -173,8 +190,37 @@ export function ItemDetailsModal({
     setIsEditingImage(false);
     setIsSearchingCover(false);
     setIsUploadingImage(false);
-    setShowUploadTip(false);
-  }, [item?.id, isOpen]);
+
+    const storedRaw =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("my-game-legacy-purchase-origins")
+        : null;
+    let stored: string[] = [];
+    if (storedRaw) {
+      try {
+        stored = JSON.parse(storedRaw) as string[];
+      } catch {
+        stored = [];
+      }
+    }
+    const merged = [...new Set([...PURCHASE_ORIGIN_OPTIONS, ...stored, item.purchaseOrigin ?? ""])]
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+    setPurchaseOriginOptions(merged);
+  }, [item, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isOpen, onClose]);
 
   if (!isOpen || !item) return null;
 
@@ -187,6 +233,7 @@ export function ItemDetailsModal({
   const previewPriorityLabel = formatPriorityLabel(
     purchasePriorityInput || undefined,
   );
+  const previewReleaseDateLabel = formatReleaseDate(item.releaseDate);
   const previewPurchaseDateLabel = formatPurchaseDate(
     purchaseYearInput || purchaseMonthInput || purchaseDayInput
       ? {
@@ -196,6 +243,19 @@ export function ItemDetailsModal({
         }
       : undefined,
   );
+  const purchaseYearNumber = purchaseYearInput ? Number(purchaseYearInput) : undefined;
+  const releaseDateObj = item.releaseDate ? new Date(item.releaseDate) : null;
+  const releaseYear = releaseDateObj && !Number.isNaN(releaseDateObj.getTime())
+    ? releaseDateObj.getFullYear()
+    : undefined;
+  const purchaseVsReleaseInfo =
+    purchaseYearNumber && releaseYear
+      ? purchaseYearNumber === releaseYear
+        ? "Comprado no ano de lançamento"
+        : purchaseYearNumber > releaseYear
+          ? `Comprado ${purchaseYearNumber - releaseYear} ano(s) após o lançamento`
+          : "Comprado antes do lançamento"
+      : null;
 
   function parseOptionalNumber(value: string): number | undefined {
     const normalized = value.replace(",", ".").trim();
@@ -283,6 +343,40 @@ export function ItemDetailsModal({
   function handleRemoveImage() {
     setImageUrlInput("");
     setIsEditingImage(false);
+  }
+
+  function handlePurchaseOriginChange(value: string) {
+    if (value !== "__new_origin__") {
+      setPurchaseOriginInput(value);
+      return;
+    }
+
+    const typed = window.prompt("Digite a nova origem da compra:");
+    if (!typed) return;
+    const normalized = typed.trim();
+    if (!normalized) return;
+
+    const exists = purchaseOriginOptions.some(
+      (option) => option.toLowerCase() === normalized.toLowerCase(),
+    );
+    const finalValue = exists
+      ? purchaseOriginOptions.find(
+          (option) => option.toLowerCase() === normalized.toLowerCase(),
+        ) ?? normalized
+      : normalized;
+
+    if (!exists) {
+      const next = [...purchaseOriginOptions, normalized].sort((a, b) =>
+        a.localeCompare(b),
+      );
+      setPurchaseOriginOptions(next);
+      window.localStorage.setItem(
+        "my-game-legacy-purchase-origins",
+        JSON.stringify(next.filter((origin) => !PURCHASE_ORIGIN_OPTIONS.includes(origin))),
+      );
+    }
+
+    setPurchaseOriginInput(finalValue);
   }
 
   function handleSaveAll() {
@@ -376,6 +470,32 @@ export function ItemDetailsModal({
                 </div>
               )}
             </div>
+            <div className="flex items-center justify-center gap-2 border-t border-white/10 px-3 py-3">
+              <IconActionButton
+                icon="✏️"
+                label="Editar imagem"
+                onClick={() => setIsEditingImage((prev) => !prev)}
+              />
+              <IconActionButton
+                icon="🖼️"
+                label={isUploadingImage ? "Enviando..." : "Trocar imagem"}
+                onClick={handlePickImageFromComputer}
+              />
+              {isGame && (
+                <IconActionButton
+                  icon="🔎"
+                  label={isSearchingCover ? "Buscando..." : "IGDB"}
+                  onClick={handleSearchCoverAgain}
+                />
+              )}
+              {imageUrlInput && (
+                <IconActionButton
+                  icon="🗑️"
+                  label="Remover imagem"
+                  onClick={handleRemoveImage}
+                />
+              )}
+            </div>
           </div>
 
           <div className="p-6 sm:p-8">
@@ -390,6 +510,9 @@ export function ItemDetailsModal({
                 {subtitleInput && (
                   <p className="mt-2 text-lg text-white/65">{subtitleInput}</p>
                 )}
+                <p className="mt-2 text-sm text-white/55">
+                  Data de lançamento: {previewReleaseDateLabel || "—"}
+                </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -457,94 +580,9 @@ export function ItemDetailsModal({
                 </div>
               </section>
 
-              <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-lg font-semibold text-white">
-                    Imagem do item
-                  </h3>
-
-                  {!isEditingImage ? (
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingImage(true)}
-                        className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10"
-                      >
-                        Editar imagem
-                      </button>
-
-                      {isGame && (
-                        <button
-                          type="button"
-                          onClick={handleSearchCoverAgain}
-                          disabled={isSearchingCover}
-                          className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {isSearchingCover
-                            ? "Buscando..."
-                            : "Buscar capa novamente"}
-                        </button>
-                      )}
-
-                      <div
-                        className="relative"
-                        onMouseEnter={() => setShowUploadTip(true)}
-                        onMouseLeave={() => setShowUploadTip(false)}
-                      >
-                        <button
-                          type="button"
-                          onClick={handlePickImageFromComputer}
-                          disabled={isUploadingImage}
-                          className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {isUploadingImage
-                            ? "Enviando..."
-                            : "Enviar do computador"}
-                        </button>
-
-                        {showUploadTip && (
-                          <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-2xl border border-white/10 bg-[#0d1326] p-3 text-xs leading-5 text-white/75 shadow-2xl">
-                            Imagem recomendada: <strong>1200x1500 px</strong>{" "}
-                            (proporção 4:5). Para funcionar bem nos cards P, M e G,
-                            mantenha textos e elementos principais mais ao centro.
-                          </div>
-                        )}
-                      </div>
-
-                      {imageUrlInput && (
-                        <button
-                          type="button"
-                          onClick={handleRemoveImage}
-                          className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-2 text-sm text-red-100 transition hover:bg-red-500/15"
-                        >
-                          Remover imagem
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setImageUrlInput(item.imageUrl ?? "");
-                          setIsEditingImage(false);
-                        }}
-                        className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingImage(false)}
-                        className="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90"
-                      >
-                        Confirmar imagem
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {isEditingImage && (
+              {isEditingImage && (
+                <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+                  <h3 className="text-lg font-semibold text-white">Ajustar imagem</h3>
                   <div className="mt-4 space-y-3">
                     <input
                       value={imageUrlInput}
@@ -552,22 +590,20 @@ export function ItemDetailsModal({
                       placeholder="Cole aqui a URL da nova imagem"
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                     />
-
                     <p className="text-sm text-white/55">
-                      Você pode colar a URL manualmente, buscar novamente via
-                      IGDB ou enviar do seu computador.
+                      Você pode colar a URL manualmente, buscar via IGDB ou enviar do computador.
                     </p>
                   </div>
-                )}
+                </section>
+              )}
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </section>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
 
               <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
                 <h3 className="text-lg font-semibold text-white">
@@ -579,25 +615,10 @@ export function ItemDetailsModal({
                     <span className="mb-2 block text-sm text-white/70">
                       Status de posse
                     </span>
-                    <select
+                    <OwnershipStatusButtons
                       value={ownershipStatusInput}
-                      onChange={(e) =>
-                        setOwnershipStatusInput(
-                          e.target.value as Item["ownershipStatus"],
-                        )
-                      }
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                    >
-                      <option value="collection" className="text-black">
-                        Na coleção
-                      </option>
-                      <option value="wishlist" className="text-black">
-                        Wishlist
-                      </option>
-                      <option value="preorder" className="text-black">
-                        Pré-venda
-                      </option>
-                    </select>
+                      onChange={(value) => setOwnershipStatusInput(value)}
+                    />
                   </label>
 
                   {isGame && (
@@ -638,12 +659,9 @@ export function ItemDetailsModal({
                 </div>
 
                 {isGame && (
-                  <div className="mt-4">
-                    <span className="mb-2 block text-sm text-white/70">
-                      Mídia
-                    </span>
-
-                    <div className="flex flex-wrap gap-3">
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <span className="mb-2 block text-sm text-white/70">Mídia</span>
+                    <div className="flex flex-wrap gap-2">
                       <ToggleChip
                         label="Física"
                         active={mediaFormatsInput?.includes("physical") ?? false}
@@ -700,80 +718,33 @@ export function ItemDetailsModal({
                   </label>
 
                   {isWishlist ? (
-                    <label className="block">
+                    <label className="block md:col-span-2">
                       <span className="mb-2 block text-sm text-white/70">
                         Prioridade
                       </span>
-                      <select
+                      <PriorityButtons
                         value={purchasePriorityInput}
-                        onChange={(e) =>
-                          setPurchasePriorityInput(
-                            (e.target.value as Item["purchasePriority"] | "") ?? "",
-                          )
-                        }
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                      >
-                        <option value="" className="text-black">
-                          Não definida
-                        </option>
-                        <option value="low" className="text-black">
-                          Baixa
-                        </option>
-                        <option value="medium" className="text-black">
-                          Média
-                        </option>
-                        <option value="high" className="text-black">
-                          Alta
-                        </option>
-                        <option value="maximum" className="text-black">
-                          Prioridade Máxima
-                        </option>
-                      </select>
+                        onChange={(value) => setPurchasePriorityInput(value)}
+                      />
                     </label>
                   ) : (
                     <div />
                   )}
 
-                  <label className="block">
+                  <label className="block md:col-span-2">
                     <span className="mb-2 block text-sm text-white/70">
                       Raridade
                     </span>
-                    <select
+                    <RarityButtons
                       value={rarityInput}
-                      onChange={(e) =>
-                        setRarityInput(
-                          (e.target.value as
-                            | NonNullable<Item["rarityTags"]>[number]
-                            | "") ?? "",
-                        )
-                      }
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                    >
-                      <option value="" className="text-black">
-                        Não definida
-                      </option>
-                      <option value="normal" className="text-black">
-                        Normal
-                      </option>
-                      <option value="rare" className="text-black">
-                        Raro
-                      </option>
-                      <option value="special_edition" className="text-black">
-                        Edição especial
-                      </option>
-                      <option value="highlight" className="text-black">
-                        Destaque
-                      </option>
-                      <option value="repro" className="text-black">
-                        Repro
-                      </option>
-                    </select>
+                      onChange={(value) => setRarityInput(value)}
+                    />
                   </label>
                 </div>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-3">
                   <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">Ano</span>
+                    <span className="mb-2 block text-sm text-white/70">Data da compra (ano)</span>
                     <input
                       value={purchaseYearInput}
                       onChange={(e) => setPurchaseYearInput(e.target.value)}
@@ -808,12 +779,21 @@ export function ItemDetailsModal({
                     <span className="mb-2 block text-sm text-white/70">
                       Origem da compra
                     </span>
-                    <input
+                    <select
                       value={purchaseOriginInput}
-                      onChange={(e) => setPurchaseOriginInput(e.target.value)}
-                      placeholder="Ex: Paraguai, Brasil, Presente, Importado"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
+                      onChange={(e) => handlePurchaseOriginChange(e.target.value)}
+                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
+                    >
+                      <option value="" className="text-black">Em branco</option>
+                      {purchaseOriginOptions.map((origin) => (
+                        <option key={origin} value={origin} className="text-black">
+                          {origin}
+                        </option>
+                      ))}
+                      <option value="__new_origin__" className="text-black">
+                        + Cadastrar nova origem
+                      </option>
+                    </select>
                   </label>
 
                   <label className="block">
@@ -842,7 +822,14 @@ export function ItemDetailsModal({
                   label="Data da compra"
                   value={previewPurchaseDateLabel || "—"}
                 />
+                <InfoCard
+                  label="Data de lançamento"
+                  value={previewReleaseDateLabel || "—"}
+                />
               </div>
+              {purchaseVsReleaseInfo && (
+                <p className="text-sm text-cyan-100/85">{purchaseVsReleaseInfo}</p>
+              )}
 
               <div className="grid gap-4 md:grid-cols-2">
                 <MoneyCard
@@ -908,6 +895,130 @@ function ToggleChip({
     >
       {label}
     </button>
+  );
+}
+
+function IconActionButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-sm transition hover:bg-white/10"
+      aria-label={label}
+    >
+      {icon}
+    </button>
+  );
+}
+
+function OwnershipStatusButtons({
+  value,
+  onChange,
+}: {
+  value: Item["ownershipStatus"];
+  onChange: (value: Item["ownershipStatus"]) => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      {[
+        { value: "collection", label: "Na coleção", active: "border-white/25 bg-white text-black" },
+        { value: "wishlist", label: "Wishlist", active: "border-amber-300 bg-amber-300 text-black" },
+        { value: "preorder", label: "Pré-venda", active: "border-fuchsia-400 bg-fuchsia-500 text-white" },
+      ].map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => onChange(option.value as Item["ownershipStatus"])}
+          className={`rounded-lg border px-2.5 py-2 text-xs transition ${
+            value === option.value
+              ? option.active
+              : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PriorityButtons({
+  value,
+  onChange,
+}: {
+  value: Item["purchasePriority"] | "";
+  onChange: (value: Item["purchasePriority"] | "") => void;
+}) {
+  const options: { value: Item["purchasePriority"] | ""; label: string }[] = [
+    { value: "", label: "Não definida" },
+    { value: "low", label: "Baixa" },
+    { value: "medium", label: "Média" },
+    { value: "high", label: "Alta" },
+    { value: "maximum", label: "Máxima" },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => (
+        <button
+          key={option.label}
+          type="button"
+          onClick={() => onChange(option.value)}
+          className={`rounded-full border px-3 py-2 text-sm transition ${
+            value === option.value
+              ? "border-cyan-300/70 bg-cyan-400/20 text-cyan-100"
+              : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function RarityButtons({
+  value,
+  onChange,
+}: {
+  value: NonNullable<Item["rarityTags"]>[number] | "";
+  onChange: (value: NonNullable<Item["rarityTags"]>[number] | "") => void;
+}) {
+  const options: { value: NonNullable<Item["rarityTags"]>[number] | ""; label: string }[] = [
+    { value: "", label: "Não definida" },
+    { value: "normal", label: "Normal" },
+    { value: "rare", label: "Raro" },
+    { value: "special_edition", label: "Edição especial" },
+    { value: "highlight", label: "Destaque" },
+    { value: "repro", label: "Repro" },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => (
+        <button
+          key={option.label}
+          type="button"
+          onClick={() => onChange(option.value)}
+          className={`rounded-full border px-3 py-2 text-sm transition ${
+            value === option.value
+              ? "border-fuchsia-300/70 bg-fuchsia-400/20 text-fuchsia-100"
+              : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
