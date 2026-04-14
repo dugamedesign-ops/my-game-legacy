@@ -56,6 +56,7 @@ const PLATFORM_OPTIONS = [
   "PC",
 ];
 const NEW_PLATFORM_OPTION = "__new_platform__";
+const NEW_GENRE_OPTION = "__new_genre__";
 const IGDB_GENRE_OPTIONS = [
   "Action",
   "Adventure",
@@ -94,6 +95,7 @@ export function AddItemModal({
   const [showResults, setShowResults] = useState(false);
   const [isGameSelectionDone, setIsGameSelectionDone] = useState(false);
   const [platformOptions, setPlatformOptions] = useState<string[]>(PLATFORM_OPTIONS);
+  const [genreOptions, setGenreOptions] = useState<string[]>(IGDB_GENRE_OPTIONS);
 
   const skipNextAutoSearchRef = useRef(false);
 
@@ -148,6 +150,22 @@ export function AddItemModal({
       .filter(Boolean) as string[];
     const merged = [...new Set([...PLATFORM_OPTIONS, ...fromExistingItems, ...customPlatforms])];
     setPlatformOptions(merged.sort((a, b) => a.localeCompare(b)));
+    const customGenresRaw =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("my-game-legacy-custom-genres")
+        : null;
+    let customGenres: string[] = [];
+    if (customGenresRaw) {
+      try {
+        customGenres = JSON.parse(customGenresRaw) as string[];
+      } catch {
+        customGenres = [];
+      }
+    }
+    const mergedGenres = [...new Set([...IGDB_GENRE_OPTIONS, ...customGenres])].sort((a, b) =>
+      a.localeCompare(b),
+    );
+    setGenreOptions(mergedGenres);
 
     setForm(getInitialForm(initialType, initialPlatform));
     setSearchResults([]);
@@ -397,6 +415,49 @@ export function AddItemModal({
       "my-game-legacy-custom-platforms",
       JSON.stringify(updated.filter((platform) => !PLATFORM_OPTIONS.includes(platform))),
     );
+  }
+
+  function handleGenreSelect(
+    field: "genrePrimary" | "genreSecondary",
+    value: string,
+  ) {
+    if (value !== NEW_GENRE_OPTION) {
+      updateField(field, value);
+      if (field === "genrePrimary" && value === form.genreSecondary) {
+        updateField("genreSecondary", "");
+      }
+      return;
+    }
+
+    const typed = window.prompt("Digite o nome do novo gênero:");
+    if (!typed) return;
+    const normalized = typed.trim();
+    if (!normalized) return;
+
+    const exists = genreOptions.some(
+      (option) => option.toLowerCase() === normalized.toLowerCase(),
+    );
+    const finalValue = exists
+      ? genreOptions.find(
+          (option) => option.toLowerCase() === normalized.toLowerCase(),
+        ) ?? normalized
+      : normalized;
+
+    if (!exists) {
+      const next = [...genreOptions, normalized].sort((a, b) =>
+        a.localeCompare(b),
+      );
+      setGenreOptions(next);
+      window.localStorage.setItem(
+        "my-game-legacy-custom-genres",
+        JSON.stringify(next.filter((genre) => !IGDB_GENRE_OPTIONS.includes(genre))),
+      );
+    }
+
+    updateField(field, finalValue);
+    if (field === "genrePrimary" && finalValue === form.genreSecondary) {
+      updateField("genreSecondary", "");
+    }
   }
 
   function handleSave() {
@@ -694,21 +755,18 @@ export function AddItemModal({
                     <FieldBlock label="Gênero 1">
                       <select
                         value={form.genrePrimary}
-                        onChange={(e) => {
-                          const nextGenrePrimary = e.target.value;
-                          updateField("genrePrimary", nextGenrePrimary);
-                          if (nextGenrePrimary === form.genreSecondary) {
-                            updateField("genreSecondary", "");
-                          }
-                        }}
+                        onChange={(e) => handleGenreSelect("genrePrimary", e.target.value)}
                         className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
                       >
                         <option value="" className="text-black">Em branco</option>
-                        {IGDB_GENRE_OPTIONS.map((genre) => (
+                        {genreOptions.map((genre) => (
                           <option key={genre} value={genre} className="text-black">
                             {genre}
                           </option>
                         ))}
+                        <option value={NEW_GENRE_OPTION} className="text-black">
+                          + Cadastrar novo gênero
+                        </option>
                       </select>
                     </FieldBlock>
                   </div>
@@ -716,15 +774,18 @@ export function AddItemModal({
                     <FieldBlock label="Gênero 2 (opcional)">
                       <select
                         value={form.genreSecondary}
-                        onChange={(e) => updateField("genreSecondary", e.target.value)}
+                        onChange={(e) => handleGenreSelect("genreSecondary", e.target.value)}
                         className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
                       >
                         <option value="" className="text-black">Em branco</option>
-                        {IGDB_GENRE_OPTIONS.filter((genre) => genre !== form.genrePrimary).map((genre) => (
+                        {genreOptions.filter((genre) => genre !== form.genrePrimary).map((genre) => (
                           <option key={genre} value={genre} className="text-black">
                             {genre}
                           </option>
                         ))}
+                        <option value={NEW_GENRE_OPTION} className="text-black">
+                          + Cadastrar novo gênero
+                        </option>
                       </select>
                     </FieldBlock>
                   )}
