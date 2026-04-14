@@ -224,8 +224,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   }, [collectionItems]);
 
   useEffect(() => {
-    const container = latestCarouselRef.current;
-    if (!container || latestAddedItems.length <= 1) return;
+    const carousel = latestCarouselRef.current;
+    if (!(carousel instanceof HTMLDivElement) || latestAddedItems.length <= 1) {
+      return;
+    }
 
     let rafId = 0;
     let lastTime = performance.now();
@@ -237,10 +239,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
       if (!isCarouselPointerDownRef.current) {
         const delta = (speedPxPerSecond * elapsed) / 1000;
-        const maxScroll = container.scrollWidth - container.clientWidth;
+        const maxScroll = carousel.scrollWidth - carousel.clientWidth;
         if (maxScroll > 0) {
-          const next = container.scrollLeft + delta;
-          container.scrollLeft = next >= maxScroll ? 0 : next;
+          const next = carousel.scrollLeft + delta;
+          carousel.scrollLeft = next >= maxScroll ? 0 : next;
         }
       }
 
