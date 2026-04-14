@@ -524,14 +524,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             <div className="rounded-3xl border border-white/10 bg-gradient-to-r from-[#0c1222] via-[#10182b] to-[#111a2d] p-4 sm:p-5">
               <div className="space-y-1">
                 <h1 className="text-xl font-semibold leading-tight text-white sm:text-2xl">
-                  {legacyName}
-                </h1>
-                <p className="text-sm text-cyan-100/80">
-                  @{legacyName.replace(/\s+/g, "")}Legacy
-                </p>
-                <p className="text-xs uppercase tracking-[0.26em] text-white/35">
                   {legacyTitle}
-                </p>
+                </h1>
+                <p className="text-sm text-cyan-100/80">{legacyName}</p>
               </div>
 
               <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
