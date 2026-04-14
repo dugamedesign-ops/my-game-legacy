@@ -207,7 +207,7 @@ export function ItemDetailsModal({
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
     setPurchaseOriginOptions(merged);
-  }, [item?.id, isOpen]);
+  }, [item, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
