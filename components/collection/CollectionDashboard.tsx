@@ -57,8 +57,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [activeQuickFilter, setActiveQuickFilter] = useState<
     "all" | "collection" | "wishlist" | "preorder"
   >("all");
-  const latestCarouselRef = useRef<HTMLDivElement | null>(null);
-  const isCarouselPointerDownRef = useRef(false);
   const collectionSectionRef = useRef<HTMLElement | null>(null);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
@@ -222,39 +220,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       })
       .slice(0, 10);
   }, [collectionItems]);
-
-  useEffect(() => {
-    const carousel = latestCarouselRef.current;
-    if (!(carousel instanceof HTMLDivElement) || latestAddedItems.length <= 1) {
-      return;
-    }
-
-    let rafId = 0;
-    let lastTime = performance.now();
-    const speedPxPerSecond = 18;
-
-    function animate(time: number) {
-      const carousel = latestCarouselRef.current;
-      if (!carousel) return;
-
-      const elapsed = time - lastTime;
-      lastTime = time;
-
-      if (!isCarouselPointerDownRef.current) {
-        const delta = (speedPxPerSecond * elapsed) / 1000;
-        const maxScroll = carousel.scrollWidth - carousel.clientWidth;
-        if (maxScroll > 0) {
-          const next = carousel.scrollLeft + delta;
-          carousel.scrollLeft = next >= maxScroll ? 0 : next;
-        }
-      }
-
-      rafId = window.requestAnimationFrame(animate);
-    }
-
-    rafId = window.requestAnimationFrame(animate);
-    return () => window.cancelAnimationFrame(rafId);
-  }, [latestAddedItems.length]);
 
   function applyQuickFilter(next: "all" | "collection" | "wishlist" | "preorder") {
     setActiveQuickFilter(next);
@@ -527,25 +492,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                   vitrine
                 </span>
               </div>
-              <div
-                ref={latestCarouselRef}
-                onMouseDown={() => {
-                  isCarouselPointerDownRef.current = true;
-                }}
-                onMouseUp={() => {
-                  isCarouselPointerDownRef.current = false;
-                }}
-                onMouseLeave={() => {
-                  isCarouselPointerDownRef.current = false;
-                }}
-                onTouchStart={() => {
-                  isCarouselPointerDownRef.current = true;
-                }}
-                onTouchEnd={() => {
-                  isCarouselPointerDownRef.current = false;
-                }}
-                className="mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2 snap-x snap-mandatory"
-              >
+              <div className="mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
                 {latestAddedItems.map((item) => (
                   <div key={item.id} className="w-[148px] shrink-0 snap-start sm:w-[156px]">
                     <ItemCard
@@ -596,13 +543,13 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             </div>
           </div>
 
-          <button
+              <button
             type="button"
             onClick={handleOpenDefaultAdd}
             className="fixed bottom-6 right-6 rounded-full border border-white/10 bg-white text-black shadow-2xl transition hover:scale-[1.03] hover:bg-white/90"
           >
             <span className="block px-5 py-4 text-sm font-semibold">
-              ＋ Adicionar item
+              ＋ Adicionar item <span className="ml-1 text-[11px] font-normal text-black/70">(A)</span>
             </span>
           </button>
         </div>

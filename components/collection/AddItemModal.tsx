@@ -326,16 +326,22 @@ export function AddItemModal({
 
       if (step === 1 && !isTypingTarget(event.target)) {
         if (event.key === "1") {
+          event.preventDefault();
+          event.stopPropagation();
           updateField("type", "game");
           setStep(2);
           return;
         }
         if (event.key === "2") {
+          event.preventDefault();
+          event.stopPropagation();
           updateField("type", "console");
           setStep(2);
           return;
         }
         if (event.key === "3") {
+          event.preventDefault();
+          event.stopPropagation();
           updateField("type", "accessory");
           setStep(2);
           return;
