@@ -17,12 +17,9 @@ export const metadata: Metadata = {
   title: "My Game Legacy",
   description: "Sua vitrine digital para organizar a coleção gamer.",
   icons: {
-    icon: [
-      { url: "/favicon.png", type: "image/png" },
-      { url: "/favicon.ico", sizes: "any" },
-    ],
-    shortcut: ["/favicon.ico"],
-    apple: [{ url: "/favicon.png", type: "image/png" }],
+    icon: [{ url: "/icon.png?v=2", type: "image/png", sizes: "512x512" }],
+    shortcut: ["/icon.png?v=2"],
+    apple: [{ url: "/icon.png?v=2", type: "image/png", sizes: "180x180" }],
   },
 };
 
