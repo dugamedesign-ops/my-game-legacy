@@ -149,6 +149,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
     function handleShortcut(event: KeyboardEvent) {
       if (event.defaultPrevented) return;
+      if (isAddModalOpen || selectedItem) return;
       if (isTypingTarget(event.target)) return;
 
       if (event.key.toLowerCase() === "a" && !event.metaKey && !event.ctrlKey) {
@@ -162,7 +163,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
     window.addEventListener("keydown", handleShortcut);
     return () => window.removeEventListener("keydown", handleShortcut);
-  }, []);
+  }, [isAddModalOpen, selectedItem]);
 
   function handleOpenDefaultAdd() {
     setPrefilledType(null);
