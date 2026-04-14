@@ -179,17 +179,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session?.access_token]);
 
   useEffect(() => {
-    const activeSession = session;
-    if (!activeSession?.refresh_token) return;
+    const sessionForRefresh = session;
+    if (!sessionForRefresh || !sessionForRefresh.refresh_token) return;
+    const refreshToken = sessionForRefresh.refresh_token;
+    const expiresAt = sessionForRefresh.expires_at ?? 0;
 
     let cancelled = false;
 
     async function refreshIfNeeded() {
-      const expiresAt = activeSession.expires_at ?? 0;
       const secondsLeft = expiresAt - Math.floor(Date.now() / 1000);
       if (secondsLeft > 5 * 60) return;
 
-      const refreshed = await refreshSession(activeSession.refresh_token);
+      const refreshed = await refreshSession(refreshToken);
       if (cancelled || refreshed.error || !refreshed.session) return;
 
       const refreshedUser = await fetchSupabaseUser(refreshed.session.access_token);
