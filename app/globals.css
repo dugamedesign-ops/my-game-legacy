@@ -29,6 +29,24 @@ button {
   transition: transform 140ms ease, filter 140ms ease, box-shadow 140ms ease;
 }
 
+button:not(:disabled),
+a[href],
+[role="button"],
+summary,
+label[for],
+input[type="checkbox"],
+input[type="radio"],
+select {
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+}
+
 button:active {
   transform: scale(0.97);
   filter: brightness(0.96);
