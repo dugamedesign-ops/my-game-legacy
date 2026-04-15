@@ -424,6 +424,10 @@ export function ItemDetailsModal({
     const file = event.target.files?.[0];
 
     if (!file) return;
+    if (!item) {
+      event.target.value = "";
+      return;
+    }
 
     if (!file.type.startsWith("image/")) {
       alert("Selecione um arquivo de imagem válido.");
