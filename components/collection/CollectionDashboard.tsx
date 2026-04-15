@@ -65,6 +65,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
   const collectionSectionRef = useRef<HTMLElement | null>(null);
+  const isModalOpenRef = useRef(false);
+  const hasModalHistoryEntryRef = useRef(false);
+  const skipNextPopstateRef = useRef(false);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
@@ -109,6 +112,50 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       window.removeEventListener("scroll", handleCloseContextMenu);
       window.removeEventListener("resize", handleCloseContextMenu);
     };
+  }, []);
+
+  const isAnyModalOpen = isAddModalOpen || !!selectedItem;
+
+  useEffect(() => {
+    isModalOpenRef.current = isAnyModalOpen;
+  }, [isAnyModalOpen]);
+
+  useEffect(() => {
+    if (!isAnyModalOpen || hasModalHistoryEntryRef.current) return;
+
+    window.history.pushState(
+      { ...(window.history.state ?? {}), __mglModal: true },
+      "",
+    );
+    hasModalHistoryEntryRef.current = true;
+  }, [isAnyModalOpen]);
+
+  useEffect(() => {
+    if (isAnyModalOpen || !hasModalHistoryEntryRef.current) return;
+
+    skipNextPopstateRef.current = true;
+    hasModalHistoryEntryRef.current = false;
+    window.history.back();
+  }, [isAnyModalOpen]);
+
+  useEffect(() => {
+    function handlePopState() {
+      if (skipNextPopstateRef.current) {
+        skipNextPopstateRef.current = false;
+        return;
+      }
+
+      if (!isModalOpenRef.current) return;
+
+      hasModalHistoryEntryRef.current = false;
+      setIsAddModalOpen(false);
+      setPrefilledType(null);
+      setPrefilledPlatform(null);
+      setSelectedItem(null);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   useEffect(() => {
