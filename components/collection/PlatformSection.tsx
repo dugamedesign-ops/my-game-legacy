@@ -106,6 +106,7 @@ export function PlatformSection({
                 key={category}
                 category={category}
                 items={getItemsByCategory(items, category)}
+                onAddItem={() => onAddItem?.(category, platform)}
                 onItemClick={onItemClick}
                 onItemContextMenu={onItemContextMenu}
               />
