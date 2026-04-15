@@ -314,3 +314,58 @@ export async function supabaseRestRequest<T>(
   if (response.status === 204) return [] as T;
   return (await response.json()) as T;
 }
+
+type UploadSupabaseImageParams = {
+  file: File;
+  accessToken: string;
+  userId: string;
+  itemId?: string;
+};
+
+function sanitizeFileName(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 80);
+}
+
+export async function uploadSupabaseImage({
+  file,
+  accessToken,
+  userId,
+  itemId,
+}: UploadSupabaseImageParams) {
+  const env = getSupabaseEnv();
+  if (!env) {
+    throw new Error("Supabase não configurado.");
+  }
+
+  const bucket =
+    process.env.NEXT_PUBLIC_SUPABASE_IMAGES_BUCKET?.trim() || "item-images";
+  const extension = file.name.split(".").pop()?.toLowerCase() || "png";
+  const safeName = sanitizeFileName(file.name.replace(/\.[^/.]+$/, ""));
+  const targetPath = `${userId}/${itemId ?? "draft"}/${Date.now()}-${safeName}.${extension}`;
+  const contentType = file.type || "application/octet-stream";
+
+  const response = await fetch(
+    `${env.url}/storage/v1/object/${bucket}/${targetPath}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: env.anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        "x-upsert": "true",
+        "Content-Type": contentType,
+      },
+      body: file,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  const publicUrl = `${env.url}/storage/v1/object/public/${bucket}/${targetPath}`;
+  return { publicUrl, path: targetPath, bucket };
+}

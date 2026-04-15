@@ -5,6 +5,8 @@ import { Item } from "@/types/collection";
 import { StatusBadge } from "./StatusBadge";
 import { searchIgdbCover } from "@/lib/igdb";
 import { CustomSelect, type CustomSelectOption } from "@/components/ui/CustomSelect";
+import { uploadSupabaseImage } from "@/lib/supabase";
+import { useAuth } from "@/providers/AuthProvider";
 
 type ItemDetailsModalProps = {
   item: Item | null;
@@ -141,6 +143,7 @@ export function ItemDetailsModal({
   onClose,
   onUpdateItem,
 }: ItemDetailsModalProps) {
+  const { session } = useAuth();
   const [isEditingImage, setIsEditingImage] = useState(false);
   const [isSearchingCover, setIsSearchingCover] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -417,7 +420,7 @@ export function ItemDetailsModal({
     fileInputRef.current?.click();
   }
 
-  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
 
     if (!file) return;
@@ -427,30 +430,28 @@ export function ItemDetailsModal({
       return;
     }
 
-    const reader = new FileReader();
     setIsUploadingImage(true);
-
-    reader.onload = () => {
-      const result = reader.result;
-
-      if (typeof result !== "string") {
-        setIsUploadingImage(false);
-        alert("Não foi possível carregar essa imagem.");
-        return;
+    try {
+      if (!session?.access_token) {
+        throw new Error("Faça login para enviar imagens personalizadas.");
       }
 
-      setImageUrlInput(result);
-      setIsUploadingImage(false);
+      const { publicUrl } = await uploadSupabaseImage({
+        file,
+        accessToken: session.access_token,
+        userId: item.userId,
+        itemId: item.id,
+      });
+
+      setImageUrlInput(publicUrl);
       setIsEditingImage(false);
-    };
-
-    reader.onerror = () => {
+    } catch (error) {
+      console.error(error);
+      alert("Não foi possível enviar a imagem para o armazenamento online.");
+    } finally {
       setIsUploadingImage(false);
-      alert("Erro ao ler a imagem selecionada.");
-    };
-
-    reader.readAsDataURL(file);
-    event.target.value = "";
+      event.target.value = "";
+    }
   }
 
   function handleRemoveImage() {
