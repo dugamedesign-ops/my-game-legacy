@@ -135,6 +135,8 @@ export function usePersistentCollection(initialItems: Item[]) {
 
     const currentUserId = user.id;
     const accessToken = session.access_token;
+    const normalizedLocalItems =
+      localItems?.map((item) => ({ ...item, userId: currentUserId })) ?? [];
 
     let isCancelled = false;
 
@@ -192,6 +194,11 @@ export function usePersistentCollection(initialItems: Item[]) {
           setIsSyncing(false);
         }
       }
+    }
+
+    if (normalizedLocalItems.length > 0) {
+      setItems(normalizedLocalItems);
+      setIsLoaded(true);
     }
 
     void loadCloudItems();
