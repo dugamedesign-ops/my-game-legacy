@@ -844,7 +844,7 @@ export function AddItemModal({
                       onChange={handlePlatformSelect}
                       options={platformSelectOptions}
                       placeholder="Selecione a plataforma"
-                      autoFocus={form.type !== "game" && !hasContextPlatform}
+                      autoFocus={!hasContextPlatform}
                     />
                   </FieldBlock>
 
@@ -867,12 +867,14 @@ export function AddItemModal({
                     />
                   </FieldBlock>
 
-                  <FieldBlock label="Status de posse">
-                    <OwnershipStatusButtons
-                      value={form.ownershipStatus}
-                      onChange={(value) => updateField("ownershipStatus", value)}
-                    />
-                  </FieldBlock>
+                  {form.type !== "accessory" && (
+                    <FieldBlock label="Status de posse">
+                      <OwnershipStatusButtons
+                        value={form.ownershipStatus}
+                        onChange={(value) => updateField("ownershipStatus", value)}
+                      />
+                    </FieldBlock>
+                  )}
                 </>
               )}
 
@@ -897,26 +899,35 @@ export function AddItemModal({
                   </FieldBlock>
                 </div>
               ) : form.type === "accessory" ? (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FieldBlock label="Nome *">
-                    <input
-                      value={form.title}
-                      onChange={(e) => updateField("title", e.target.value)}
-                      placeholder="Ex: DualSense"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                      autoFocus={hasContextPlatform}
-                    />
-                  </FieldBlock>
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FieldBlock label="Nome *">
+                      <input
+                        value={form.title}
+                        onChange={(e) => updateField("title", e.target.value)}
+                        placeholder="Ex: DualSense"
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                        autoFocus={hasContextPlatform}
+                      />
+                    </FieldBlock>
 
-                  <FieldBlock label="Subtítulo / versão">
-                    <input
-                      value={form.subtitle}
-                      onChange={(e) => updateField("subtitle", e.target.value)}
-                      placeholder="Ex: Helldivers 2"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                    <FieldBlock label="Subtítulo / versão">
+                      <input
+                        value={form.subtitle}
+                        onChange={(e) => updateField("subtitle", e.target.value)}
+                        placeholder="Ex: Helldivers 2"
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      />
+                    </FieldBlock>
+                  </div>
+
+                  <FieldBlock label="Status de posse">
+                    <OwnershipStatusButtons
+                      value={form.ownershipStatus}
+                      onChange={(value) => updateField("ownershipStatus", value)}
                     />
                   </FieldBlock>
-                </div>
+                </>
               ) : form.type !== "game" ? (
                 <FieldBlock label="Subtítulo / versão">
                   <input
