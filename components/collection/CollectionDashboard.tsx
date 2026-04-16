@@ -96,6 +96,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
   const collectionSectionRef = useRef<HTMLElement | null>(null);
+  const legacyMenuRef = useRef<HTMLDivElement | null>(null);
   const isModalOpenRef = useRef(false);
   const hasModalHistoryEntryRef = useRef(false);
   const skipNextPopstateRef = useRef(false);
@@ -130,7 +131,14 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   }, [authUser?.email, legacyTitleOverride, metadataFullName, metadataName]);
 
   useEffect(() => {
-    function handleCloseContextMenu() {
+    function handleCloseContextMenu(event: MouseEvent) {
+      if (
+        event.target instanceof Node &&
+        legacyMenuRef.current?.contains(event.target)
+      ) {
+        return;
+      }
+
       setContextMenu(null);
       setIsLegacyMenuOpen(false);
     }
@@ -636,7 +644,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     </div>
                   </div>
 
-                  <div className="relative">
+                  <div className="relative" ref={legacyMenuRef}>
                     <button
                       type="button"
                       onClick={() => setIsLegacyMenuOpen((open) => !open)}
