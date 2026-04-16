@@ -40,6 +40,35 @@ type HeaderFilterKey =
 
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const { user: authUser, signOut } = useAuth();
+  const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
+  const metadataFullName =
+    typeof userMetadata.full_name === "string"
+      ? userMetadata.full_name
+      : typeof userMetadata.full_name === "number"
+        ? String(userMetadata.full_name)
+        : undefined;
+  const metadataName =
+    typeof userMetadata.name === "string"
+      ? userMetadata.name
+      : typeof userMetadata.name === "number"
+        ? String(userMetadata.name)
+        : undefined;
+  const metadataUsername =
+    typeof userMetadata.username === "string"
+      ? userMetadata.username
+      : typeof userMetadata.username === "number"
+        ? String(userMetadata.username)
+        : undefined;
+  const metadataUserName =
+    typeof userMetadata.user_name === "string"
+      ? userMetadata.user_name
+      : typeof userMetadata.user_name === "number"
+        ? String(userMetadata.user_name)
+        : undefined;
+  const metadataAvatarUrl =
+    typeof userMetadata.avatar_url === "string"
+      ? userMetadata.avatar_url
+      : undefined;
   const {
     items: collectionItems,
     addItem,
@@ -92,13 +121,13 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const legacyTitle = useMemo(() => {
     if (legacyTitleOverride.trim()) return legacyTitleOverride;
     const rawName =
-      authUser?.user_metadata?.full_name ??
-      authUser?.user_metadata?.name ??
+      metadataFullName ??
+      metadataName ??
       authUser?.email?.split("@")[0] ??
       "My";
     const firstName = rawName.split(" ")[0].replace(/[^a-zA-ZÀ-ÿ0-9]/g, "");
     return `${firstName || "My"}'s Legacy`;
-  }, [authUser?.email, authUser?.user_metadata?.full_name, authUser?.user_metadata?.name, legacyTitleOverride]);
+  }, [authUser?.email, legacyTitleOverride, metadataFullName, metadataName]);
 
   useEffect(() => {
     function handleCloseContextMenu() {
@@ -368,10 +397,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
   const legacyName = legacyTitle.replace(/'s Legacy$/i, "").trim();
   const legacyUsername =
-    authUser?.user_metadata?.username ??
-    authUser?.user_metadata?.user_name ??
+    metadataUsername ??
+    metadataUserName ??
     authUser?.email?.split("@")[0] ??
     "username";
+  const legacyAvatarSrc = metadataAvatarUrl ?? null;
+  const legacyAvatarLabel = legacyName.slice(0, 2).toUpperCase() || "LG";
 
   const isEmpty = collectionItems.length === 0;
 
@@ -562,41 +593,62 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             <div className="rounded-3xl border border-white/10 bg-gradient-to-r from-[#0c1222] via-[#10182b] to-[#111a2d] p-4 sm:p-5">
               <div className="space-y-1">
                 <div className="flex items-start justify-between gap-3">
-                  {isEditingLegacyTitle ? (
-                    <input
-                      value={legacyTitle}
-                      onChange={(event) => setLegacyTitleOverride(event.target.value)}
-                      onBlur={handleLegacyTitleSave}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") handleLegacyTitleSave();
-                        if (event.key === "Escape") {
-                          setIsEditingLegacyTitle(false);
-                          setIsLegacyMenuOpen(false);
-                        }
-                      }}
-                      className="w-full rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-xl font-semibold text-white outline-none placeholder:text-white/35 sm:text-2xl"
-                      placeholder="Seu nome Legacy"
-                      autoFocus
-                    />
-                  ) : (
-                    <h1 className="text-xl font-semibold leading-tight text-white sm:text-2xl">
-                      {legacyTitle}
-                    </h1>
-                  )}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-white/20 bg-white/10">
+                      {legacyAvatarSrc ? (
+                        <Image
+                          src={legacyAvatarSrc}
+                          alt="Avatar da legacy"
+                          fill
+                          sizes="56px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-cyan-100/90">
+                          {legacyAvatarLabel}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      {isEditingLegacyTitle ? (
+                        <input
+                          value={legacyTitle}
+                          onChange={(event) => setLegacyTitleOverride(event.target.value)}
+                          onBlur={handleLegacyTitleSave}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") handleLegacyTitleSave();
+                            if (event.key === "Escape") {
+                              setIsEditingLegacyTitle(false);
+                              setIsLegacyMenuOpen(false);
+                            }
+                          }}
+                          className="w-full rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-xl font-semibold text-white outline-none placeholder:text-white/35 sm:text-2xl"
+                          placeholder="Seu nome Legacy"
+                          autoFocus
+                        />
+                      ) : (
+                        <h1 className="truncate text-xl font-semibold leading-tight text-white sm:text-2xl">
+                          {legacyTitle}
+                        </h1>
+                      )}
+                      <p className="text-sm text-cyan-100/80">{legacyUsername}</p>
+                    </div>
+                  </div>
 
                   <div className="relative">
                     <button
                       type="button"
                       onClick={() => setIsLegacyMenuOpen((open) => !open)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-xl leading-none text-white/85 transition hover:bg-white/10"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xl leading-none text-white/75 transition hover:bg-white/10 hover:text-white"
                       aria-haspopup="menu"
                       aria-expanded={isLegacyMenuOpen}
                       aria-label="Abrir opções da legacy"
                     >
-                      ⋯
+                      ⋮
                     </button>
                     {isLegacyMenuOpen && (
-                      <div className="absolute right-0 top-10 z-20 min-w-[196px] rounded-xl border border-white/15 bg-[#0b1220] p-1 shadow-2xl">
+                      <div className="absolute right-0 top-9 z-20 min-w-[196px] rounded-xl border border-white/15 bg-[#0b1220] p-1 shadow-2xl">
                         <button
                           type="button"
                           onClick={() => {
@@ -611,7 +663,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     )}
                   </div>
                 </div>
-                <p className="text-sm text-cyan-100/80">{legacyUsername}</p>
                 <p className="text-xs text-white/45">{legacyName}</p>
               </div>
 
