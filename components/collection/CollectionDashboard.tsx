@@ -131,7 +131,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   }, [authUser?.email, legacyTitleOverride, metadataFullName, metadataName]);
 
   useEffect(() => {
-    function handleCloseContextMenu(event: MouseEvent) {
+    function handleCloseContextMenu(event: Event) {
       if (
         event.target instanceof Node &&
         legacyMenuRef.current?.contains(event.target)
