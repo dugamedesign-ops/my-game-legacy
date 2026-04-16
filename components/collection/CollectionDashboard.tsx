@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import Image from "next/image";
 import { Item } from "@/types/collection";
 import {
   getCollectionSummary,
@@ -59,6 +60,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isEditingLegacyTitle, setIsEditingLegacyTitle] = useState(false);
+  const [isLegacyMenuOpen, setIsLegacyMenuOpen] = useState(false);
   const [isFinancialOpen, setIsFinancialOpen] = useState(false);
   const [isPendingOpen, setIsPendingOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -101,6 +103,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   useEffect(() => {
     function handleCloseContextMenu() {
       setContextMenu(null);
+      setIsLegacyMenuOpen(false);
     }
 
     window.addEventListener("click", handleCloseContextMenu);
@@ -174,13 +177,14 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
+      if (isLegacyMenuOpen) setIsLegacyMenuOpen(false);
       if (isFinancialOpen) setIsFinancialOpen(false);
       if (isPendingOpen) setIsPendingOpen(false);
     }
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [isFinancialOpen, isPendingOpen]);
+  }, [isFinancialOpen, isLegacyMenuOpen, isPendingOpen]);
 
   useEffect(() => {
     function isTypingTarget(target: EventTarget | null) {
@@ -363,6 +367,11 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   ];
 
   const legacyName = legacyTitle.replace(/'s Legacy$/i, "").trim();
+  const legacyUsername =
+    authUser?.user_metadata?.username ??
+    authUser?.user_metadata?.user_name ??
+    authUser?.email?.split("@")[0] ??
+    "username";
 
   const isEmpty = collectionItems.length === 0;
 
@@ -416,7 +425,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             >
               <div className={`rounded-[28px] border border-white/10 p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)] ${isMobileSidebarOpen ? "bg-[#0f172a]" : "bg-white/[0.04]"}`}>
                 <div className="flex items-center justify-between lg:block">
-                  <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/80">My Game Legacy</p>
                   <button
                     type="button"
                     onClick={() => setIsMobileSidebarOpen(false)}
@@ -425,35 +433,17 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     Fechar
                   </button>
                 </div>
-                <div className="mt-2 flex items-center gap-2">
-                  {isEditingLegacyTitle ? (
-                    <input
-                      value={legacyTitle}
-                      onChange={(event) => setLegacyTitleOverride(event.target.value)}
-                      onBlur={handleLegacyTitleSave}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") handleLegacyTitleSave();
-                        if (event.key === "Escape") setIsEditingLegacyTitle(false);
-                      }}
-                      className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xl font-semibold text-white outline-none placeholder:text-white/35"
-                      placeholder="Seu nome Legacy"
-                      autoFocus
+                <div className="mt-2 rounded-2xl border border-white/10 bg-black/20 p-2">
+                  <div className="relative flex h-[120px] w-full items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-[#0d1730] to-[#0b1220]">
+                    <Image
+                      src="/my-game-legacy-official.png"
+                      alt="Logo oficial My Game Legacy"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 1024px) 100vw, 248px"
+                      priority
                     />
-                  ) : (
-                    <div className="min-w-0">
-                      <h2 className="text-[1.7rem] font-semibold leading-tight text-white sm:text-3xl">
-                        {legacyTitle}
-                      </h2>
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingLegacyTitle(true)}
-                        className="mt-1 inline-flex rounded-md border border-white/15 px-1.5 py-0.5 text-[11px] text-white/70 transition hover:bg-white/10"
-                        aria-label="Editar nome da coleção"
-                      >
-                        ✏️ editar
-                      </button>
-                    </div>
-                  )}
+                  </div>
                 </div>
                 <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
                   <AuthPanel />
@@ -571,10 +561,58 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
             <div className="rounded-3xl border border-white/10 bg-gradient-to-r from-[#0c1222] via-[#10182b] to-[#111a2d] p-4 sm:p-5">
               <div className="space-y-1">
-                <h1 className="text-xl font-semibold leading-tight text-white sm:text-2xl">
-                  {legacyTitle}
-                </h1>
-                <p className="text-sm text-cyan-100/80">{legacyName}</p>
+                <div className="flex items-start justify-between gap-3">
+                  {isEditingLegacyTitle ? (
+                    <input
+                      value={legacyTitle}
+                      onChange={(event) => setLegacyTitleOverride(event.target.value)}
+                      onBlur={handleLegacyTitleSave}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") handleLegacyTitleSave();
+                        if (event.key === "Escape") {
+                          setIsEditingLegacyTitle(false);
+                          setIsLegacyMenuOpen(false);
+                        }
+                      }}
+                      className="w-full rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-xl font-semibold text-white outline-none placeholder:text-white/35 sm:text-2xl"
+                      placeholder="Seu nome Legacy"
+                      autoFocus
+                    />
+                  ) : (
+                    <h1 className="text-xl font-semibold leading-tight text-white sm:text-2xl">
+                      {legacyTitle}
+                    </h1>
+                  )}
+
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsLegacyMenuOpen((open) => !open)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-xl leading-none text-white/85 transition hover:bg-white/10"
+                      aria-haspopup="menu"
+                      aria-expanded={isLegacyMenuOpen}
+                      aria-label="Abrir opções da legacy"
+                    >
+                      ⋯
+                    </button>
+                    {isLegacyMenuOpen && (
+                      <div className="absolute right-0 top-10 z-20 min-w-[196px] rounded-xl border border-white/15 bg-[#0b1220] p-1 shadow-2xl">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditingLegacyTitle(true);
+                            setIsLegacyMenuOpen(false);
+                          }}
+                          className="w-full rounded-lg px-3 py-2 text-left text-sm text-white/85 transition hover:bg-white/10"
+                        >
+                          Mudar nome da legacy
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <p className="text-sm text-cyan-100/80">{legacyUsername}</p>
+                <p className="text-xs text-white/45">{legacyName}</p>
               </div>
 
               <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
