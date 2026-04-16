@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { Item } from "@/types/collection";
 import { StatusBadge } from "./StatusBadge";
 import { searchIgdbCover } from "@/lib/igdb";
+import { CustomSelect, type CustomSelectOption } from "@/components/ui/CustomSelect";
+import { uploadSupabaseImage } from "@/lib/supabase";
+import { useAuth } from "@/providers/AuthProvider";
 
 type ItemDetailsModalProps = {
   item: Item | null;
@@ -111,6 +114,28 @@ const PURCHASE_ORIGIN_OPTIONS = [
   "Presente",
   "Outro",
 ];
+const GENRE_OPTIONS = [
+  "Action",
+  "Adventure",
+  "Role-playing (RPG)",
+  "Strategy",
+  "Shooter",
+  "Puzzle",
+  "Platform",
+  "Fighting",
+  "Racing",
+  "Sports",
+  "Simulation",
+  "Turn-based strategy (TBS)",
+  "Hack and slash/Beat 'em up",
+  "Tactical",
+  "Visual Novel",
+  "Point-and-click",
+  "Survival",
+  "Horror",
+  "Arcade",
+];
+const NEW_GENRE_OPTION = "__new_genre__";
 
 export function ItemDetailsModal({
   item,
@@ -118,6 +143,7 @@ export function ItemDetailsModal({
   onClose,
   onUpdateItem,
 }: ItemDetailsModalProps) {
+  const { session } = useAuth();
   const [isEditingImage, setIsEditingImage] = useState(false);
   const [isSearchingCover, setIsSearchingCover] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -129,13 +155,15 @@ export function ItemDetailsModal({
   const [ownershipStatusInput, setOwnershipStatusInput] =
     useState<Item["ownershipStatus"]>("collection");
   const [gameProgressStatusInput, setGameProgressStatusInput] = useState<
-    Item["gameProgressStatus"] | ""
+    NonNullable<Item["gameProgressStatus"]> | ""
   >("");
   const [mediaFormatsInput, setMediaFormatsInput] = useState<
     Item["mediaFormats"]
   >([]);
 
   const [amountPaidInput, setAmountPaidInput] = useState("");
+  const [pricePhysicalInput, setPricePhysicalInput] = useState("");
+  const [priceDigitalInput, setPriceDigitalInput] = useState("");
   const [currentValueInput, setCurrentValueInput] = useState("");
 
   const [purchasePriorityInput, setPurchasePriorityInput] = useState<
@@ -152,6 +180,10 @@ export function ItemDetailsModal({
   const [purchaseOriginOptions, setPurchaseOriginOptions] = useState<string[]>(
     PURCHASE_ORIGIN_OPTIONS,
   );
+  const [genrePrimaryInput, setGenrePrimaryInput] = useState("");
+  const [genreSecondaryInput, setGenreSecondaryInput] = useState("");
+  const [genreOptions, setGenreOptions] = useState<string[]>(GENRE_OPTIONS);
+  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [notesInput, setNotesInput] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -172,6 +204,26 @@ export function ItemDetailsModal({
         ? String(item.amountPaid)
         : "",
     );
+    const hasPhysical = item.mediaFormats?.includes("physical") ?? false;
+    const hasDigital = item.mediaFormats?.includes("digital") ?? false;
+    const fallbackAmount =
+      item.amountPaid !== undefined && item.amountPaid !== null
+        ? String(item.amountPaid)
+        : "";
+    setPricePhysicalInput(
+      item.pricePhysical !== undefined && item.pricePhysical !== null
+        ? String(item.pricePhysical)
+        : hasPhysical && !hasDigital
+          ? fallbackAmount
+          : "",
+    );
+    setPriceDigitalInput(
+      item.priceDigital !== undefined && item.priceDigital !== null
+        ? String(item.priceDigital)
+        : hasDigital && !hasPhysical
+          ? fallbackAmount
+          : "",
+    );
     setCurrentValueInput(
       item.currentValue !== undefined && item.currentValue !== null
         ? String(item.currentValue)
@@ -181,11 +233,18 @@ export function ItemDetailsModal({
     setPurchasePriorityInput(item.purchasePriority ?? "");
     setRarityInput(item.rarityTags?.[0] ?? "");
 
-    setPurchaseYearInput(item.purchaseDate?.year ? String(item.purchaseDate.year) : "");
+    setPurchaseYearInput(item.purchaseDate?.year ? String(item.purchaseDate.year) : "2026");
     setPurchaseMonthInput(item.purchaseDate?.month ? String(item.purchaseDate.month) : "");
     setPurchaseDayInput(item.purchaseDate?.day ? String(item.purchaseDate.day) : "");
     setPurchaseOriginInput(item.purchaseOrigin ?? "");
     setNotesInput(item.notes ?? "");
+    setSaveFeedback(null);
+    const [primary = "", secondary = ""] = (item.genre ?? "")
+      .split("/")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    setGenrePrimaryInput(primary);
+    setGenreSecondaryInput(secondary);
 
     setIsEditingImage(false);
     setIsSearchingCover(false);
@@ -207,6 +266,10 @@ export function ItemDetailsModal({
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
     setPurchaseOriginOptions(merged);
+    const mergedGenres = [...new Set([...GENRE_OPTIONS, primary, secondary])]
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+    setGenreOptions(mergedGenres);
   }, [item, isOpen]);
 
   useEffect(() => {
@@ -216,16 +279,55 @@ export function ItemDetailsModal({
       if (event.key === "Escape") {
         onClose();
       }
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        handleSaveAll();
+      }
     }
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, handleSaveAll]);
 
   if (!isOpen || !item) return null;
 
   const isGame = item.type === "game";
   const isWishlist = ownershipStatusInput === "wishlist";
+  const hasPhysicalSelected = mediaFormatsInput?.includes("physical") ?? false;
+  const hasDigitalSelected = mediaFormatsInput?.includes("digital") ?? false;
+  const hasBothMediaSelected = hasPhysicalSelected && hasDigitalSelected;
+  const gameProgressOptions: CustomSelectOption[] = [
+    { value: "", label: "Não definido" },
+    { value: "backlog", label: "Backlog" },
+    { value: "playing", label: "Jogando" },
+    { value: "paused", label: "Pausado" },
+    { value: "finished", label: "Terminado" },
+    { value: "platinum", label: "Platinado" },
+  ];
+  const purchaseOriginSelectOptions: CustomSelectOption[] = [
+    { value: "", label: "Em branco" },
+    ...purchaseOriginOptions.map((origin) => ({ value: origin, label: origin })),
+    { value: "__new_origin__", label: "+ Cadastrar nova origem" },
+  ];
+  const genrePrimaryOptions: CustomSelectOption[] = [
+    { value: "", label: "Em branco" },
+    ...genreOptions.map((genre) => ({ value: genre, label: genre })),
+    { value: NEW_GENRE_OPTION, label: "+ Cadastrar novo gênero" },
+  ];
+  const genreSecondaryOptions: CustomSelectOption[] = [
+    { value: "", label: "Em branco" },
+    ...genreOptions
+      .filter((genre) => genre !== genrePrimaryInput)
+      .map((genre) => ({ value: genre, label: genre })),
+    { value: NEW_GENRE_OPTION, label: "+ Cadastrar novo gênero" },
+  ];
+  const purchaseYearOptions: CustomSelectOption[] = [
+    { value: "", label: "Em branco" },
+    ...Array.from({ length: 47 }, (_, index) => {
+      const year = 2026 - index;
+      return { value: String(year), label: String(year) };
+    }),
+  ];
 
   const previewProgressLabel = formatProgressLabel(
     gameProgressStatusInput || undefined,
@@ -263,6 +365,20 @@ export function ItemDetailsModal({
 
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  function getConsolidatedAmountPaid() {
+    const physicalPrice = parseOptionalNumber(pricePhysicalInput);
+    const digitalPrice = parseOptionalNumber(priceDigitalInput);
+
+    if (hasBothMediaSelected) {
+      if (physicalPrice === undefined && digitalPrice === undefined) return undefined;
+      return (physicalPrice ?? 0) + (digitalPrice ?? 0);
+    }
+
+    if (hasPhysicalSelected) return physicalPrice;
+    if (hasDigitalSelected) return digitalPrice;
+    return parseOptionalNumber(amountPaidInput);
   }
 
   function toggleMediaFormat(format: "physical" | "digital") {
@@ -304,40 +420,42 @@ export function ItemDetailsModal({
     fileInputRef.current?.click();
   }
 
-  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
 
     if (!file) return;
+    if (!item) {
+      event.target.value = "";
+      return;
+    }
 
     if (!file.type.startsWith("image/")) {
       alert("Selecione um arquivo de imagem válido.");
       return;
     }
 
-    const reader = new FileReader();
     setIsUploadingImage(true);
-
-    reader.onload = () => {
-      const result = reader.result;
-
-      if (typeof result !== "string") {
-        setIsUploadingImage(false);
-        alert("Não foi possível carregar essa imagem.");
-        return;
+    try {
+      if (!session?.access_token) {
+        throw new Error("Faça login para enviar imagens personalizadas.");
       }
 
-      setImageUrlInput(result);
-      setIsUploadingImage(false);
+      const { publicUrl } = await uploadSupabaseImage({
+        file,
+        accessToken: session.access_token,
+        userId: item.userId,
+        itemId: item.id,
+      });
+
+      setImageUrlInput(publicUrl);
       setIsEditingImage(false);
-    };
-
-    reader.onerror = () => {
+    } catch (error) {
+      console.error(error);
+      alert("Não foi possível enviar a imagem para o armazenamento online.");
+    } finally {
       setIsUploadingImage(false);
-      alert("Erro ao ler a imagem selecionada.");
-    };
-
-    reader.readAsDataURL(file);
-    event.target.value = "";
+      event.target.value = "";
+    }
   }
 
   function handleRemoveImage() {
@@ -379,8 +497,52 @@ export function ItemDetailsModal({
     setPurchaseOriginInput(finalValue);
   }
 
+  function handleGenreChange(
+    field: "primary" | "secondary",
+    value: string,
+  ) {
+    const setField = field === "primary" ? setGenrePrimaryInput : setGenreSecondaryInput;
+    const otherValue = field === "primary" ? genreSecondaryInput : genrePrimaryInput;
+    const setOther = field === "primary" ? setGenreSecondaryInput : setGenrePrimaryInput;
+
+    if (value !== NEW_GENRE_OPTION) {
+      setField(value);
+      if (value && value === otherValue) {
+        setOther("");
+      }
+      return;
+    }
+
+    const typed = window.prompt("Digite o nome do novo gênero:");
+    if (!typed) return;
+    const normalized = typed.trim();
+    if (!normalized) return;
+
+    const exists = genreOptions.find(
+      (option) => option.toLowerCase() === normalized.toLowerCase(),
+    );
+    const finalValue = exists ?? normalized;
+
+    if (!exists) {
+      const next = [...genreOptions, normalized].sort((a, b) =>
+        a.localeCompare(b),
+      );
+      setGenreOptions(next);
+      window.localStorage.setItem(
+        "my-game-legacy-custom-genres",
+        JSON.stringify(next.filter((genre) => !GENRE_OPTIONS.includes(genre))),
+      );
+    }
+
+    setField(finalValue);
+    if (finalValue === otherValue) {
+      setOther("");
+    }
+  }
+
   function handleSaveAll() {
     if (!item) return;
+    setSaveFeedback(null);
 
     const year = purchaseYearInput.trim() ? Number(purchaseYearInput.trim()) : undefined;
     const month = purchaseMonthInput.trim() ? Number(purchaseMonthInput.trim()) : undefined;
@@ -402,11 +564,21 @@ export function ItemDetailsModal({
           ? mediaFormatsInput
           : undefined
         : undefined,
+      pricePhysical:
+        isGame && hasPhysicalSelected
+          ? parseOptionalNumber(pricePhysicalInput)
+          : undefined,
+      priceDigital:
+        isGame && hasDigitalSelected
+          ? parseOptionalNumber(priceDigitalInput)
+          : undefined,
 
       amountPaid:
         ownershipStatusInput === "wishlist"
           ? undefined
-          : parseOptionalNumber(amountPaidInput),
+          : isGame
+            ? getConsolidatedAmountPaid()
+            : parseOptionalNumber(amountPaidInput),
       currentValue: parseOptionalNumber(currentValueInput),
 
       purchasePriority:
@@ -425,11 +597,23 @@ export function ItemDetailsModal({
           : undefined,
       purchaseOrigin: purchaseOriginInput.trim() || undefined,
       notes: notesInput.trim() || undefined,
+      genre:
+        isGame
+          ? [genrePrimaryInput.trim(), genreSecondaryInput.trim()]
+              .filter(Boolean)
+              .join(" / ") || undefined
+          : item.genre,
 
       updatedAt: new Date().toISOString(),
     };
 
-    onUpdateItem(updatedItem);
+    try {
+      onUpdateItem(updatedItem);
+      onClose();
+    } catch (error) {
+      console.error(error);
+      setSaveFeedback("Não foi possível salvar agora. Tente novamente.");
+    }
   }
 
   return (
@@ -626,34 +810,16 @@ export function ItemDetailsModal({
                       <span className="mb-2 block text-sm text-white/70">
                         Status do jogo
                       </span>
-                      <select
+                      <CustomSelect
                         value={gameProgressStatusInput}
-                        onChange={(e) =>
+                        onChange={(value) =>
                           setGameProgressStatusInput(
-                            (e.target.value as Item["gameProgressStatus"] | "") ?? "",
+                            (value as NonNullable<Item["gameProgressStatus"]> | "") ?? "",
                           )
                         }
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                      >
-                        <option value="" className="text-black">
-                          Não definido
-                        </option>
-                        <option value="backlog" className="text-black">
-                          Backlog
-                        </option>
-                        <option value="playing" className="text-black">
-                          Jogando
-                        </option>
-                        <option value="paused" className="text-black">
-                          Pausado
-                        </option>
-                        <option value="finished" className="text-black">
-                          Terminado
-                        </option>
-                        <option value="platinum" className="text-black">
-                          Platinado
-                        </option>
-                      </select>
+                        options={gameProgressOptions}
+                        placeholder="Não definido"
+                      />
                     </label>
                   )}
                 </div>
@@ -676,6 +842,28 @@ export function ItemDetailsModal({
                     </div>
                   </div>
                 )}
+                {isGame && (
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/70">Gênero 1</span>
+                      <CustomSelect
+                        value={genrePrimaryInput}
+                        onChange={(value) => handleGenreChange("primary", value)}
+                        options={genrePrimaryOptions}
+                        placeholder="Em branco"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/70">Gênero 2</span>
+                      <CustomSelect
+                        value={genreSecondaryInput}
+                        onChange={(value) => handleGenreChange("secondary", value)}
+                        options={genreSecondaryOptions}
+                        placeholder="Em branco"
+                      />
+                    </label>
+                  </div>
+                )}
               </section>
 
               <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
@@ -684,22 +872,72 @@ export function ItemDetailsModal({
                 </h3>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">
-                      {isWishlist ? "Valor de referência" : "Valor pago"}
-                    </span>
-                    <input
-                      value={amountPaidInput}
-                      onChange={(e) => setAmountPaidInput(e.target.value)}
-                      placeholder={
-                        isWishlist
-                          ? "Wishlist não usa valor pago"
-                          : "Ex: 299.90"
-                      }
-                      disabled={isWishlist}
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
-                    />
-                  </label>
+                  {isGame ? (
+                    <>
+                      {(hasPhysicalSelected || hasDigitalSelected) ? (
+                        <>
+                          {hasPhysicalSelected && (
+                            <label className="block">
+                              <span className="mb-2 block text-sm text-white/70">Preço (Físico)</span>
+                              <input
+                                value={pricePhysicalInput}
+                                onChange={(e) => setPricePhysicalInput(e.target.value)}
+                                placeholder={isWishlist ? "Opcional na wishlist" : "Ex: 299.90"}
+                                disabled={isWishlist}
+                                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
+                              />
+                            </label>
+                          )}
+                          {hasDigitalSelected && (
+                            <label className="block">
+                              <span className="mb-2 block text-sm text-white/70">Preço (Digital)</span>
+                              <input
+                                value={priceDigitalInput}
+                                onChange={(e) => setPriceDigitalInput(e.target.value)}
+                                placeholder={isWishlist ? "Opcional na wishlist" : "Ex: 249.90"}
+                                disabled={isWishlist}
+                                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
+                              />
+                            </label>
+                          )}
+                        </>
+                      ) : (
+                        <label className="block">
+                          <span className="mb-2 block text-sm text-white/70">
+                            {isWishlist ? "Valor de referência" : "Valor pago"}
+                          </span>
+                          <input
+                            value={amountPaidInput}
+                            onChange={(e) => setAmountPaidInput(e.target.value)}
+                            placeholder={
+                              isWishlist
+                                ? "Wishlist não usa valor pago"
+                                : "Ex: 299.90"
+                            }
+                            disabled={isWishlist}
+                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
+                          />
+                        </label>
+                      )}
+                    </>
+                  ) : (
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/70">
+                        {isWishlist ? "Valor de referência" : "Valor pago"}
+                      </span>
+                      <input
+                        value={amountPaidInput}
+                        onChange={(e) => setAmountPaidInput(e.target.value)}
+                        placeholder={
+                          isWishlist
+                            ? "Wishlist não usa valor pago"
+                            : "Ex: 299.90"
+                        }
+                        disabled={isWishlist}
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
+                      />
+                    </label>
+                  )}
 
                   <label className="block">
                     <span className="mb-2 block text-sm text-white/70">
@@ -742,36 +980,39 @@ export function ItemDetailsModal({
                   </label>
                 </div>
 
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">Data da compra (ano)</span>
-                    <input
-                      value={purchaseYearInput}
-                      onChange={(e) => setPurchaseYearInput(e.target.value)}
-                      placeholder="2026"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">Mês</span>
-                    <input
-                      value={purchaseMonthInput}
-                      onChange={(e) => setPurchaseMonthInput(e.target.value)}
-                      placeholder="04"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">Dia</span>
-                    <input
-                      value={purchaseDayInput}
-                      onChange={(e) => setPurchaseDayInput(e.target.value)}
-                      placeholder="11"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
-                  </label>
+                <div className="mt-4">
+                  <span className="mb-2 block text-sm text-white/70">
+                    Data da compra (data do lançamento do item, puxado do database)
+                  </span>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/60">Dia</span>
+                      <input
+                        value={purchaseDayInput}
+                        onChange={(e) => setPurchaseDayInput(e.target.value)}
+                        placeholder="11"
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/60">Mês</span>
+                      <input
+                        value={purchaseMonthInput}
+                        onChange={(e) => setPurchaseMonthInput(e.target.value)}
+                        placeholder="04"
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/60">Ano</span>
+                      <CustomSelect
+                        value={purchaseYearInput}
+                        onChange={setPurchaseYearInput}
+                        options={purchaseYearOptions}
+                        placeholder="2026"
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 <div className="mt-4 grid gap-4">
@@ -779,21 +1020,12 @@ export function ItemDetailsModal({
                     <span className="mb-2 block text-sm text-white/70">
                       Origem da compra
                     </span>
-                    <select
+                    <CustomSelect
                       value={purchaseOriginInput}
-                      onChange={(e) => handlePurchaseOriginChange(e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                    >
-                      <option value="" className="text-black">Em branco</option>
-                      {purchaseOriginOptions.map((origin) => (
-                        <option key={origin} value={origin} className="text-black">
-                          {origin}
-                        </option>
-                      ))}
-                      <option value="__new_origin__" className="text-black">
-                        + Cadastrar nova origem
-                      </option>
-                    </select>
+                      onChange={handlePurchaseOriginChange}
+                      options={purchaseOriginSelectOptions}
+                      placeholder="Em branco"
+                    />
                   </label>
 
                   <label className="block">
@@ -832,14 +1064,39 @@ export function ItemDetailsModal({
               )}
 
               <div className="grid gap-4 md:grid-cols-2">
-                <MoneyCard
-                  label={isWishlist ? "Valor referência" : "Valor pago"}
-                  value={formatCurrency(
-                    isWishlist
-                      ? undefined
-                      : parseOptionalNumber(amountPaidInput),
-                  )}
-                />
+                {isGame && (hasPhysicalSelected || hasDigitalSelected) ? (
+                  <>
+                    {hasPhysicalSelected && (
+                      <MoneyCard
+                        label="Preço (Físico)"
+                        value={formatCurrency(
+                          isWishlist
+                            ? undefined
+                            : parseOptionalNumber(pricePhysicalInput),
+                        )}
+                      />
+                    )}
+                    {hasDigitalSelected && (
+                      <MoneyCard
+                        label="Preço (Digital)"
+                        value={formatCurrency(
+                          isWishlist
+                            ? undefined
+                            : parseOptionalNumber(priceDigitalInput),
+                        )}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <MoneyCard
+                    label={isWishlist ? "Valor referência" : "Valor pago"}
+                    value={formatCurrency(
+                      isWishlist
+                        ? undefined
+                        : parseOptionalNumber(amountPaidInput),
+                    )}
+                  />
+                )}
                 <MoneyCard
                   label="Valor atual"
                   value={formatCurrency(parseOptionalNumber(currentValueInput))}
@@ -855,6 +1112,7 @@ export function ItemDetailsModal({
                   Salvar alterações
                 </button>
               </div>
+              {saveFeedback && <p className="text-sm text-rose-200">{saveFeedback}</p>}
 
               <div className="grid gap-6 xl:grid-cols-2">
                 <HistorySection

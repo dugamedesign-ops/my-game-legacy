@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import Image from "next/image";
 import { Item } from "@/types/collection";
 import {
   getCollectionSummary,
@@ -29,8 +30,45 @@ type ContextMenuState = {
   y: number;
 } | null;
 
+type HeaderFilterKey =
+  | "all"
+  | "collection"
+  | "wishlist"
+  | "preorder"
+  | "playing"
+  | "finished";
+
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const { user: authUser, signOut } = useAuth();
+  const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
+  const metadataFullName =
+    typeof userMetadata.full_name === "string"
+      ? userMetadata.full_name
+      : typeof userMetadata.full_name === "number"
+        ? String(userMetadata.full_name)
+        : undefined;
+  const metadataName =
+    typeof userMetadata.name === "string"
+      ? userMetadata.name
+      : typeof userMetadata.name === "number"
+        ? String(userMetadata.name)
+        : undefined;
+  const metadataUsername =
+    typeof userMetadata.username === "string"
+      ? userMetadata.username
+      : typeof userMetadata.username === "number"
+        ? String(userMetadata.username)
+        : undefined;
+  const metadataUserName =
+    typeof userMetadata.user_name === "string"
+      ? userMetadata.user_name
+      : typeof userMetadata.user_name === "number"
+        ? String(userMetadata.user_name)
+        : undefined;
+  const metadataAvatarUrl =
+    typeof userMetadata.avatar_url === "string"
+      ? userMetadata.avatar_url
+      : undefined;
   const {
     items: collectionItems,
     addItem,
@@ -51,9 +89,16 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isEditingLegacyTitle, setIsEditingLegacyTitle] = useState(false);
+  const [isLegacyMenuOpen, setIsLegacyMenuOpen] = useState(false);
   const [isFinancialOpen, setIsFinancialOpen] = useState(false);
   const [isPendingOpen, setIsPendingOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [activeQuickFilter, setActiveQuickFilter] =
+    useState<HeaderFilterKey>("all");
+  const collectionSectionRef = useRef<HTMLElement | null>(null);
+  const isModalOpenRef = useRef(false);
+  const hasModalHistoryEntryRef = useRef(false);
+  const skipNextPopstateRef = useRef(false);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
@@ -76,17 +121,18 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const legacyTitle = useMemo(() => {
     if (legacyTitleOverride.trim()) return legacyTitleOverride;
     const rawName =
-      authUser?.user_metadata?.full_name ??
-      authUser?.user_metadata?.name ??
+      metadataFullName ??
+      metadataName ??
       authUser?.email?.split("@")[0] ??
       "My";
     const firstName = rawName.split(" ")[0].replace(/[^a-zA-ZÀ-ÿ0-9]/g, "");
     return `${firstName || "My"}'s Legacy`;
-  }, [authUser?.email, authUser?.user_metadata?.full_name, authUser?.user_metadata?.name, legacyTitleOverride]);
+  }, [authUser?.email, legacyTitleOverride, metadataFullName, metadataName]);
 
   useEffect(() => {
     function handleCloseContextMenu() {
       setContextMenu(null);
+      setIsLegacyMenuOpen(false);
     }
 
     window.addEventListener("click", handleCloseContextMenu);
@@ -98,6 +144,50 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       window.removeEventListener("scroll", handleCloseContextMenu);
       window.removeEventListener("resize", handleCloseContextMenu);
     };
+  }, []);
+
+  const isAnyModalOpen = isAddModalOpen || !!selectedItem;
+
+  useEffect(() => {
+    isModalOpenRef.current = isAnyModalOpen;
+  }, [isAnyModalOpen]);
+
+  useEffect(() => {
+    if (!isAnyModalOpen || hasModalHistoryEntryRef.current) return;
+
+    window.history.pushState(
+      { ...(window.history.state ?? {}), __mglModal: true },
+      "",
+    );
+    hasModalHistoryEntryRef.current = true;
+  }, [isAnyModalOpen]);
+
+  useEffect(() => {
+    if (isAnyModalOpen || !hasModalHistoryEntryRef.current) return;
+
+    skipNextPopstateRef.current = true;
+    hasModalHistoryEntryRef.current = false;
+    window.history.back();
+  }, [isAnyModalOpen]);
+
+  useEffect(() => {
+    function handlePopState() {
+      if (skipNextPopstateRef.current) {
+        skipNextPopstateRef.current = false;
+        return;
+      }
+
+      if (!isModalOpenRef.current) return;
+
+      hasModalHistoryEntryRef.current = false;
+      setIsAddModalOpen(false);
+      setPrefilledType(null);
+      setPrefilledPlatform(null);
+      setSelectedItem(null);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   useEffect(() => {
@@ -116,13 +206,44 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
+      if (isLegacyMenuOpen) setIsLegacyMenuOpen(false);
       if (isFinancialOpen) setIsFinancialOpen(false);
       if (isPendingOpen) setIsPendingOpen(false);
     }
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [isFinancialOpen, isPendingOpen]);
+  }, [isFinancialOpen, isLegacyMenuOpen, isPendingOpen]);
+
+  useEffect(() => {
+    function isTypingTarget(target: EventTarget | null) {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName.toLowerCase();
+      return (
+        tag === "input" ||
+        tag === "textarea" ||
+        tag === "select" ||
+        target.isContentEditable
+      );
+    }
+
+    function handleShortcut(event: KeyboardEvent) {
+      if (event.defaultPrevented) return;
+      if (isAddModalOpen || selectedItem) return;
+      if (isTypingTarget(event.target)) return;
+
+      if (event.key.toLowerCase() === "a" && !event.metaKey && !event.ctrlKey) {
+        event.preventDefault();
+        setPrefilledType(null);
+        setPrefilledPlatform(null);
+        setIsAddModalOpen(true);
+        setIsMobileSidebarOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [isAddModalOpen, selectedItem]);
 
   function handleOpenDefaultAdd() {
     setPrefilledType(null);
@@ -188,6 +309,101 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       .slice(0, 10);
   }, [collectionItems]);
 
+  function applyQuickFilter(next: HeaderFilterKey) {
+    setActiveQuickFilter(next);
+    setFilters((prev) => ({
+      ...prev,
+      ownership:
+        next === "collection" || next === "wishlist" || next === "preorder"
+          ? [next]
+          : [],
+      gameStatus:
+        next === "playing"
+          ? ["playing"]
+          : next === "finished"
+            ? ["finished", "platinum"]
+            : [],
+    }));
+
+    setTimeout(() => {
+      collectionSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      window.scrollBy({ top: -72, behavior: "smooth" });
+    }, 60);
+  }
+
+  const headerFilters: {
+    key: HeaderFilterKey;
+    label: string;
+    value: number;
+    icon: string;
+    activeClassName: string;
+  }[] = [
+    {
+      key: "all",
+      label: "Todos",
+      value: summary.totalItems,
+      icon: "✦",
+      activeClassName:
+        "border-white/55 bg-white/10 text-white shadow-[0_8px_26px_rgba(255,255,255,0.15)]",
+    },
+    {
+      key: "collection",
+      label: "Na coleção",
+      value: summary.collectionCount,
+      icon: "🗂",
+      activeClassName:
+        "border-cyan-300/70 bg-cyan-500/10 text-cyan-100 shadow-[0_8px_26px_rgba(34,211,238,0.2)]",
+    },
+    {
+      key: "wishlist",
+      label: "Wishlist",
+      value: summary.wishlistCount,
+      icon: "★",
+      activeClassName:
+        "border-yellow-300/80 bg-yellow-400/10 text-yellow-100 shadow-[0_8px_26px_rgba(250,204,21,0.25)]",
+    },
+    {
+      key: "preorder",
+      label: "Pré-venda",
+      value: summary.preorderCount,
+      icon: "⚡",
+      activeClassName:
+        "border-violet-300/80 bg-violet-500/10 text-violet-100 shadow-[0_8px_26px_rgba(168,85,247,0.24)]",
+    },
+    {
+      key: "playing",
+      label: "Jogando",
+      value: collectionItems.filter((item) => item.gameProgressStatus === "playing").length,
+      icon: "◔",
+      activeClassName:
+        "border-fuchsia-300/80 bg-fuchsia-500/10 text-fuchsia-100 shadow-[0_8px_26px_rgba(217,70,239,0.24)]",
+    },
+    {
+      key: "finished",
+      label: "Terminado",
+      value: collectionItems.filter(
+        (item) =>
+          item.gameProgressStatus === "finished" ||
+          item.gameProgressStatus === "platinum",
+      ).length,
+      icon: "✓",
+      activeClassName:
+        "border-emerald-300/80 bg-emerald-500/10 text-emerald-100 shadow-[0_8px_26px_rgba(16,185,129,0.24)]",
+    },
+  ];
+
+  const legacyName = legacyTitle.replace(/'s Legacy$/i, "").trim();
+  const legacyUsername =
+    metadataUsername ??
+    metadataUserName ??
+    authUser?.email?.split("@")[0] ??
+    "username";
+  const legacyAvatarSrc = metadataAvatarUrl ?? null;
+  const legacyAvatarLabel = legacyName.slice(0, 2).toUpperCase() || "LG";
+
   const isEmpty = collectionItems.length === 0;
 
   if (!isLoaded) {
@@ -240,7 +456,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             >
               <div className={`rounded-[28px] border border-white/10 p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)] ${isMobileSidebarOpen ? "bg-[#0f172a]" : "bg-white/[0.04]"}`}>
                 <div className="flex items-center justify-between lg:block">
-                  <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/80">My Game Legacy</p>
                   <button
                     type="button"
                     onClick={() => setIsMobileSidebarOpen(false)}
@@ -249,35 +464,17 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     Fechar
                   </button>
                 </div>
-                <div className="mt-2 flex items-center gap-2">
-                  {isEditingLegacyTitle ? (
-                    <input
-                      value={legacyTitle}
-                      onChange={(event) => setLegacyTitleOverride(event.target.value)}
-                      onBlur={handleLegacyTitleSave}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") handleLegacyTitleSave();
-                        if (event.key === "Escape") setIsEditingLegacyTitle(false);
-                      }}
-                      className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xl font-semibold text-white outline-none placeholder:text-white/35"
-                      placeholder="Seu nome Legacy"
-                      autoFocus
+                <div className="mt-2 rounded-2xl border border-white/10 bg-black/20 p-2">
+                  <div className="relative flex h-[120px] w-full items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-[#0d1730] to-[#0b1220]">
+                    <Image
+                      src="/my-game-legacy-official.png"
+                      alt="Logo oficial My Game Legacy"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 1024px) 100vw, 248px"
+                      priority
                     />
-                  ) : (
-                    <div className="min-w-0">
-                      <h2 className="text-[1.7rem] font-semibold leading-tight text-white sm:text-3xl">
-                        {legacyTitle}
-                      </h2>
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingLegacyTitle(true)}
-                        className="mt-1 inline-flex rounded-md border border-white/15 px-1.5 py-0.5 text-[11px] text-white/70 transition hover:bg-white/10"
-                        aria-label="Editar nome da coleção"
-                      >
-                        ✏️ editar
-                      </button>
-                    </div>
-                  )}
+                  </div>
                 </div>
                 <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
                   <AuthPanel />
@@ -301,7 +498,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     </button>
                   </div>
                 </div>
-                <div className="mt-4 space-y-2 border-t border-white/10 pt-3">
+                <div className="mt-4 space-y-2 pt-1">
                   <SidebarActionButton
                     label="Financeiro"
                     onClick={() => {
@@ -329,6 +526,18 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                       <FiltersBar filters={filters} setFilters={setFilters} compact />
                     </div>
                   )}
+                  <button
+                    type="button"
+                    disabled
+                    aria-disabled="true"
+                    className="flex w-full items-center justify-between rounded-xl border border-white/10 px-3 py-2 text-sm text-white/40"
+                    title="Área em breve"
+                  >
+                    <span>Configurações</span>
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-white/30">
+                      Em breve
+                    </span>
+                  </button>
                 </div>
                 {authUser && (
                   <div className="mt-4 border-t border-white/10 pt-3">
@@ -381,35 +590,97 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               </div>
             )}
 
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-              <div className="space-y-2">
-                <p className="text-sm uppercase tracking-[0.3em] text-white/45">
-                  {legacyTitle}
-                </p>
-                <p className="max-w-2xl text-sm leading-6 text-white/65">
-                  Sua coleção organizada por plataforma, com foco total nas capas e na vitrine.
-                </p>
+            <div className="rounded-3xl border border-white/10 bg-gradient-to-r from-[#0c1222] via-[#10182b] to-[#111a2d] p-4 sm:p-5">
+              <div className="space-y-1">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-white/20 bg-white/10">
+                      {legacyAvatarSrc ? (
+                        <Image
+                          src={legacyAvatarSrc}
+                          alt="Avatar da legacy"
+                          fill
+                          sizes="56px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-cyan-100/90">
+                          {legacyAvatarLabel}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      {isEditingLegacyTitle ? (
+                        <input
+                          value={legacyTitle}
+                          onChange={(event) => setLegacyTitleOverride(event.target.value)}
+                          onBlur={handleLegacyTitleSave}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") handleLegacyTitleSave();
+                            if (event.key === "Escape") {
+                              setIsEditingLegacyTitle(false);
+                              setIsLegacyMenuOpen(false);
+                            }
+                          }}
+                          className="w-full rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-xl font-semibold text-white outline-none placeholder:text-white/35 sm:text-2xl"
+                          placeholder="Seu nome Legacy"
+                          autoFocus
+                        />
+                      ) : (
+                        <h1 className="truncate text-xl font-semibold leading-tight text-white sm:text-2xl">
+                          {legacyTitle}
+                        </h1>
+                      )}
+                      <p className="text-sm text-cyan-100/80">{legacyUsername}</p>
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsLegacyMenuOpen((open) => !open)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xl leading-none text-white/75 transition hover:bg-white/10 hover:text-white"
+                      aria-haspopup="menu"
+                      aria-expanded={isLegacyMenuOpen}
+                      aria-label="Abrir opções da legacy"
+                    >
+                      ⋮
+                    </button>
+                    {isLegacyMenuOpen && (
+                      <div className="absolute right-0 top-9 z-20 min-w-[196px] rounded-xl border border-white/15 bg-[#0b1220] p-1 shadow-2xl">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditingLegacyTitle(true);
+                            setIsLegacyMenuOpen(false);
+                          }}
+                          className="w-full rounded-lg px-3 py-2 text-left text-sm text-white/85 transition hover:bg-white/10"
+                        >
+                          Mudar nome da legacy
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-white/45">{legacyName}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:min-w-[480px]">
-                <SummaryCard label="Itens" value={summary.totalItems} />
-                <SummaryCard label="Na coleção" value={summary.collectionCount} />
-                <SummaryCard label="Wishlist" value={summary.wishlistCount} />
-                <SummaryCard label="Pré-venda" value={summary.preorderCount} />
+              <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                {headerFilters.map((filter) => (
+                  <HeaderFilterButton
+                    key={filter.key}
+                    label={filter.label}
+                    icon={filter.icon}
+                    value={filter.value}
+                    isActive={activeQuickFilter === filter.key}
+                    activeClassName={filter.activeClassName}
+                    onClick={() => applyQuickFilter(filter.key)}
+                  />
+                ))}
               </div>
             </div>
           </header>
-          {!isEmpty && (
-            <section className="mb-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
-              <input
-                type="text"
-                placeholder="Buscar por nome, plataforma ou versão..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/20"
-              />
-            </section>
-          )}
 
           {!isEmpty && latestAddedItems.length > 0 && (
             <section className="mb-8 rounded-[28px] border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.03] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
@@ -434,10 +705,22 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             </section>
           )}
 
+          {!isEmpty && (
+            <section className="mb-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
+              <input
+                type="text"
+                placeholder="Buscar por nome, plataforma ou versão..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/20"
+              />
+            </section>
+          )}
+
           {isEmpty ? (
             <EmptyCollectionState onAddClick={handleOpenDefaultAdd} />
           ) : groupedPlatforms.length > 0 ? (
-            <section className="space-y-6">
+            <section ref={collectionSectionRef} className="space-y-6">
               {groupedPlatforms.map((group) => (
                 <PlatformSection
                   key={group.platform}
@@ -458,13 +741,13 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             </div>
           </div>
 
-          <button
+              <button
             type="button"
             onClick={handleOpenDefaultAdd}
             className="fixed bottom-6 right-6 rounded-full border border-white/10 bg-white text-black shadow-2xl transition hover:scale-[1.03] hover:bg-white/90"
           >
             <span className="block px-5 py-4 text-sm font-semibold">
-              ＋ Adicionar item
+              ＋ Adicionar item <span className="ml-1 text-[11px] font-normal text-black/70">(A)</span>
             </span>
           </button>
         </div>
@@ -546,21 +829,42 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: number }) {
-  const tone =
-    label === "Wishlist"
-      ? "border-amber-300/80 shadow-[0_0_0_1px_rgba(252,211,77,0.35)]"
-      : label === "Pré-venda"
-        ? "border-fuchsia-400/80 shadow-[0_0_0_1px_rgba(232,121,249,0.35)]"
-        : "border-white/10";
-
+function HeaderFilterButton({
+  label,
+  icon,
+  value,
+  isActive,
+  activeClassName,
+  onClick,
+}: {
+  label: string;
+  icon: string;
+  value: number;
+  isActive: boolean;
+  activeClassName: string;
+  onClick: () => void;
+}) {
   return (
-    <div className={`flex min-h-[130px] flex-col items-center justify-center rounded-2xl border bg-black/20 p-4 text-center ${tone}`}>
-      <p className="text-xs uppercase tracking-[0.25em] text-white/45">
-        {label}
-      </p>
-      <p className="mt-3 text-4xl font-semibold leading-none text-white">{value}</p>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl border px-3 py-2 text-left transition ${
+        isActive
+          ? activeClassName
+          : "border-white/10 bg-black/15 text-white/75 hover:bg-white/10"
+      }`}
+    >
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em]">
+        <span aria-hidden>{icon}</span>
+        <span>{label}</span>
+      </div>
+      <p className="mt-1 text-2xl font-semibold leading-none">{value}</p>
+      <div
+        className={`mt-2 h-0.5 w-full rounded-full transition ${
+          isActive ? "bg-current/95" : "bg-white/10"
+        }`}
+      />
+    </button>
   );
 }
 

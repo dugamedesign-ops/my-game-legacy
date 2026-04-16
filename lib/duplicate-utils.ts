@@ -6,6 +6,7 @@ type DraftComparable = {
   platform: string;
   subtitle?: string;
   ownershipStatus: Item["ownershipStatus"];
+  gameProgressStatus?: Item["gameProgressStatus"];
   mediaFormats?: Item["mediaFormats"];
 };
 
@@ -33,6 +34,7 @@ export function checkForDuplicates(
   const draftMediaSignature = getMediaSignature(draft.mediaFormats);
   const requiresSubtitleMatch =
     draft.type === "console" || draft.type === "accessory";
+  const requiresGameProgressMatch = draft.type === "game";
 
   const sameBaseItems = existingItems.filter((item) => {
     if (item.isRemoved) return false;
@@ -49,6 +51,8 @@ export function checkForDuplicates(
 
     return (
       item.ownershipStatus === draft.ownershipStatus &&
+      (!requiresGameProgressMatch ||
+        item.gameProgressStatus === draft.gameProgressStatus) &&
       getMediaSignature(item.mediaFormats) === draftMediaSignature &&
       (!requiresSubtitleMatch || sameSubtitle)
     );

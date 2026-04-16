@@ -9,6 +9,7 @@ type CategorySectionProps = {
   category: ItemType;
   items: Item[];
   defaultOpen?: boolean;
+  onAddItem?: () => void;
   onItemClick?: (item: Item) => void;
   onItemContextMenu?: (item: Item, x: number, y: number) => void;
 };
@@ -17,6 +18,7 @@ export function CategorySection({
   category,
   items,
   defaultOpen = true,
+  onAddItem,
   onItemClick,
   onItemContextMenu,
 }: CategorySectionProps) {
@@ -32,6 +34,16 @@ export function CategorySection({
               <h3 className="text-base font-semibold text-white sm:text-lg">
                 {CATEGORY_LABELS[category]}
               </h3>
+              <button
+                type="button"
+                onClick={onAddItem}
+                disabled={!onAddItem}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-white/5 text-base text-white/85 transition hover:bg-white/10"
+                aria-label={`Adicionar item em ${CATEGORY_LABELS[category]}`}
+                title={`Adicionar item em ${CATEGORY_LABELS[category]}`}
+              >
+                +
+              </button>
             </div>
 
             <p className="mt-1 text-sm text-white/50">{itemCountLabel}</p>
@@ -42,9 +54,10 @@ export function CategorySection({
           <button
             type="button"
             onClick={() => setIsOpen((prev) => !prev)}
-            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 transition hover:bg-white/10"
+            className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-sm transition hover:bg-white/10"
+            aria-label={isOpen ? "Recolher subpasta" : "Expandir subpasta"}
           >
-            {isOpen ? "Fechar" : "Abrir"}
+            {isOpen ? "🔽" : "▶️"}
           </button>
         </div>
       </div>

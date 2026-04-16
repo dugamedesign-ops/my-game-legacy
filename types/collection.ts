@@ -72,6 +72,8 @@ export type Item = {
   releaseDate?: string;
 
   amountPaid?: number;
+  pricePhysical?: number;
+  priceDigital?: number;
   currentValue?: number;
   desiredValue?: number;
 

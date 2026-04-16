@@ -26,6 +26,8 @@ type AuthResponse = {
 };
 
 const SESSION_KEY = "supabase-rest-session";
+const USER_KEY = "supabase-rest-user";
+const SESSION_COOKIE_KEY = "mgl_session";
 
 const REQUIRED_SUPABASE_ENV_KEYS = [
   "NEXT_PUBLIC_SUPABASE_URL",
@@ -47,16 +49,47 @@ export function getSupabaseEnv() {
 export function saveSession(session: SupabaseSession | null) {
   if (!session) {
     window.localStorage.removeItem(SESSION_KEY);
+    window.localStorage.removeItem(USER_KEY);
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${SESSION_COOKIE_KEY}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
     return;
   }
 
   window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  const payload = encodeURIComponent(JSON.stringify(session));
+  document.cookie = `${SESSION_COOKIE_KEY}=${payload}; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax${secure}`;
 }
 
 export function loadSession(): SupabaseSession | null {
   try {
     const saved = window.localStorage.getItem(SESSION_KEY);
-    return saved ? (JSON.parse(saved) as SupabaseSession) : null;
+    if (saved) return JSON.parse(saved) as SupabaseSession;
+
+    const cookieEntry = document.cookie
+      .split("; ")
+      .find((entry) => entry.startsWith(`${SESSION_COOKIE_KEY}=`));
+    if (!cookieEntry) return null;
+
+    const encodedValue = cookieEntry.split("=").slice(1).join("=");
+    return JSON.parse(decodeURIComponent(encodedValue)) as SupabaseSession;
+  } catch {
+    return null;
+  }
+}
+
+export function saveCachedUser(user: SupabaseUser | null) {
+  if (!user) {
+    window.localStorage.removeItem(USER_KEY);
+    return;
+  }
+  window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+export function loadCachedUser(): SupabaseUser | null {
+  try {
+    const saved = window.localStorage.getItem(USER_KEY);
+    return saved ? (JSON.parse(saved) as SupabaseUser) : null;
   } catch {
     return null;
   }
@@ -280,4 +313,59 @@ export async function supabaseRestRequest<T>(
 
   if (response.status === 204) return [] as T;
   return (await response.json()) as T;
+}
+
+type UploadSupabaseImageParams = {
+  file: File;
+  accessToken: string;
+  userId: string;
+  itemId?: string;
+};
+
+function sanitizeFileName(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 80);
+}
+
+export async function uploadSupabaseImage({
+  file,
+  accessToken,
+  userId,
+  itemId,
+}: UploadSupabaseImageParams) {
+  const env = getSupabaseEnv();
+  if (!env) {
+    throw new Error("Supabase não configurado.");
+  }
+
+  const bucket =
+    process.env.NEXT_PUBLIC_SUPABASE_IMAGES_BUCKET?.trim() || "item-images";
+  const extension = file.name.split(".").pop()?.toLowerCase() || "png";
+  const safeName = sanitizeFileName(file.name.replace(/\.[^/.]+$/, ""));
+  const targetPath = `${userId}/${itemId ?? "draft"}/${Date.now()}-${safeName}.${extension}`;
+  const contentType = file.type || "application/octet-stream";
+
+  const response = await fetch(
+    `${env.url}/storage/v1/object/${bucket}/${targetPath}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: env.anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        "x-upsert": "true",
+        "Content-Type": contentType,
+      },
+      body: file,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  const publicUrl = `${env.url}/storage/v1/object/public/${bucket}/${targetPath}`;
+  return { publicUrl, path: targetPath, bucket };
 }
