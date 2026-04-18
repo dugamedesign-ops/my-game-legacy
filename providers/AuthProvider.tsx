@@ -16,6 +16,7 @@ import {
   loadCachedUser,
   loadSession,
   refreshSession,
+  ensurePublicProfile,
   saveCachedUser,
   saveSession,
   sendMagicLink,
@@ -23,6 +24,7 @@ import {
   signOutSupabase,
   signUpWithPassword,
   startGoogleSignIn,
+  type PublicProfile,
   type SupabaseSession,
   type SupabaseUser,
 } from "@/lib/supabase";
@@ -30,6 +32,7 @@ import {
 type AuthContextValue = {
   user: SupabaseUser | null;
   session: SupabaseSession | null;
+  publicProfile: PublicProfile | null;
   isReady: boolean;
   isEnabled: boolean;
   signInWithGoogle: () => Promise<{ error?: string }>;
@@ -50,6 +53,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SupabaseSession | null>(null);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [publicProfile, setPublicProfile] = useState<PublicProfile | null>(null);
   const isEnabled = !!getSupabaseEnv();
   const [isReady, setIsReady] = useState(!isEnabled);
 
@@ -103,6 +107,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saveCachedUser(currentUser);
       setSession(activeSession);
       setUser(currentUser);
+
+      try {
+        const metadata = currentUser.user_metadata ?? {};
+        const metadataName =
+          typeof metadata.full_name === "string"
+            ? metadata.full_name
+            : typeof metadata.name === "string"
+              ? metadata.name
+              : undefined;
+        const metadataAvatar =
+          typeof metadata.avatar_url === "string" ? metadata.avatar_url : undefined;
+
+        const ensured = await ensurePublicProfile(
+          activeSession.access_token,
+          metadataName,
+          metadataAvatar,
+        );
+        setPublicProfile(ensured);
+      } catch (error) {
+        console.error("Erro ao preparar perfil público:", error);
+      }
+
       setIsReady(true);
     }
 
@@ -127,6 +153,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       saveCachedUser(nextUser);
       setUser(nextUser);
+
+      try {
+        const metadata = nextUser.user_metadata ?? {};
+        const metadataName =
+          typeof metadata.full_name === "string"
+            ? metadata.full_name
+            : typeof metadata.name === "string"
+              ? metadata.name
+              : undefined;
+        const metadataAvatar =
+          typeof metadata.avatar_url === "string" ? metadata.avatar_url : undefined;
+
+        const ensured = await ensurePublicProfile(
+          nextSession.access_token,
+          metadataName,
+          metadataAvatar,
+        );
+        setPublicProfile(ensured);
+      } catch (error) {
+        console.error("Erro ao preparar perfil público:", error);
+      }
+
       return {};
     },
     [],
@@ -170,6 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const accessToken = session?.access_token;
     setSession(null);
     setUser(null);
+    setPublicProfile(null);
     saveSession(null);
     saveCachedUser(null);
 
@@ -218,6 +267,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       session,
+      publicProfile,
       isReady,
       isEnabled,
       signInWithGoogle,
@@ -229,6 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [
       isEnabled,
       isReady,
+      publicProfile,
       session,
       signInWithGoogle,
       signInWithOtp,

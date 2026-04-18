@@ -16,6 +16,43 @@ export type SupabaseUser = {
   };
 };
 
+export type PublicProfile = {
+  user_id: string;
+  friend_code: number;
+  is_public: boolean;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
+export type PublicCollectionItem = {
+  id: string;
+  type: "console" | "accessory" | "game";
+  platform: string;
+  title: string;
+  subtitle?: string;
+  ownershipStatus?: "collection" | "wishlist" | "preorder";
+  mediaFormats?: string[];
+  gameProgressStatus?: string;
+  purchasePriority?: string;
+  rarityTags?: string[];
+  franchise?: string;
+  genre?: string;
+  imageUrl?: string;
+  notes?: string;
+  purchaseOrigin?: string;
+  purchaseDate?: { year?: number; month?: number; day?: number };
+  releaseDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PublicCollectionEntry = {
+  profile_friend_code: number;
+  profile_display_name: string | null;
+  profile_avatar_url: string | null;
+  item: PublicCollectionItem;
+};
+
 type AuthResponse = {
   access_token?: string;
   refresh_token?: string;
@@ -313,6 +350,61 @@ export async function supabaseRestRequest<T>(
 
   if (response.status === 204) return [] as T;
   return (await response.json()) as T;
+}
+
+export async function ensurePublicProfile(
+  accessToken: string,
+  profileName?: string,
+  profileAvatarUrl?: string,
+) {
+  const env = getSupabaseEnv();
+  if (!env) {
+    throw new Error("Supabase não configurado");
+  }
+
+  const response = await fetch(`${env.url}/rest/v1/rpc/ensure_public_profile`, {
+    method: "POST",
+    headers: {
+      apikey: env.anonKey,
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      profile_name: profileName ?? null,
+      profile_avatar_url: profileAvatarUrl ?? null,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return (await response.json()) as PublicProfile;
+}
+
+export async function fetchPublicCollectionByFriendCode(friendCode: number) {
+  const env = getSupabaseEnv();
+  if (!env) {
+    throw new Error("Supabase não configurado");
+  }
+
+  const response = await fetch(
+    `${env.url}/rest/v1/rpc/get_public_collection_by_friend_code`,
+    {
+      method: "POST",
+      headers: {
+        apikey: env.anonKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ target_friend_code: friendCode }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return (await response.json()) as PublicCollectionEntry[];
 }
 
 type UploadSupabaseImageParams = {

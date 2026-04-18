@@ -39,7 +39,7 @@ type HeaderFilterKey =
   | "finished";
 
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
-  const { user: authUser, signOut } = useAuth();
+  const { user: authUser, signOut, publicProfile } = useAuth();
   const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
   const metadataFullName =
     typeof userMetadata.full_name === "string"
@@ -102,6 +102,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const skipNextPopstateRef = useRef(false);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [publicLinkStatus, setPublicLinkStatus] = useState<string | null>(null);
 
   const [prefilledType, setPrefilledType] = useState<
     "console" | "accessory" | "game" | null
@@ -280,6 +281,18 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   function handleLegacyTitleSave() {
     setLegacyTitleOverride((current) => current.trim());
     setIsEditingLegacyTitle(false);
+  }
+
+  async function handleCopyPublicLink() {
+    if (!publicProfile?.friend_code) return;
+
+    try {
+      const publicLink = `${window.location.origin}/u/${publicProfile.friend_code}`;
+      await navigator.clipboard.writeText(publicLink);
+      setPublicLinkStatus("Link público copiado.");
+    } catch {
+      setPublicLinkStatus("Não foi possível copiar. Tente manualmente.");
+    }
   }
 
   const filteredItems = useMemo(() => {
@@ -488,6 +501,26 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                   <AuthPanel />
                   {isSyncing && (
                     <p className="mt-2 text-xs text-white/50">Sincronizando coleção online...</p>
+                  )}
+                  {publicProfile && (
+                    <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-2.5">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-100/75">
+                        ID público
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-cyan-100">
+                        #{publicProfile.friend_code}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyPublicLink()}
+                        className="mt-2 w-full rounded-lg border border-cyan-200/25 px-2 py-1.5 text-xs text-cyan-100 transition hover:bg-cyan-400/10"
+                      >
+                        Copiar link do perfil público
+                      </button>
+                      {publicLinkStatus && (
+                        <p className="mt-1.5 text-[11px] text-cyan-100/80">{publicLinkStatus}</p>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="mt-4 space-y-2">
