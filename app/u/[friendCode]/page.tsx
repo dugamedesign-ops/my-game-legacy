@@ -212,7 +212,7 @@ export default function PublicProfilePage() {
                 </span>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
                 {group.items.map((entry) => (
                   <ItemCard
                     key={entry.item.id}
