@@ -59,6 +59,7 @@ function formatRarityLabel(tag: NonNullable<Item["rarityTags"]>[number]) {
     special_edition: "Edição especial",
     highlight: "Destaque",
     repro: "Repro",
+    steelbook: "Steelbook",
   };
 
   return map[tag];
@@ -974,6 +975,7 @@ export function ItemDetailsModal({
                       Raridade
                     </span>
                     <RarityButtons
+                      itemType={item.type}
                       value={rarityInput}
                       onChange={(value) => setRarityInput(value)}
                     />
@@ -982,8 +984,18 @@ export function ItemDetailsModal({
 
                 <div className="mt-4">
                   <span className="mb-2 block text-sm text-white/70">
-                    Data da compra (data do lançamento do item, puxado do database)
+                    Data da compra
                   </span>
+                  {(item.type === "game" || previewReleaseDateLabel) && (
+                    <p className="mb-3 text-xs text-cyan-100/80">
+                      Referência de lançamento:{" "}
+                      {previewReleaseDateLabel
+                        ? `${previewReleaseDateLabel} ${
+                            item.type === "game" ? "(IGDB)" : "(cadastrada)"
+                          }`
+                        : "não informada"}
+                    </p>
+                  )}
                   <div className="grid gap-4 md:grid-cols-3">
                     <label className="block">
                       <span className="mb-2 block text-sm text-white/60">Dia</span>
@@ -1245,9 +1257,11 @@ function PriorityButtons({
 }
 
 function RarityButtons({
+  itemType,
   value,
   onChange,
 }: {
+  itemType: Item["type"];
   value: NonNullable<Item["rarityTags"]>[number] | "";
   onChange: (value: NonNullable<Item["rarityTags"]>[number] | "") => void;
 }) {
@@ -1258,6 +1272,7 @@ function RarityButtons({
     { value: "special_edition", label: "Edição especial" },
     { value: "highlight", label: "Destaque" },
     { value: "repro", label: "Repro" },
+    ...(itemType === "game" ? [{ value: "steelbook", label: "Steelbook" }] : []),
   ];
 
   return (

@@ -64,12 +64,19 @@ function mapPublicEntryToItem(entry: PublicCollectionEntry): Item {
         ? entry.item.purchasePriority
         : undefined,
     rarityTags: (entry.item.rarityTags ?? []).filter(
-      (rarity): rarity is "normal" | "rare" | "special_edition" | "highlight" | "repro" =>
+      (rarity): rarity is
+        | "normal"
+        | "rare"
+        | "special_edition"
+        | "highlight"
+        | "repro"
+        | "steelbook" =>
         rarity === "normal" ||
         rarity === "rare" ||
         rarity === "special_edition" ||
         rarity === "highlight" ||
-        rarity === "repro",
+        rarity === "repro" ||
+        rarity === "steelbook",
     ),
     franchise: entry.item.franchise,
     genre: entry.item.genre,

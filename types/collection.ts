@@ -16,7 +16,8 @@ export type RarityTag =
   | "rare"
   | "special_edition"
   | "highlight"
-  | "repro";
+  | "repro"
+  | "steelbook";
 
 export type MediaFormat = "physical" | "digital";
 
