@@ -81,8 +81,6 @@ function mapPublicEntryToItem(entry: PublicCollectionEntry): Item {
     franchise: entry.item.franchise,
     genre: entry.item.genre,
     imageUrl: entry.item.imageUrl,
-    notes: entry.item.notes,
-    purchaseOrigin: entry.item.purchaseOrigin,
     purchaseDate: entry.item.purchaseDate,
     releaseDate: entry.item.releaseDate,
     createdAt: entry.item.createdAt ?? new Date(0).toISOString(),

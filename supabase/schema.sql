@@ -32,7 +32,7 @@ create policy "Users can delete own items"
 create table if not exists public.user_public_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   friend_code bigint generated always as identity unique,
-  is_public boolean not null default true,
+  is_public boolean not null default false,
   display_name text,
   avatar_url text,
   created_at timestamptz not null default now(),
@@ -128,8 +128,6 @@ as $$
         'franchise', collection.payload->>'franchise',
         'genre', collection.payload->>'genre',
         'imageUrl', collection.payload->>'imageUrl',
-        'notes', collection.payload->>'notes',
-        'purchaseOrigin', collection.payload->>'purchaseOrigin',
         'purchaseDate', collection.payload->'purchaseDate',
         'releaseDate', collection.payload->>'releaseDate',
         'createdAt', collection.payload->>'createdAt',
@@ -148,3 +146,34 @@ $$;
 
 revoke all on function public.get_public_collection_by_friend_code(bigint) from public;
 grant execute on function public.get_public_collection_by_friend_code(bigint) to anon, authenticated;
+
+create or replace function public.set_public_profile_visibility(
+  target_is_public boolean
+)
+returns public.user_public_profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  updated_profile public.user_public_profiles;
+begin
+  update public.user_public_profiles
+  set
+    is_public = target_is_public,
+    updated_at = now()
+  where user_id = auth.uid()
+  returning * into updated_profile;
+
+  if updated_profile is null then
+    insert into public.user_public_profiles (user_id, is_public)
+    values (auth.uid(), target_is_public)
+    returning * into updated_profile;
+  end if;
+
+  return updated_profile;
+end;
+$$;
+
+revoke all on function public.set_public_profile_visibility(boolean) from public;
+grant execute on function public.set_public_profile_visibility(boolean) to authenticated;

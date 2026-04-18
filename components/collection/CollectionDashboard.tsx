@@ -39,7 +39,7 @@ type HeaderFilterKey =
   | "finished";
 
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
-  const { user: authUser, signOut, publicProfile } = useAuth();
+  const { user: authUser, signOut, publicProfile, setProfileVisibility } = useAuth();
   const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
   const metadataFullName =
     typeof userMetadata.full_name === "string"
@@ -319,7 +319,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   }
 
   async function handleCopyPublicLink() {
-    if (!publicProfile?.friend_code) return;
+    if (!publicProfile?.friend_code || !publicProfile.is_public) return;
 
     try {
       const publicLink = `${window.location.origin}/u/${publicProfile.friend_code}`;
@@ -328,7 +328,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   }
 
   function handleOpenPublicProfile() {
-    if (!publicProfile?.friend_code) return;
+    if (!publicProfile?.friend_code || !publicProfile.is_public) return;
     const publicLink = `${window.location.origin}/u/${publicProfile.friend_code}`;
     window.open(publicLink, "_blank", "noopener,noreferrer");
   }
@@ -669,9 +669,20 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                         )}
                       </div>
                       {publicProfile?.friend_code && (
-                        <p className="mt-1 text-center text-[10px] font-medium text-cyan-100/75">
-                          ID #{publicProfile.friend_code}
-                        </p>
+                        <div className="mt-1 flex items-center justify-center gap-1.5">
+                          <p className="text-center text-[10px] font-medium text-cyan-100/75">
+                            ID #{publicProfile.friend_code}
+                          </p>
+                          <span
+                            className={`rounded-full border px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] ${
+                              publicProfile.is_public
+                                ? "border-emerald-300/35 bg-emerald-500/15 text-emerald-100"
+                                : "border-amber-300/30 bg-amber-500/15 text-amber-100"
+                            }`}
+                          >
+                            {publicProfile.is_public ? "Público" : "Privado"}
+                          </span>
+                        </div>
                       )}
                     </div>
 
@@ -722,7 +733,8 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                                 handleOpenPublicProfile();
                                 setIsLegacyMenuOpen(false);
                               }}
-                              className="w-full rounded-lg px-3 py-2 text-left text-sm text-cyan-100 transition hover:bg-white/10"
+                              className="w-full rounded-lg px-3 py-2 text-left text-sm text-cyan-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+                              disabled={!publicProfile.is_public}
                             >
                               Ver perfil público
                             </button>
@@ -732,9 +744,27 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                                 void handleCopyPublicLink();
                                 setIsLegacyMenuOpen(false);
                               }}
-                              className="w-full rounded-lg px-3 py-2 text-left text-sm text-cyan-100 transition hover:bg-white/10"
+                              className="w-full rounded-lg px-3 py-2 text-left text-sm text-cyan-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+                              disabled={!publicProfile.is_public}
                             >
                               Copiar link do perfil
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const result = await setProfileVisibility(
+                                  !publicProfile.is_public,
+                                );
+                                if (result.error) {
+                                  window.alert(result.error);
+                                }
+                                setIsLegacyMenuOpen(false);
+                              }}
+                              className="w-full rounded-lg px-3 py-2 text-left text-sm text-cyan-100 transition hover:bg-white/10"
+                            >
+                              {publicProfile.is_public
+                                ? "Desativar perfil público"
+                                : "Ativar perfil público"}
                             </button>
                             <div className="my-1 h-px bg-white/10" />
                           </>

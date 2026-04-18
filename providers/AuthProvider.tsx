@@ -20,6 +20,7 @@ import {
   saveCachedUser,
   saveSession,
   sendMagicLink,
+  setPublicProfileVisibility,
   signInWithPassword,
   signOutSupabase,
   signUpWithPassword,
@@ -45,6 +46,7 @@ type AuthContextValue = {
     password: string,
   ) => Promise<{ error?: string; needsEmailConfirmation?: boolean }>;
   signInWithOtp: (email: string) => Promise<{ error?: string }>;
+  setProfileVisibility: (isPublic: boolean) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 };
 
@@ -214,6 +216,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return sendMagicLink(email);
   }, []);
 
+  const setProfileVisibility = useCallback(
+    async (isPublic: boolean) => {
+      if (!session?.access_token) {
+        return { error: "Sessão inválida para atualizar visibilidade." };
+      }
+
+      try {
+        const updatedProfile = await setPublicProfileVisibility(
+          session.access_token,
+          isPublic,
+        );
+        setPublicProfile(updatedProfile);
+        return {};
+      } catch (error) {
+        return {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Falha ao atualizar visibilidade do perfil público.",
+        };
+      }
+    },
+    [session],
+  );
+
   const signOut = useCallback(async () => {
     const accessToken = session?.access_token;
     setSession(null);
@@ -274,6 +301,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithPassword: signInWithPasswordAction,
       signUpWithPassword: signUpWithPasswordAction,
       signInWithOtp,
+      setProfileVisibility,
       signOut,
     }),
     [
@@ -284,6 +312,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithGoogle,
       signInWithOtp,
       signInWithPasswordAction,
+      setProfileVisibility,
       signOut,
       signUpWithPasswordAction,
       user,

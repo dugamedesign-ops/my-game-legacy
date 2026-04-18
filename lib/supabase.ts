@@ -407,6 +407,35 @@ export async function fetchPublicCollectionByFriendCode(friendCode: number) {
   return (await response.json()) as PublicCollectionEntry[];
 }
 
+export async function setPublicProfileVisibility(
+  accessToken: string,
+  isPublic: boolean,
+) {
+  const env = getSupabaseEnv();
+  if (!env) {
+    throw new Error("Supabase não configurado");
+  }
+
+  const response = await fetch(
+    `${env.url}/rest/v1/rpc/set_public_profile_visibility`,
+    {
+      method: "POST",
+      headers: {
+        apikey: env.anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ target_is_public: isPublic }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return (await response.json()) as PublicProfile;
+}
+
 type UploadSupabaseImageParams = {
   file: File;
   accessToken: string;
