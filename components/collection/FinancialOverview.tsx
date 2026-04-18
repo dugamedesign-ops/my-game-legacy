@@ -16,7 +16,39 @@ export function FinancialOverview({
   hideToggle = false,
 }: FinancialOverviewProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const summary = getFinancialSummary(items);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<Item["type"][]>([]);
+  const [selectedOwnership, setSelectedOwnership] = useState<Item["ownershipStatus"][]>([]);
+
+  const platformOptions = Array.from(
+    new Set(items.filter((item) => !item.isRemoved).map((item) => item.platform).filter(Boolean)),
+  ).sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+
+  const filteredItems = items.filter((item) => {
+    if (item.isRemoved) return false;
+
+    if (
+      selectedPlatforms.length > 0 &&
+      !selectedPlatforms.includes(item.platform)
+    ) {
+      return false;
+    }
+
+    if (selectedTypes.length > 0 && !selectedTypes.includes(item.type)) {
+      return false;
+    }
+
+    if (
+      selectedOwnership.length > 0 &&
+      !selectedOwnership.includes(item.ownershipStatus)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const summary = getFinancialSummary(filteredItems);
 
   const missingMessages = [
     summary.missingCollectionPaidCount > 0
@@ -32,6 +64,22 @@ export function FinancialOverview({
       ? `${summary.missingPreorderPaidCount} pré-venda(s) sem valor pago`
       : null,
   ].filter(Boolean) as string[];
+  const hasActiveFilters =
+    selectedPlatforms.length > 0 ||
+    selectedTypes.length > 0 ||
+    selectedOwnership.length > 0;
+
+  function toggleSelection<T extends string>(
+    current: T[],
+    value: T,
+    setter: (next: T[]) => void,
+  ) {
+    setter(
+      current.includes(value)
+        ? current.filter((entry) => entry !== value)
+        : [...current, value],
+    );
+  }
 
   return (
     <section className="mb-8 rounded-[32px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
@@ -62,6 +110,69 @@ export function FinancialOverview({
 
       {isOpen && (
         <div className="mt-6 flex flex-col gap-6">
+          <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-medium text-white">Filtros financeiros</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPlatforms([]);
+                  setSelectedTypes([]);
+                  setSelectedOwnership([]);
+                }}
+                disabled={!hasActiveFilters}
+                className="rounded-full border border-white/15 px-3 py-1 text-xs text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Limpar filtros
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              <FilterGroup
+                label="Plataformas"
+                options={platformOptions.map((platform) => ({
+                  value: platform,
+                  label: platform,
+                }))}
+                selected={selectedPlatforms}
+                onToggle={(value) =>
+                  toggleSelection(selectedPlatforms, value, setSelectedPlatforms)
+                }
+              />
+              <FilterGroup
+                label="Categoria"
+                options={[
+                  { value: "console", label: "Consoles" },
+                  { value: "accessory", label: "Acessórios" },
+                  { value: "game", label: "Jogos" },
+                ]}
+                selected={selectedTypes}
+                onToggle={(value) =>
+                  toggleSelection(selectedTypes, value as Item["type"], setSelectedTypes)
+                }
+              />
+              <FilterGroup
+                label="Status"
+                options={[
+                  { value: "collection", label: "Na coleção" },
+                  { value: "wishlist", label: "Wishlist" },
+                  { value: "preorder", label: "Pré-venda" },
+                ]}
+                selected={selectedOwnership}
+                onToggle={(value) =>
+                  toggleSelection(
+                    selectedOwnership,
+                    value as Item["ownershipStatus"],
+                    setSelectedOwnership,
+                  )
+                }
+              />
+            </div>
+            <p className="mt-3 text-xs text-white/55">
+              {filteredItems.length} item(ns) incluído(s) neste resumo.
+            </p>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <FinanceCard
               label="Investido na coleção"
@@ -108,6 +219,43 @@ export function FinancialOverview({
         </div>
       )}
     </section>
+  );
+}
+
+function FilterGroup({
+  label,
+  options,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onToggle: (value: string) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-xs uppercase tracking-[0.18em] text-white/45">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => {
+          const isActive = selected.includes(option.value);
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onToggle(option.value)}
+              className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                isActive
+                  ? "border-cyan-300/70 bg-cyan-400/15 text-cyan-100"
+                  : "border-white/10 bg-black/20 text-white/70 hover:bg-white/10"
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
