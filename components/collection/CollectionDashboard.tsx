@@ -295,6 +295,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     }
   }
 
+  function handleOpenPublicProfile() {
+    if (!publicProfile?.friend_code) return;
+    const publicLink = `${window.location.origin}/u/${publicProfile.friend_code}`;
+    window.open(publicLink, "_blank", "noopener,noreferrer");
+  }
+
   const filteredItems = useMemo(() => {
     const base = collectionItems.filter((item) => {
       const normalizedSearch = search.trim().toLowerCase();
@@ -635,19 +641,26 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               <div className="space-y-1">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-white/20 bg-white/10">
-                      {legacyAvatarSrc ? (
-                        <Image
-                          src={legacyAvatarSrc}
-                          alt="Avatar da legacy"
-                          fill
-                          sizes="56px"
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-cyan-100/90">
-                          {legacyAvatarLabel}
-                        </div>
+                    <div className="shrink-0">
+                      <div className="relative h-14 w-14 overflow-hidden rounded-full border border-white/20 bg-white/10">
+                        {legacyAvatarSrc ? (
+                          <Image
+                            src={legacyAvatarSrc}
+                            alt="Avatar da legacy"
+                            fill
+                            sizes="56px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-cyan-100/90">
+                            {legacyAvatarLabel}
+                          </div>
+                        )}
+                      </div>
+                      {publicProfile?.friend_code && (
+                        <p className="mt-1 text-center text-[10px] font-medium text-cyan-100/75">
+                          ID #{publicProfile.friend_code}
+                        </p>
                       )}
                     </div>
 
@@ -690,6 +703,31 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     </button>
                     {isLegacyMenuOpen && (
                       <div className="absolute right-0 top-9 z-20 min-w-[196px] rounded-xl border border-white/15 bg-[#0b1220] p-1 shadow-2xl">
+                        {publicProfile?.friend_code && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleOpenPublicProfile();
+                                setIsLegacyMenuOpen(false);
+                              }}
+                              className="w-full rounded-lg px-3 py-2 text-left text-sm text-cyan-100 transition hover:bg-white/10"
+                            >
+                              Ver perfil público
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void handleCopyPublicLink();
+                                setIsLegacyMenuOpen(false);
+                              }}
+                              className="w-full rounded-lg px-3 py-2 text-left text-sm text-cyan-100 transition hover:bg-white/10"
+                            >
+                              Copiar link do perfil
+                            </button>
+                            <div className="my-1 h-px bg-white/10" />
+                          </>
+                        )}
                         <button
                           type="button"
                           onClick={() => {
