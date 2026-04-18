@@ -98,8 +98,11 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const collectionSectionRef = useRef<HTMLElement | null>(null);
   const legacyMenuRef = useRef<HTMLDivElement | null>(null);
   const isModalOpenRef = useRef(false);
+  const isMobileSidebarOpenRef = useRef(false);
   const hasModalHistoryEntryRef = useRef(false);
+  const hasSidebarHistoryEntryRef = useRef(false);
   const skipNextPopstateRef = useRef(false);
+  const skipNextSidebarPopstateRef = useRef(false);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
@@ -161,6 +164,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   }, [isAnyModalOpen]);
 
   useEffect(() => {
+    isMobileSidebarOpenRef.current = isMobileSidebarOpen;
+  }, [isMobileSidebarOpen]);
+
+  useEffect(() => {
     if (!isAnyModalOpen || hasModalHistoryEntryRef.current) return;
 
     window.history.pushState(
@@ -179,9 +186,38 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   }, [isAnyModalOpen]);
 
   useEffect(() => {
+    if (!isMobileSidebarOpen || hasSidebarHistoryEntryRef.current) return;
+
+    window.history.pushState(
+      { ...(window.history.state ?? {}), __mglSidebar: true },
+      "",
+    );
+    hasSidebarHistoryEntryRef.current = true;
+  }, [isMobileSidebarOpen]);
+
+  useEffect(() => {
+    if (isMobileSidebarOpen || !hasSidebarHistoryEntryRef.current) return;
+
+    skipNextSidebarPopstateRef.current = true;
+    hasSidebarHistoryEntryRef.current = false;
+    window.history.back();
+  }, [isMobileSidebarOpen]);
+
+  useEffect(() => {
     function handlePopState() {
+      if (skipNextSidebarPopstateRef.current) {
+        skipNextSidebarPopstateRef.current = false;
+        return;
+      }
+
       if (skipNextPopstateRef.current) {
         skipNextPopstateRef.current = false;
+        return;
+      }
+
+      if (isMobileSidebarOpenRef.current) {
+        hasSidebarHistoryEntryRef.current = false;
+        setIsMobileSidebarOpen(false);
         return;
       }
 
