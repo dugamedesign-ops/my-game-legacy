@@ -11,6 +11,14 @@ import { ItemCard } from "@/components/collection/ItemCard";
 import type { Item } from "@/types/collection";
 import { CATEGORY_LABELS, CATEGORY_ORDER } from "@/lib/collection-utils";
 
+type HeaderFilterKey =
+  | "all"
+  | "collection"
+  | "wishlist"
+  | "preorder"
+  | "playing"
+  | "finished";
+
 function mapPublicEntryToItem(entry: PublicCollectionEntry): Item {
   const type = entry.item.type;
   const normalizedType: Item["type"] =
@@ -81,6 +89,7 @@ export default function PublicProfilePage() {
   const [entries, setEntries] = useState<PublicCollectionEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeQuickFilter, setActiveQuickFilter] = useState<HeaderFilterKey>("all");
 
   useEffect(() => {
     let isCancelled = false;
@@ -121,6 +130,23 @@ export default function PublicProfilePage() {
     return entries.map((entry) => mapPublicEntryToItem(entry));
   }, [entries]);
 
+  const filteredItems = useMemo(() => {
+    return publicItems.filter((item) => {
+      if (activeQuickFilter === "all") return true;
+      if (activeQuickFilter === "collection") return item.ownershipStatus === "collection";
+      if (activeQuickFilter === "wishlist") return item.ownershipStatus === "wishlist";
+      if (activeQuickFilter === "preorder") return item.ownershipStatus === "preorder";
+      if (activeQuickFilter === "playing") return item.gameProgressStatus === "playing";
+      if (activeQuickFilter === "finished") {
+        return (
+          item.gameProgressStatus === "finished" ||
+          item.gameProgressStatus === "platinum"
+        );
+      }
+      return true;
+    });
+  }, [activeQuickFilter, publicItems]);
+
   const groupedPlatforms = useMemo(() => {
     function ownershipRank(item: Item) {
       if (item.ownershipStatus === "collection") return 0;
@@ -130,7 +156,7 @@ export default function PublicProfilePage() {
 
     const map = new Map<string, Item[]>();
 
-    publicItems.forEach((item) => {
+    filteredItems.forEach((item) => {
       const key = item.platform || "Sem plataforma";
       const current = map.get(key) ?? [];
       current.push(item);
@@ -158,7 +184,68 @@ export default function PublicProfilePage() {
           };
         }).filter((categoryGroup) => categoryGroup.items.length > 0),
       }));
-  }, [publicItems]);
+  }, [filteredItems]);
+
+  const headerFilters: {
+    key: HeaderFilterKey;
+    label: string;
+    value: number;
+    icon: string;
+    activeClassName: string;
+  }[] = [
+    {
+      key: "all",
+      label: "Todos",
+      value: publicItems.length,
+      icon: "✦",
+      activeClassName:
+        "border-white/55 bg-white/10 text-white shadow-[0_8px_26px_rgba(255,255,255,0.15)]",
+    },
+    {
+      key: "collection",
+      label: "Na coleção",
+      value: publicItems.filter((item) => item.ownershipStatus === "collection").length,
+      icon: "🗂",
+      activeClassName:
+        "border-cyan-300/70 bg-cyan-500/10 text-cyan-100 shadow-[0_8px_26px_rgba(34,211,238,0.2)]",
+    },
+    {
+      key: "wishlist",
+      label: "Wishlist",
+      value: publicItems.filter((item) => item.ownershipStatus === "wishlist").length,
+      icon: "★",
+      activeClassName:
+        "border-yellow-300/80 bg-yellow-400/10 text-yellow-100 shadow-[0_8px_26px_rgba(250,204,21,0.25)]",
+    },
+    {
+      key: "preorder",
+      label: "Pré-venda",
+      value: publicItems.filter((item) => item.ownershipStatus === "preorder").length,
+      icon: "⚡",
+      activeClassName:
+        "border-violet-300/80 bg-violet-500/10 text-violet-100 shadow-[0_8px_26px_rgba(168,85,247,0.24)]",
+    },
+    {
+      key: "playing",
+      label: "Jogando",
+      value: publicItems.filter((item) => item.gameProgressStatus === "playing").length,
+      icon: "◔",
+      activeClassName:
+        "border-fuchsia-300/80 bg-fuchsia-500/10 text-fuchsia-100 shadow-[0_8px_26px_rgba(217,70,239,0.24)]",
+    },
+    {
+      key: "finished",
+      label: "Terminado",
+      value: publicItems.filter(
+        (item) =>
+          item.gameProgressStatus === "finished" ||
+          item.gameProgressStatus === "platinum",
+      ).length,
+      icon: "✓",
+      activeClassName:
+        "border-emerald-300/80 bg-emerald-500/10 text-emerald-100 shadow-[0_8px_26px_rgba(16,185,129,0.24)]",
+    },
+  ];
 
   const profileName =
     entries[0]?.profile_display_name?.trim() || `Coleção #${friendCode ?? "..."}`;
@@ -226,6 +313,20 @@ export default function PublicProfilePage() {
             </div>
           </div>
 
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {headerFilters.map((filter) => (
+              <HeaderFilterButton
+                key={filter.key}
+                label={filter.label}
+                icon={filter.icon}
+                value={filter.value}
+                isActive={activeQuickFilter === filter.key}
+                activeClassName={filter.activeClassName}
+                onClick={() => setActiveQuickFilter(filter.key)}
+              />
+            ))}
+          </div>
+
         </section>
 
         <section className="mt-6 space-y-5">
@@ -271,5 +372,44 @@ export default function PublicProfilePage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function HeaderFilterButton({
+  label,
+  icon,
+  value,
+  isActive,
+  activeClassName,
+  onClick,
+}: {
+  label: string;
+  icon: string;
+  value: number;
+  isActive: boolean;
+  activeClassName: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl border px-3 py-2 text-left transition ${
+        isActive
+          ? activeClassName
+          : "border-white/10 bg-black/15 text-white/75 hover:bg-white/10"
+      }`}
+    >
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em]">
+        <span aria-hidden>{icon}</span>
+        <span>{label}</span>
+      </div>
+      <p className="mt-1 text-2xl font-semibold leading-none">{value}</p>
+      <div
+        className={`mt-2 h-0.5 w-full rounded-full transition ${
+          isActive ? "bg-current/95" : "bg-white/10"
+        }`}
+      />
+    </button>
   );
 }
