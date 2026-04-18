@@ -424,7 +424,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     authUser?.email?.split("@")[0] ??
     "username";
   const legacyAvatarSrc = metadataAvatarUrl ?? null;
-  const legacyAvatarLabel = legacyName.slice(0, 2).toUpperCase() || "LG";
+  const legacyAvatarLabel = legacyTitle.slice(0, 2).toUpperCase() || "LG";
 
   const isEmpty = collectionItems.length === 0;
 

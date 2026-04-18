@@ -1272,8 +1272,10 @@ function RarityButtons({
     { value: "special_edition", label: "Edição especial" },
     { value: "highlight", label: "Destaque" },
     { value: "repro", label: "Repro" },
-    ...(itemType === "game" ? [{ value: "steelbook", label: "Steelbook" }] : []),
   ];
+  if (itemType === "game") {
+    options.push({ value: "steelbook", label: "Steelbook" });
+  }
 
   return (
     <div className="flex flex-wrap gap-2">
