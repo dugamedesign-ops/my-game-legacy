@@ -873,6 +873,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               setSelectedItem(item);
               setIsPendingOpen(false);
             }}
+            onUpdateItem={updateItem}
             defaultOpen
             hideToggle
           />
