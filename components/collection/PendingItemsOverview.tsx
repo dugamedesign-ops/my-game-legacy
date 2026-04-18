@@ -17,9 +17,16 @@ type PendingItemsOverviewProps = {
 };
 
 type PendingEditorState = {
-  field: ItemPendingField;
-  textValue: string;
-  multiValue: string[];
+  activeField: ItemPendingField;
+  values: Partial<
+    Record<
+      ItemPendingField,
+      {
+        textValue: string;
+        multiValue: string[];
+      }
+    >
+  >;
 };
 
 export function PendingItemsOverview({
@@ -35,32 +42,39 @@ export function PendingItemsOverview({
   >({});
   const pendingInfos = getPendingItems(items);
 
-  function createEditorState(item: Item, field: ItemPendingField): PendingEditorState {
+  function createFieldDraft(item: Item, field: ItemPendingField) {
     if (field === "amountPaid") {
-      return { field, textValue: item.amountPaid !== undefined ? String(item.amountPaid) : "", multiValue: [] };
+      return { textValue: item.amountPaid !== undefined ? String(item.amountPaid) : "", multiValue: [] };
     }
     if (field === "currentValue") {
-      return { field, textValue: item.currentValue !== undefined ? String(item.currentValue) : "", multiValue: [] };
+      return { textValue: item.currentValue !== undefined ? String(item.currentValue) : "", multiValue: [] };
     }
     if (field === "purchasePriority") {
-      return { field, textValue: item.purchasePriority ?? "", multiValue: [] };
+      return { textValue: item.purchasePriority ?? "", multiValue: [] };
     }
     if (field === "gameProgressStatus") {
-      return { field, textValue: item.gameProgressStatus ?? "", multiValue: [] };
+      return { textValue: item.gameProgressStatus ?? "", multiValue: [] };
     }
     if (field === "rarity") {
-      return { field, textValue: item.rarityTags?.[0] ?? "", multiValue: [] };
+      return { textValue: item.rarityTags?.[0] ?? "", multiValue: [] };
     }
     if (field === "image") {
-      return { field, textValue: item.imageUrl ?? "", multiValue: [] };
+      return { textValue: item.imageUrl ?? "", multiValue: [] };
     }
-    return { field, textValue: "", multiValue: item.mediaFormats ?? [] };
+    return { textValue: "", multiValue: item.mediaFormats ?? [] };
   }
 
   function handleStartEdit(item: Item, field: ItemPendingField) {
     setActiveEditors((prev) => ({
       ...prev,
-      [item.id]: createEditorState(item, field),
+      [item.id]: {
+        activeField: field,
+        values: {
+          ...(prev[item.id]?.values ?? {}),
+          [field]:
+            prev[item.id]?.values?.[field] ?? createFieldDraft(item, field),
+        },
+      },
     }));
   }
 
@@ -70,40 +84,44 @@ export function PendingItemsOverview({
 
     const nextItem: Item = { ...item, updatedAt: new Date().toISOString() };
 
-    if (editor.field === "amountPaid") {
-      const value = Number(editor.textValue.replace(",", "."));
-      if (Number.isFinite(value)) nextItem.amountPaid = value;
-    } else if (editor.field === "currentValue") {
-      const value = Number(editor.textValue.replace(",", "."));
-      if (Number.isFinite(value)) nextItem.currentValue = value;
-    } else if (editor.field === "purchasePriority") {
-      if (
-        editor.textValue === "low" ||
-        editor.textValue === "medium" ||
-        editor.textValue === "high" ||
-        editor.textValue === "maximum"
-      ) {
-        nextItem.purchasePriority = editor.textValue;
-      }
-    } else if (editor.field === "gameProgressStatus") {
-      if (
-        editor.textValue === "backlog" ||
-        editor.textValue === "playing" ||
-        editor.textValue === "paused" ||
-        editor.textValue === "finished" ||
-        editor.textValue === "platinum"
-      ) {
-        nextItem.gameProgressStatus = editor.textValue;
-      }
-    } else if (editor.field === "rarity") {
-      if (editor.textValue) {
-        nextItem.rarityTags = [editor.textValue as NonNullable<Item["rarityTags"]>[number]];
-      }
-    } else if (editor.field === "image") {
-      if (editor.textValue.trim()) nextItem.imageUrl = editor.textValue.trim();
-    } else if (editor.field === "mediaFormats") {
-      if (editor.multiValue.length > 0) {
-        nextItem.mediaFormats = editor.multiValue as NonNullable<Item["mediaFormats"]>;
+    for (const [field, draft] of Object.entries(editor.values) as Array<
+      [ItemPendingField, { textValue: string; multiValue: string[] }]
+    >) {
+      if (field === "amountPaid") {
+        const value = Number(draft.textValue.replace(",", "."));
+        if (Number.isFinite(value)) nextItem.amountPaid = value;
+      } else if (field === "currentValue") {
+        const value = Number(draft.textValue.replace(",", "."));
+        if (Number.isFinite(value)) nextItem.currentValue = value;
+      } else if (field === "purchasePriority") {
+        if (
+          draft.textValue === "low" ||
+          draft.textValue === "medium" ||
+          draft.textValue === "high" ||
+          draft.textValue === "maximum"
+        ) {
+          nextItem.purchasePriority = draft.textValue;
+        }
+      } else if (field === "gameProgressStatus") {
+        if (
+          draft.textValue === "backlog" ||
+          draft.textValue === "playing" ||
+          draft.textValue === "paused" ||
+          draft.textValue === "finished" ||
+          draft.textValue === "platinum"
+        ) {
+          nextItem.gameProgressStatus = draft.textValue;
+        }
+      } else if (field === "rarity") {
+        if (draft.textValue) {
+          nextItem.rarityTags = [draft.textValue as NonNullable<Item["rarityTags"]>[number]];
+        }
+      } else if (field === "image") {
+        if (draft.textValue.trim()) nextItem.imageUrl = draft.textValue.trim();
+      } else if (field === "mediaFormats") {
+        if (draft.multiValue.length > 0) {
+          nextItem.mediaFormats = draft.multiValue as NonNullable<Item["mediaFormats"]>;
+        }
       }
     }
 
@@ -200,7 +218,11 @@ export function PendingItemsOverview({
                           {activeEditors[pending.itemId] && (
                             <div className="mt-3 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-3">
                               <p className="mb-2 text-xs text-cyan-100/85">
-                                Editando: {getItemPendingLabel(activeEditors[pending.itemId]!.field)}
+                                Editando: {getItemPendingLabel(activeEditors[pending.itemId]!.activeField)}
+                              </p>
+                              <p className="mb-2 text-[11px] text-cyan-100/70">
+                                {Object.keys(activeEditors[pending.itemId]!.values).length} campo(s)
+                                pronto(s) para salvar
                               </p>
                               <PendingInlineEditor
                                 item={originalItem}
@@ -257,13 +279,28 @@ function PendingInlineEditor({
   state: PendingEditorState;
   onChange: (nextState: PendingEditorState) => void;
 }) {
-  if (state.field === "amountPaid" || state.field === "currentValue" || state.field === "image") {
+  const activeField = state.activeField;
+  const draft = state.values[activeField] ?? { textValue: "", multiValue: [] };
+
+  if (
+    activeField === "amountPaid" ||
+    activeField === "currentValue" ||
+    activeField === "image"
+  ) {
     return (
       <input
-        value={state.textValue}
-        onChange={(event) => onChange({ ...state, textValue: event.target.value })}
+        value={draft.textValue}
+        onChange={(event) =>
+          onChange({
+            ...state,
+            values: {
+              ...state.values,
+              [activeField]: { ...draft, textValue: event.target.value },
+            },
+          })
+        }
         placeholder={
-          state.field === "image"
+          activeField === "image"
             ? "https://..."
             : "Digite o valor (ex: 299.90)"
         }
@@ -272,7 +309,7 @@ function PendingInlineEditor({
     );
   }
 
-  if (state.field === "purchasePriority") {
+  if (activeField === "purchasePriority") {
     const options: { value: NonNullable<Item["purchasePriority"]>; label: string }[] = [
       { value: "low", label: "Baixa" },
       { value: "medium", label: "Média" },
@@ -285,9 +322,17 @@ function PendingInlineEditor({
           <button
             key={option.value}
             type="button"
-            onClick={() => onChange({ ...state, textValue: option.value })}
+            onClick={() =>
+              onChange({
+                ...state,
+                values: {
+                  ...state.values,
+                  [activeField]: { ...draft, textValue: option.value },
+                },
+              })
+            }
             className={`rounded-full border px-3 py-1.5 text-xs ${
-              state.textValue === option.value
+              draft.textValue === option.value
                 ? "border-cyan-300/70 bg-cyan-400/20 text-cyan-100"
                 : "border-white/10 bg-black/20 text-white/75"
             }`}
@@ -299,7 +344,7 @@ function PendingInlineEditor({
     );
   }
 
-  if (state.field === "gameProgressStatus") {
+  if (activeField === "gameProgressStatus") {
     const options: { value: NonNullable<Item["gameProgressStatus"]>; label: string }[] = [
       { value: "backlog", label: "Backlog" },
       { value: "playing", label: "Jogando" },
@@ -313,9 +358,17 @@ function PendingInlineEditor({
           <button
             key={option.value}
             type="button"
-            onClick={() => onChange({ ...state, textValue: option.value })}
+            onClick={() =>
+              onChange({
+                ...state,
+                values: {
+                  ...state.values,
+                  [activeField]: { ...draft, textValue: option.value },
+                },
+              })
+            }
             className={`rounded-full border px-3 py-1.5 text-xs ${
-              state.textValue === option.value
+              draft.textValue === option.value
                 ? "border-cyan-300/70 bg-cyan-400/20 text-cyan-100"
                 : "border-white/10 bg-black/20 text-white/75"
             }`}
@@ -327,7 +380,7 @@ function PendingInlineEditor({
     );
   }
 
-  if (state.field === "rarity") {
+  if (activeField === "rarity") {
     const options: NonNullable<Item["rarityTags"]>[number][] = [
       "normal",
       "rare",
@@ -342,9 +395,17 @@ function PendingInlineEditor({
           <button
             key={option}
             type="button"
-            onClick={() => onChange({ ...state, textValue: option })}
+            onClick={() =>
+              onChange({
+                ...state,
+                values: {
+                  ...state.values,
+                  [activeField]: { ...draft, textValue: option },
+                },
+              })
+            }
             className={`rounded-full border px-3 py-1.5 text-xs ${
-              state.textValue === option
+              draft.textValue === option
                 ? "border-cyan-300/70 bg-cyan-400/20 text-cyan-100"
                 : "border-white/10 bg-black/20 text-white/75"
             }`}
@@ -360,7 +421,7 @@ function PendingInlineEditor({
   return (
     <div className="flex flex-wrap gap-2">
       {mediaOptions.map((option) => {
-        const isActive = state.multiValue.includes(option);
+        const isActive = draft.multiValue.includes(option);
         return (
           <button
             key={option}
@@ -368,9 +429,15 @@ function PendingInlineEditor({
             onClick={() =>
               onChange({
                 ...state,
-                multiValue: isActive
-                  ? state.multiValue.filter((media) => media !== option)
-                  : [...state.multiValue, option],
+                values: {
+                  ...state.values,
+                  [activeField]: {
+                    ...draft,
+                    multiValue: isActive
+                      ? draft.multiValue.filter((media) => media !== option)
+                      : [...draft.multiValue, option],
+                  },
+                },
               })
             }
             className={`rounded-full border px-3 py-1.5 text-xs ${
