@@ -110,6 +110,29 @@ export function FinancialOverview({
 
       {isOpen && (
         <div className="mt-6 flex flex-col gap-6">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <FinanceCard
+              label="Investido na coleção"
+              value={formatCurrencyBRL(summary.investedInCollection)}
+              tone="default"
+            />
+            <FinanceCard
+              label="Valor atual da coleção"
+              value={formatCurrencyBRL(summary.currentCollectionValue)}
+              tone="positive"
+            />
+            <FinanceCard
+              label="Wishlist monitorada"
+              value={formatCurrencyBRL(summary.wishlistMonitoredValue)}
+              tone="warning"
+            />
+            <FinanceCard
+              label="Pré-vendas pagas"
+              value={formatCurrencyBRL(summary.preorderPaidValue)}
+              tone="accent"
+            />
+          </div>
+
           <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-medium text-white">Filtros financeiros</p>
@@ -171,29 +194,6 @@ export function FinancialOverview({
             <p className="mt-3 text-xs text-white/55">
               {filteredItems.length} item(ns) incluído(s) neste resumo.
             </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <FinanceCard
-              label="Investido na coleção"
-              value={formatCurrencyBRL(summary.investedInCollection)}
-              tone="default"
-            />
-            <FinanceCard
-              label="Valor atual da coleção"
-              value={formatCurrencyBRL(summary.currentCollectionValue)}
-              tone="positive"
-            />
-            <FinanceCard
-              label="Wishlist monitorada"
-              value={formatCurrencyBRL(summary.wishlistMonitoredValue)}
-              tone="warning"
-            />
-            <FinanceCard
-              label="Pré-vendas pagas"
-              value={formatCurrencyBRL(summary.preorderPaidValue)}
-              tone="accent"
-            />
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
