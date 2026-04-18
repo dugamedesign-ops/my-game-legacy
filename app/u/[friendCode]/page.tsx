@@ -7,6 +7,72 @@ import {
   fetchPublicCollectionByFriendCode,
   type PublicCollectionEntry,
 } from "@/lib/supabase";
+import { ItemCard } from "@/components/collection/ItemCard";
+import type { Item } from "@/types/collection";
+
+function mapPublicEntryToItem(entry: PublicCollectionEntry): Item {
+  const type = entry.item.type;
+  const normalizedType: Item["type"] =
+    type === "console" || type === "accessory" || type === "game"
+      ? type
+      : "game";
+
+  const ownershipStatus = entry.item.ownershipStatus;
+  const normalizedOwnership: Item["ownershipStatus"] =
+    ownershipStatus === "wishlist" ||
+    ownershipStatus === "preorder" ||
+    ownershipStatus === "collection"
+      ? ownershipStatus
+      : "collection";
+
+  const mediaFormats = (entry.item.mediaFormats ?? []).filter(
+    (media): media is "physical" | "digital" =>
+      media === "physical" || media === "digital",
+  );
+
+  return {
+    id: entry.item.id,
+    userId: String(entry.profile_friend_code),
+    type: normalizedType,
+    platform: entry.item.platform || "Sem plataforma",
+    title: entry.item.title || "Item sem título",
+    subtitle: entry.item.subtitle,
+    ownershipStatus: normalizedOwnership,
+    mediaFormats,
+    gameProgressStatus:
+      entry.item.gameProgressStatus === "backlog" ||
+      entry.item.gameProgressStatus === "playing" ||
+      entry.item.gameProgressStatus === "paused" ||
+      entry.item.gameProgressStatus === "finished" ||
+      entry.item.gameProgressStatus === "platinum"
+        ? entry.item.gameProgressStatus
+        : undefined,
+    purchasePriority:
+      entry.item.purchasePriority === "low" ||
+      entry.item.purchasePriority === "medium" ||
+      entry.item.purchasePriority === "high" ||
+      entry.item.purchasePriority === "maximum"
+        ? entry.item.purchasePriority
+        : undefined,
+    rarityTags: (entry.item.rarityTags ?? []).filter(
+      (rarity): rarity is "normal" | "rare" | "special_edition" | "highlight" | "repro" =>
+        rarity === "normal" ||
+        rarity === "rare" ||
+        rarity === "special_edition" ||
+        rarity === "highlight" ||
+        rarity === "repro",
+    ),
+    franchise: entry.item.franchise,
+    genre: entry.item.genre,
+    imageUrl: entry.item.imageUrl,
+    notes: entry.item.notes,
+    purchaseOrigin: entry.item.purchaseOrigin,
+    purchaseDate: entry.item.purchaseDate,
+    releaseDate: entry.item.releaseDate,
+    createdAt: entry.item.createdAt ?? new Date(0).toISOString(),
+    updatedAt: entry.item.updatedAt ?? new Date(0).toISOString(),
+  };
+}
 
 export default function PublicProfilePage() {
   const params = useParams<{ friendCode: string }>();
@@ -147,41 +213,13 @@ export default function PublicProfilePage() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {group.items.map(({ item }) => (
-                  <article
-                    key={item.id}
-                    className="rounded-2xl border border-white/10 bg-black/20 p-3"
-                  >
-                    <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-black/25">
-                      {item.imageUrl ? (
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.title}
-                          width={600}
-                          height={300}
-                          className="h-36 w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-36 items-center justify-center text-xs text-white/40">
-                          Sem imagem
-                        </div>
-                      )}
-                    </div>
-                    <h3 className="truncate text-sm font-semibold text-white">{item.title}</h3>
-                    {item.subtitle && (
-                      <p className="truncate text-xs text-white/65">{item.subtitle}</p>
-                    )}
-                    <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-white/70">
-                      <span className="rounded-full border border-white/15 px-2 py-0.5">
-                        {item.type}
-                      </span>
-                      {item.ownershipStatus && (
-                        <span className="rounded-full border border-white/15 px-2 py-0.5">
-                          {item.ownershipStatus}
-                        </span>
-                      )}
-                    </div>
-                  </article>
+                {group.items.map((entry) => (
+                  <ItemCard
+                    key={entry.item.id}
+                    item={mapPublicEntryToItem(entry)}
+                    size="medium"
+                    showMediaSeals
+                  />
                 ))}
               </div>
             </div>
