@@ -40,8 +40,9 @@ export function PendingItemsOverview({
 }: PendingItemsOverviewProps) {
   const { session, user } = useAuth();
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [platformFilter, setPlatformFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<"all" | Item["type"]>("all");
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<Item["type"][]>([]);
+  const [selectedOwnership, setSelectedOwnership] = useState<Item["ownershipStatus"][]>([]);
   const [activeEditors, setActiveEditors] = useState<
     Record<string, PendingEditorState | undefined>
   >({});
@@ -52,14 +53,31 @@ export function PendingItemsOverview({
   const filteredPendingInfos = pendingInfos.filter((pending) => {
     const originalItem = items.find((item) => item.id === pending.itemId);
     if (!originalItem) return false;
-    if (platformFilter !== "all" && pending.platform !== platformFilter) {
+    if (
+      selectedPlatforms.length > 0 &&
+      !selectedPlatforms.includes(pending.platform)
+    ) {
       return false;
     }
-    if (typeFilter !== "all" && originalItem.type !== typeFilter) {
+    if (selectedTypes.length > 0 && !selectedTypes.includes(originalItem.type)) {
+      return false;
+    }
+    if (
+      selectedOwnership.length > 0 &&
+      !selectedOwnership.includes(originalItem.ownershipStatus)
+    ) {
       return false;
     }
     return true;
   });
+  const editingItemIds = Object.entries(activeEditors)
+    .filter(([, state]) => state && Object.keys(state.values).length > 0)
+    .map(([itemId]) => itemId);
+  const hasMultipleItemsReadyToSave = editingItemIds.length > 1;
+  const hasActiveFilters =
+    selectedPlatforms.length > 0 ||
+    selectedTypes.length > 0 ||
+    selectedOwnership.length > 0;
 
   function createFieldDraft(item: Item, field: ItemPendingField) {
     if (field === "amountPaid") {
@@ -148,6 +166,80 @@ export function PendingItemsOverview({
     setActiveEditors((prev) => ({ ...prev, [item.id]: undefined }));
   }
 
+  function handleSaveAllEditors() {
+    const itemMap = new Map(items.map((item) => [item.id, item]));
+    const editorsSnapshot = activeEditors;
+
+    for (const [itemId, editor] of Object.entries(editorsSnapshot)) {
+      if (!editor || Object.keys(editor.values).length === 0) continue;
+      const item = itemMap.get(itemId);
+      if (!item) continue;
+
+      const nextItem: Item = { ...item, updatedAt: new Date().toISOString() };
+      for (const [field, draft] of Object.entries(editor.values) as Array<
+        [ItemPendingField, { textValue: string; multiValue: string[] }]
+      >) {
+        if (field === "amountPaid") {
+          const value = Number(draft.textValue.replace(",", "."));
+          if (Number.isFinite(value)) nextItem.amountPaid = value;
+        } else if (field === "currentValue") {
+          const value = Number(draft.textValue.replace(",", "."));
+          if (Number.isFinite(value)) nextItem.currentValue = value;
+        } else if (field === "purchasePriority") {
+          if (
+            draft.textValue === "low" ||
+            draft.textValue === "medium" ||
+            draft.textValue === "high" ||
+            draft.textValue === "maximum"
+          ) {
+            nextItem.purchasePriority = draft.textValue;
+          }
+        } else if (field === "gameProgressStatus") {
+          if (
+            draft.textValue === "backlog" ||
+            draft.textValue === "playing" ||
+            draft.textValue === "paused" ||
+            draft.textValue === "finished" ||
+            draft.textValue === "platinum"
+          ) {
+            nextItem.gameProgressStatus = draft.textValue;
+          }
+        } else if (field === "rarity") {
+          if (draft.textValue) {
+            nextItem.rarityTags = [draft.textValue as NonNullable<Item["rarityTags"]>[number]];
+          }
+        } else if (field === "image") {
+          if (draft.textValue.trim()) nextItem.imageUrl = draft.textValue.trim();
+        } else if (field === "mediaFormats") {
+          if (draft.multiValue.length > 0) {
+            nextItem.mediaFormats = draft.multiValue as NonNullable<Item["mediaFormats"]>;
+          }
+        }
+      }
+      onUpdateItem(nextItem);
+    }
+
+    setActiveEditors((prev) => {
+      const next = { ...prev };
+      for (const itemId of editingItemIds) {
+        next[itemId] = undefined;
+      }
+      return next;
+    });
+  }
+
+  function toggleSelection<T extends string>(
+    current: T[],
+    value: T,
+    setter: (next: T[]) => void,
+  ) {
+    setter(
+      current.includes(value)
+        ? current.filter((entry) => entry !== value)
+        : [...current, value],
+    );
+  }
+
   return (
     <section className="mb-8 rounded-[32px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -186,41 +278,68 @@ export function PendingItemsOverview({
           ) : (
             <>
               <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
-                <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <span className="text-xs uppercase tracking-[0.2em] text-white/45">
-                    Filtros
-                  </span>
-                  <select
-                    value={platformFilter}
-                    onChange={(event) => setPlatformFilter(event.target.value)}
-                    className="rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-xs text-white outline-none"
-                  >
-                    <option value="all">Todas plataformas</option>
-                    {availablePlatforms.map((platform) => (
-                      <option key={platform} value={platform}>
-                        {platform}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={typeFilter}
-                    onChange={(event) =>
-                      setTypeFilter(event.target.value as "all" | Item["type"])
-                    }
-                    className="rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-xs text-white outline-none"
-                  >
-                    <option value="all">Todos tipos</option>
-                    <option value="game">Jogos</option>
-                    <option value="console">Consoles</option>
-                    <option value="accessory">Acessórios</option>
-                  </select>
-                </div>
                 <p className="text-sm font-medium text-white">
                   {filteredPendingInfos.length}{" "}
                   {filteredPendingInfos.length === 1
                     ? "item com pendências"
                     : "itens com pendências"}
                 </p>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-white">Filtros de pendências</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPlatforms([]);
+                      setSelectedTypes([]);
+                      setSelectedOwnership([]);
+                    }}
+                    disabled={!hasActiveFilters}
+                    className="rounded-full border border-white/15 px-3 py-1 text-xs text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Limpar filtros
+                  </button>
+                </div>
+                <div className="mt-3 grid gap-4 lg:grid-cols-3">
+                  <FilterGroup
+                    label="Plataformas"
+                    options={availablePlatforms.map((platform) => ({
+                      value: platform,
+                      label: platform,
+                    }))}
+                    selected={selectedPlatforms}
+                    onToggle={(value) =>
+                      toggleSelection(selectedPlatforms, value, setSelectedPlatforms)
+                    }
+                  />
+                  <FilterGroup
+                    label="Categoria"
+                    options={[
+                      { value: "game", label: "Jogos" },
+                      { value: "console", label: "Consoles" },
+                      { value: "accessory", label: "Acessórios" },
+                    ]}
+                    selected={selectedTypes}
+                    onToggle={(value) =>
+                      toggleSelection(selectedTypes, value as Item["type"], setSelectedTypes)
+                    }
+                  />
+                  <FilterGroup
+                    label="Status"
+                    options={[
+                      { value: "collection", label: "Na coleção" },
+                      { value: "wishlist", label: "Wishlist" },
+                      { value: "preorder", label: "Pré-venda" },
+                    ]}
+                    selected={selectedOwnership}
+                    onToggle={(value) =>
+                      toggleSelection(
+                        selectedOwnership,
+                        value as Item["ownershipStatus"],
+                        setSelectedOwnership,
+                      )
+                    }
+                  />
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -234,9 +353,6 @@ export function PendingItemsOverview({
                 {filteredPendingInfos.map((pending) => {
                   const originalItem = items.find((item) => item.id === pending.itemId);
                   if (!originalItem) return null;
-                  const completedDraftCount = Object.keys(
-                    activeEditors[pending.itemId]?.values ?? {},
-                  ).length;
 
                   return (
                     <div
@@ -302,10 +418,14 @@ export function PendingItemsOverview({
                           {activeEditors[pending.itemId] ? (
                             <button
                               type="button"
-                              onClick={() => handleSaveEditor(originalItem)}
+                              onClick={() =>
+                                hasMultipleItemsReadyToSave
+                                  ? handleSaveAllEditors()
+                                  : handleSaveEditor(originalItem)
+                              }
                               className="rounded-2xl bg-cyan-300 px-4 py-2 text-sm font-semibold text-black transition hover:bg-cyan-200"
                             >
-                              {completedDraftCount > 2 ? "Salvar tudo" : "Salvar"}
+                              {hasMultipleItemsReadyToSave ? "Salvar tudo" : "Salvar"}
                             </button>
                           ) : (
                             <button
@@ -576,6 +696,43 @@ function PendingInlineEditor({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function FilterGroup({
+  label,
+  options,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onToggle: (value: string) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-xs uppercase tracking-[0.18em] text-white/45">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => {
+          const isActive = selected.includes(option.value);
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onToggle(option.value)}
+              className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                isActive
+                  ? "border-cyan-300/70 bg-cyan-400/15 text-cyan-100"
+                  : "border-white/10 bg-black/20 text-white/70 hover:bg-white/10"
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
