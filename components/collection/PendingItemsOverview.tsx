@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { uploadSupabaseImage } from "@/lib/supabase";
 import { Item } from "@/types/collection";
 import {
   type ItemPendingField,
   getItemPendingLabel,
   getPendingItems,
 } from "@/lib/completion-utils";
+import { useAuth } from "@/providers/AuthProvider";
 
 type PendingItemsOverviewProps = {
   items: Item[];
@@ -36,11 +38,28 @@ export function PendingItemsOverview({
   defaultOpen = false,
   hideToggle = false,
 }: PendingItemsOverviewProps) {
+  const { session, user } = useAuth();
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | Item["type"]>("all");
   const [activeEditors, setActiveEditors] = useState<
     Record<string, PendingEditorState | undefined>
   >({});
   const pendingInfos = getPendingItems(items);
+  const availablePlatforms = Array.from(
+    new Set(pendingInfos.map((pending) => pending.platform)),
+  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const filteredPendingInfos = pendingInfos.filter((pending) => {
+    const originalItem = items.find((item) => item.id === pending.itemId);
+    if (!originalItem) return false;
+    if (platformFilter !== "all" && pending.platform !== platformFilter) {
+      return false;
+    }
+    if (typeFilter !== "all" && originalItem.type !== typeFilter) {
+      return false;
+    }
+    return true;
+  });
 
   function createFieldDraft(item: Item, field: ItemPendingField) {
     if (field === "amountPaid") {
@@ -167,18 +186,57 @@ export function PendingItemsOverview({
           ) : (
             <>
               <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <span className="text-xs uppercase tracking-[0.2em] text-white/45">
+                    Filtros
+                  </span>
+                  <select
+                    value={platformFilter}
+                    onChange={(event) => setPlatformFilter(event.target.value)}
+                    className="rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-xs text-white outline-none"
+                  >
+                    <option value="all">Todas plataformas</option>
+                    {availablePlatforms.map((platform) => (
+                      <option key={platform} value={platform}>
+                        {platform}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={typeFilter}
+                    onChange={(event) =>
+                      setTypeFilter(event.target.value as "all" | Item["type"])
+                    }
+                    className="rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-xs text-white outline-none"
+                  >
+                    <option value="all">Todos tipos</option>
+                    <option value="game">Jogos</option>
+                    <option value="console">Consoles</option>
+                    <option value="accessory">Acessórios</option>
+                  </select>
+                </div>
                 <p className="text-sm font-medium text-white">
-                  {pendingInfos.length}{" "}
-                  {pendingInfos.length === 1
+                  {filteredPendingInfos.length}{" "}
+                  {filteredPendingInfos.length === 1
                     ? "item com pendências"
                     : "itens com pendências"}
                 </p>
               </div>
 
               <div className="space-y-3">
-                {pendingInfos.map((pending) => {
+                {filteredPendingInfos.length === 0 && (
+                  <div className="rounded-3xl border border-dashed border-white/15 bg-black/20 p-4">
+                    <p className="text-sm text-white/60">
+                      Nenhuma pendência encontrada com os filtros atuais.
+                    </p>
+                  </div>
+                )}
+                {filteredPendingInfos.map((pending) => {
                   const originalItem = items.find((item) => item.id === pending.itemId);
                   if (!originalItem) return null;
+                  const completedDraftCount = Object.keys(
+                    activeEditors[pending.itemId]?.values ?? {},
+                  ).length;
 
                   return (
                     <div
@@ -227,6 +285,8 @@ export function PendingItemsOverview({
                               <PendingInlineEditor
                                 item={originalItem}
                                 state={activeEditors[pending.itemId]!}
+                                accessToken={session?.access_token}
+                                userId={user?.id}
                                 onChange={(nextState) =>
                                   setActiveEditors((prev) => ({
                                     ...prev,
@@ -245,7 +305,7 @@ export function PendingItemsOverview({
                               onClick={() => handleSaveEditor(originalItem)}
                               className="rounded-2xl bg-cyan-300 px-4 py-2 text-sm font-semibold text-black transition hover:bg-cyan-200"
                             >
-                              Salvar
+                              {completedDraftCount > 2 ? "Salvar tudo" : "Salvar"}
                             </button>
                           ) : (
                             <button
@@ -273,20 +333,22 @@ export function PendingItemsOverview({
 function PendingInlineEditor({
   item,
   state,
+  accessToken,
+  userId,
   onChange,
 }: {
   item: Item;
   state: PendingEditorState;
+  accessToken?: string;
+  userId?: string;
   onChange: (nextState: PendingEditorState) => void;
 }) {
   const activeField = state.activeField;
   const draft = state.values[activeField] ?? { textValue: "", multiValue: [] };
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  if (
-    activeField === "amountPaid" ||
-    activeField === "currentValue" ||
-    activeField === "image"
-  ) {
+  if (activeField === "amountPaid" || activeField === "currentValue") {
     return (
       <input
         value={draft.textValue}
@@ -299,13 +361,77 @@ function PendingInlineEditor({
             },
           })
         }
-        placeholder={
-          activeField === "image"
-            ? "https://..."
-            : "Digite o valor (ex: 299.90)"
-        }
+        placeholder="Digite o valor (ex: 299.90)"
         className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-sm text-white outline-none"
       />
+    );
+  }
+
+  if (activeField === "image") {
+    return (
+      <div className="space-y-2">
+        <input
+          value={draft.textValue}
+          onChange={(event) =>
+            onChange({
+              ...state,
+              values: {
+                ...state.values,
+                [activeField]: { ...draft, textValue: event.target.value },
+              },
+            })
+          }
+          placeholder="https://..."
+          className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-sm text-white outline-none"
+        />
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/80 transition hover:bg-white/10">
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            disabled={!accessToken || !userId || isUploading}
+            onChange={async (event) => {
+              const file = event.target.files?.[0];
+              event.currentTarget.value = "";
+              if (!file) return;
+              if (!accessToken || !userId) {
+                setUploadError("Faça login para enviar imagem.");
+                return;
+              }
+
+              setUploadError(null);
+              setIsUploading(true);
+              try {
+                const { publicUrl } = await uploadSupabaseImage({
+                  file,
+                  accessToken,
+                  userId,
+                  itemId: item.id,
+                });
+                onChange({
+                  ...state,
+                  values: {
+                    ...state.values,
+                    [activeField]: { ...draft, textValue: publicUrl },
+                  },
+                });
+              } catch (error) {
+                setUploadError(
+                  error instanceof Error
+                    ? error.message
+                    : "Não foi possível enviar a imagem.",
+                );
+              } finally {
+                setIsUploading(false);
+              }
+            }}
+          />
+          {isUploading ? "Enviando imagem..." : "Enviar do computador"}
+        </label>
+        {uploadError && (
+          <p className="text-xs text-rose-200/90">{uploadError}</p>
+        )}
+      </div>
     );
   }
 
