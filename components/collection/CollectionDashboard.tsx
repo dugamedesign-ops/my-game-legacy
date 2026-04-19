@@ -16,7 +16,6 @@ import { FinancialOverview } from "./FinancialOverview";
 import { PendingItemsOverview } from "./PendingItemsOverview";
 import { FiltersBar } from "./FiltersBar";
 import { applyFilters, type Filters } from "@/lib/filter-utils";
-import { AuthPanel } from "@/components/auth/AuthPanel";
 import { useAuth } from "@/providers/AuthProvider";
 import { ItemCard } from "./ItemCard";
 
@@ -534,12 +533,11 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     />
                   </div>
                 </div>
-                <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
-                  <AuthPanel />
-                  {isSyncing && (
-                    <p className="mt-2 text-xs text-white/50">Sincronizando coleção online...</p>
-                  )}
-                </div>
+                {isSyncing && (
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <p className="text-xs text-white/50">Sincronizando coleção online...</p>
+                  </div>
+                )}
                 <div className="mt-4 space-y-2">
                   <div className="grid grid-cols-3 gap-2">
                     <button type="button" onClick={() => handleOpenQuickAdd("game")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-1.5 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
