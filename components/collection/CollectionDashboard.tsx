@@ -123,6 +123,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   );
   const [draggedPlatform, setDraggedPlatform] = useState<string | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [financialFocusPlatforms, setFinancialFocusPlatforms] = useState<string[]>([]);
+  const [financialFocusRarities, setFinancialFocusRarities] = useState<
+    NonNullable<Item["rarityTags"]>[number][]
+  >([]);
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
   const collectionSectionRef = useRef<HTMLElement | null>(null);
@@ -396,8 +400,26 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       return matchesSearch;
     });
 
-    return applyFilters(base, filters);
-  }, [collectionItems, search, filters]);
+    const byFilters = applyFilters(base, filters);
+
+    return byFilters.filter((item) => {
+      if (
+        financialFocusPlatforms.length > 0 &&
+        !financialFocusPlatforms.includes(item.platform)
+      ) {
+        return false;
+      }
+
+      if (
+        financialFocusRarities.length > 0 &&
+        !(item.rarityTags ?? []).some((rarity) => financialFocusRarities.includes(rarity))
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [collectionItems, financialFocusPlatforms, financialFocusRarities, search, filters]);
 
   const groupedPlatformsRaw = useMemo(
     () => groupItemsByPlatform(filteredItems),
@@ -527,6 +549,33 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   function handleResetAlphabeticalPlatformOrder() {
     setPlatformOrderMode("alphabetical");
     setCustomPlatformOrder(allActivePlatforms);
+  }
+
+  function handleViewFinancialInCollection(next: {
+    platforms: string[];
+    types: Item["type"][];
+    ownership: Item["ownershipStatus"][];
+    priorities: NonNullable<Item["purchasePriority"]>[];
+    rarities: NonNullable<Item["rarityTags"]>[number][];
+  }) {
+    setFilters((prev) => ({
+      ...prev,
+      types: next.types,
+      ownership: next.ownership,
+      priorities: next.priorities,
+      gameStatus: [],
+      media: [],
+      missing: [],
+    }));
+    setFinancialFocusPlatforms(next.platforms);
+    setFinancialFocusRarities(next.rarities);
+    setSearch(next.platforms.length === 1 ? next.platforms[0] : "");
+    setIsFinancialOpen(false);
+
+    setTimeout(() => {
+      collectionSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollBy({ top: -72, behavior: "smooth" });
+    }, 80);
   }
 
   const headerFilters: {
@@ -1082,7 +1131,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             className="fixed bottom-6 right-6 rounded-full border border-white/10 bg-white text-black shadow-2xl transition hover:scale-[1.03] hover:bg-white/90"
           >
             <span className="block px-5 py-4 text-sm font-semibold">
-              ＋ Adicionar item <span className="ml-1 text-[11px] font-normal text-black/70">(A)</span>
+              ＋ Adicionar <span className="ml-1 text-[11px] font-normal text-black/70">(A)</span>
             </span>
           </button>
 
@@ -1154,7 +1203,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
       {isFinancialOpen && (
         <OverlayPanel title="Financeiro" onClose={() => setIsFinancialOpen(false)}>
-          <FinancialOverview items={collectionItems} defaultOpen hideToggle />
+          <FinancialOverview
+            items={collectionItems}
+            defaultOpen
+            hideToggle
+            onViewInCollection={handleViewFinancialInCollection}
+          />
         </OverlayPanel>
       )}
 

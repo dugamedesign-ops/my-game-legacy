@@ -8,12 +8,20 @@ type FinancialOverviewProps = {
   items: Item[];
   defaultOpen?: boolean;
   hideToggle?: boolean;
+  onViewInCollection?: (filters: {
+    platforms: string[];
+    types: Item["type"][];
+    ownership: Item["ownershipStatus"][];
+    priorities: NonNullable<Item["purchasePriority"]>[];
+    rarities: NonNullable<Item["rarityTags"]>[number][];
+  }) => void;
 };
 
 export function FinancialOverview({
   items,
   defaultOpen = false,
   hideToggle = false,
+  onViewInCollection,
 }: FinancialOverviewProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
@@ -273,6 +281,23 @@ export function FinancialOverview({
             <p className="mt-3 text-xs text-white/55">
               {filteredItems.length} item(ns) incluído(s) neste resumo.
             </p>
+            {hasActiveFilters && filteredItems.length > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  onViewInCollection?.({
+                    platforms: selectedPlatforms,
+                    types: selectedTypes,
+                    ownership: selectedOwnership,
+                    priorities: selectedPriorities,
+                    rarities: selectedRarities,
+                  })
+                }
+                className="mt-3 rounded-full border border-cyan-300/40 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-100 transition hover:bg-cyan-500/20"
+              >
+                Ver na coleção
+              </button>
+            )}
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-black/20 p-4">

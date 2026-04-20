@@ -357,25 +357,45 @@ export function AddItemModal({
       if (!isOpen) return;
 
       if (step === 1 && !isTypingTarget(event.target)) {
+        const typeOrder: Array<FormState["type"]> = ["console", "accessory", "game"];
+        const currentIndex = typeOrder.findIndex((type) => type === form.type);
+
         if (event.key === "1") {
-          event.preventDefault();
-          event.stopPropagation();
-          updateField("type", "game");
-          setStep(2);
-          return;
-        }
-        if (event.key === "2") {
           event.preventDefault();
           event.stopPropagation();
           updateField("type", "console");
           setStep(2);
           return;
         }
-        if (event.key === "3") {
+        if (event.key === "2") {
           event.preventDefault();
           event.stopPropagation();
           updateField("type", "accessory");
           setStep(2);
+          return;
+        }
+        if (event.key === "3") {
+          event.preventDefault();
+          event.stopPropagation();
+          updateField("type", "game");
+          setStep(2);
+          return;
+        }
+        if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+          event.preventDefault();
+          event.stopPropagation();
+          const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % typeOrder.length;
+          updateField("type", typeOrder[nextIndex]);
+          return;
+        }
+        if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+          event.preventDefault();
+          event.stopPropagation();
+          const prevIndex =
+            currentIndex === -1
+              ? typeOrder.length - 1
+              : (currentIndex - 1 + typeOrder.length) % typeOrder.length;
+          updateField("type", typeOrder[prevIndex]);
           return;
         }
       }
@@ -713,19 +733,19 @@ export function AddItemModal({
 
                 <div className="grid gap-3 sm:grid-cols-3">
                   <TypeCard
-                    title="1. Jogo"
-                    active={form.type === "game"}
-                    onClick={() => updateField("type", "game")}
-                  />
-                  <TypeCard
-                    title="2. Console"
+                    title="Console (1)"
                     active={form.type === "console"}
                     onClick={() => updateField("type", "console")}
                   />
                   <TypeCard
-                    title="3. Acessório"
+                    title="Acessório (2)"
                     active={form.type === "accessory"}
                     onClick={() => updateField("type", "accessory")}
+                  />
+                  <TypeCard
+                    title="Jogo (3)"
+                    active={form.type === "game"}
+                    onClick={() => updateField("type", "game")}
                   />
                 </div>
               </div>
