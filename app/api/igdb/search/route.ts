@@ -68,8 +68,8 @@ function buildSearchBody(query: string) {
       franchises.name,
       platforms.name;
     search "${safeQuery}";
-    where version_parent = null;
-    limit 8;
+    where category = (0,8,9,10,11);
+    limit 20;
   `;
 }
 
