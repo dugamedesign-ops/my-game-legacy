@@ -478,19 +478,22 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
   function applyQuickFilter(next: HeaderFilterKey) {
     setActiveQuickFilter(next);
-    setFilters((prev) => ({
-      ...prev,
+    setFilters({
+      types: [],
       ownership:
         next === "collection" || next === "wishlist" || next === "preorder"
           ? [next]
           : [],
+      priorities: [],
       gameStatus:
         next === "playing"
           ? ["playing"]
           : next === "finished"
             ? ["finished", "platinum"]
             : [],
-    }));
+      media: [],
+      missing: [],
+    });
     setFinancialFocusFilters(createEmptyFinancialCollectionViewFilters());
     setSearch("");
 
