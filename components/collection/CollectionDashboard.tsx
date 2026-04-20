@@ -37,6 +37,28 @@ type HeaderFilterKey =
   | "playing"
   | "finished";
 
+type PlatformOrderMode = "alphabetical" | "custom";
+
+function getInitialPlatformOrderMode(): PlatformOrderMode {
+  if (typeof window === "undefined") return "alphabetical";
+  const saved = window.localStorage.getItem(
+    "my-game-legacy-platform-order-mode",
+  );
+  return saved === "custom" ? "custom" : "alphabetical";
+}
+
+function getInitialCustomPlatformOrder() {
+  if (typeof window === "undefined") return [] as string[];
+  const raw = window.localStorage.getItem("my-game-legacy-platform-order");
+  if (!raw) return [] as string[];
+  try {
+    const parsed = JSON.parse(raw) as string[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const { user: authUser, signOut, publicProfile, setProfileVisibility } = useAuth();
   const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
@@ -94,6 +116,11 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [platformDefaultOpen, setPlatformDefaultOpen] = useState(true);
   const [platformSectionSeed, setPlatformSectionSeed] = useState(0);
+  const [platformOrderMode, setPlatformOrderMode] =
+    useState<PlatformOrderMode>(getInitialPlatformOrderMode);
+  const [customPlatformOrder, setCustomPlatformOrder] = useState<string[]>(
+    getInitialCustomPlatformOrder,
+  );
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
   const collectionSectionRef = useRef<HTMLElement | null>(null);
@@ -334,6 +361,16 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     window.open(publicLink, "_blank", "noopener,noreferrer");
   }
 
+  const allActivePlatforms = useMemo(() => {
+    return Array.from(
+      new Set(
+        collectionItems
+          .filter((item) => !item.isRemoved)
+          .map((item) => item.platform),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  }, [collectionItems]);
+
   const filteredItems = useMemo(() => {
     const base = collectionItems.filter((item) => {
       const normalizedSearch = search.trim().toLowerCase();
@@ -350,10 +387,47 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     return applyFilters(base, filters);
   }, [collectionItems, search, filters]);
 
-  const groupedPlatforms = useMemo(
+  const groupedPlatformsRaw = useMemo(
     () => groupItemsByPlatform(filteredItems),
     [filteredItems],
   );
+
+  const effectiveCustomPlatformOrder = useMemo(() => {
+    const normalized = customPlatformOrder.filter((platform) =>
+      allActivePlatforms.includes(platform),
+    );
+    const missing = allActivePlatforms.filter(
+      (platform) => !normalized.includes(platform),
+    );
+    return [...normalized, ...missing];
+  }, [allActivePlatforms, customPlatformOrder]);
+
+  const groupedPlatforms = useMemo(() => {
+    const sortedAlphabetically = [...groupedPlatformsRaw].sort((a, b) =>
+      a.platform.localeCompare(b.platform, "pt-BR", { sensitivity: "base" }),
+    );
+
+    if (platformOrderMode !== "custom") {
+      return sortedAlphabetically;
+    }
+
+    const orderIndex = new Map(
+      effectiveCustomPlatformOrder.map((platform, index) => [platform, index]),
+    );
+
+    return [...groupedPlatformsRaw].sort((a, b) => {
+      const aIndex = orderIndex.get(a.platform);
+      const bIndex = orderIndex.get(b.platform);
+
+      if (aIndex !== undefined && bIndex !== undefined) {
+        return aIndex - bIndex;
+      }
+      if (aIndex !== undefined) return -1;
+      if (bIndex !== undefined) return 1;
+
+      return a.platform.localeCompare(b.platform, "pt-BR", { sensitivity: "base" });
+    });
+  }, [effectiveCustomPlatformOrder, groupedPlatformsRaw, platformOrderMode]);
 
   const summary = useMemo(
     () => getCollectionSummary(collectionItems),
@@ -368,6 +442,15 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       })
       .slice(0, 10);
   }, [collectionItems]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("my-game-legacy-platform-order-mode", platformOrderMode);
+    window.localStorage.setItem(
+      "my-game-legacy-platform-order",
+      JSON.stringify(effectiveCustomPlatformOrder),
+    );
+  }, [effectiveCustomPlatformOrder, platformOrderMode]);
 
   function applyQuickFilter(next: HeaderFilterKey) {
     setActiveQuickFilter(next);
@@ -402,6 +485,29 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   function handleCloseAllPlatforms() {
     setPlatformDefaultOpen(false);
     setPlatformSectionSeed((prev) => prev + 1);
+  }
+
+  function handleMovePlatform(platform: string, direction: "up" | "down") {
+    setPlatformOrderMode("custom");
+    setCustomPlatformOrder((prev) => {
+      const working =
+        prev.length > 0 ? [...prev] : [...effectiveCustomPlatformOrder];
+      const index = working.indexOf(platform);
+      if (index === -1) return working;
+
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= working.length) return working;
+
+      const next = [...working];
+      const [moved] = next.splice(index, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  }
+
+  function handleResetAlphabeticalPlatformOrder() {
+    setPlatformOrderMode("alphabetical");
+    setCustomPlatformOrder(allActivePlatforms);
   }
 
   const headerFilters: {
@@ -850,6 +956,69 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             <EmptyCollectionState onAddClick={handleOpenDefaultAdd} />
           ) : groupedPlatforms.length > 0 ? (
             <section ref={collectionSectionRef} className="space-y-6">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/45">
+                    Ordem das plataformas
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPlatformOrderMode("custom")}
+                      className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                        platformOrderMode === "custom"
+                          ? "border-cyan-300/70 bg-cyan-500/15 text-cyan-100"
+                          : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10"
+                      }`}
+                    >
+                      Minha ordem
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetAlphabeticalPlatformOrder}
+                      className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                        platformOrderMode === "alphabetical"
+                          ? "border-cyan-300/70 bg-cyan-500/15 text-cyan-100"
+                          : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10"
+                      }`}
+                    >
+                      Ordem alfabética
+                    </button>
+                  </div>
+                </div>
+
+                {platformOrderMode === "custom" && groupedPlatforms.length > 1 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {groupedPlatforms.map((group, index) => (
+                      <div
+                        key={`order-chip-${group.platform}`}
+                        className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/25 px-2 py-1 text-xs text-white/80"
+                      >
+                        <span>{group.platform}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleMovePlatform(group.platform, "up")}
+                          disabled={index === 0}
+                          className="rounded border border-white/10 px-1 text-[10px] disabled:opacity-35"
+                          aria-label={`Mover ${group.platform} para cima`}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMovePlatform(group.platform, "down")}
+                          disabled={index === groupedPlatforms.length - 1}
+                          className="rounded border border-white/10 px-1 text-[10px] disabled:opacity-35"
+                          aria-label={`Mover ${group.platform} para baixo`}
+                        >
+                          ↓
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <button
                   type="button"
