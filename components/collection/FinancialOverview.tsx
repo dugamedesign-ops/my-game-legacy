@@ -19,10 +19,31 @@ export function FinancialOverview({
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<Item["type"][]>([]);
   const [selectedOwnership, setSelectedOwnership] = useState<Item["ownershipStatus"][]>([]);
+  const [selectedPriorities, setSelectedPriorities] = useState<
+    NonNullable<Item["purchasePriority"]>[]
+  >([]);
+  const [selectedRarities, setSelectedRarities] = useState<
+    NonNullable<Item["rarityTags"]>[number][]
+  >([]);
 
   const platformOptions = Array.from(
     new Set(items.filter((item) => !item.isRemoved).map((item) => item.platform).filter(Boolean)),
   ).sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  const priorityOptions = Array.from(
+    new Set(
+      items
+        .filter((item) => !item.isRemoved)
+        .map((item) => item.purchasePriority)
+        .filter(Boolean) as NonNullable<Item["purchasePriority"]>[],
+    ),
+  );
+  const rarityOptions = Array.from(
+    new Set(
+      items
+        .filter((item) => !item.isRemoved)
+        .flatMap((item) => item.rarityTags ?? []),
+    ),
+  );
 
   const filteredItems = items.filter((item) => {
     if (item.isRemoved) return false;
@@ -41,6 +62,18 @@ export function FinancialOverview({
     if (
       selectedOwnership.length > 0 &&
       !selectedOwnership.includes(item.ownershipStatus)
+    ) {
+      return false;
+    }
+    if (
+      selectedPriorities.length > 0 &&
+      (!item.purchasePriority || !selectedPriorities.includes(item.purchasePriority))
+    ) {
+      return false;
+    }
+    if (
+      selectedRarities.length > 0 &&
+      !(item.rarityTags ?? []).some((rarity) => selectedRarities.includes(rarity))
     ) {
       return false;
     }
@@ -67,7 +100,9 @@ export function FinancialOverview({
   const hasActiveFilters =
     selectedPlatforms.length > 0 ||
     selectedTypes.length > 0 ||
-    selectedOwnership.length > 0;
+    selectedOwnership.length > 0 ||
+    selectedPriorities.length > 0 ||
+    selectedRarities.length > 0;
 
   function toggleSelection<T extends string>(
     current: T[],
@@ -142,6 +177,8 @@ export function FinancialOverview({
                   setSelectedPlatforms([]);
                   setSelectedTypes([]);
                   setSelectedOwnership([]);
+                  setSelectedPriorities([]);
+                  setSelectedRarities([]);
                 }}
                 disabled={!hasActiveFilters}
                 className="rounded-full border border-white/15 px-3 py-1 text-xs text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
@@ -150,7 +187,7 @@ export function FinancialOverview({
               </button>
             </div>
 
-            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+            <div className="mt-4 grid gap-4 lg:grid-cols-3 2xl:grid-cols-5">
               <FilterGroup
                 label="Plataformas"
                 options={platformOptions.map((platform) => ({
@@ -187,6 +224,40 @@ export function FinancialOverview({
                     selectedOwnership,
                     value as Item["ownershipStatus"],
                     setSelectedOwnership,
+                  )
+                }
+              />
+              <FilterGroup
+                label="Prioridade"
+                options={priorityOptions.map((priority) => ({
+                  value: priority,
+                  label:
+                    priority === "low"
+                      ? "Baixa"
+                      : priority === "medium"
+                        ? "Média"
+                        : priority === "high"
+                          ? "Alta"
+                          : "Máxima",
+                }))}
+                selected={selectedPriorities}
+                onToggle={(value) =>
+                  toggleSelection(
+                    selectedPriorities,
+                    value as NonNullable<Item["purchasePriority"]>,
+                    setSelectedPriorities,
+                  )
+                }
+              />
+              <FilterGroup
+                label="Raridade"
+                options={rarityOptions.map((rarity) => ({ value: rarity, label: rarity }))}
+                selected={selectedRarities}
+                onToggle={(value) =>
+                  toggleSelection(
+                    selectedRarities,
+                    value as NonNullable<Item["rarityTags"]>[number],
+                    setSelectedRarities,
                   )
                 }
               />

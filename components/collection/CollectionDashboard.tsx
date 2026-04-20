@@ -122,6 +122,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     getInitialCustomPlatformOrder,
   );
   const [draggedPlatform, setDraggedPlatform] = useState<string | null>(null);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
   const collectionSectionRef = useRef<HTMLElement | null>(null);
@@ -184,6 +185,16 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       window.removeEventListener("scroll", handleCloseContextMenu);
       window.removeEventListener("resize", handleCloseContextMenu);
     };
+  }, []);
+
+  useEffect(() => {
+    function handleScroll() {
+      setShowBackToTop(window.scrollY > 900);
+    }
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const isAnyModalOpen = isAddModalOpen || !!selectedItem;
@@ -1065,7 +1076,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             </div>
           </div>
 
-              <button
+          <button
             type="button"
             onClick={handleOpenDefaultAdd}
             className="fixed bottom-6 right-6 rounded-full border border-white/10 bg-white text-black shadow-2xl transition hover:scale-[1.03] hover:bg-white/90"
@@ -1074,6 +1085,17 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               ＋ Adicionar item <span className="ml-1 text-[11px] font-normal text-black/70">(A)</span>
             </span>
           </button>
+
+          {showBackToTop && (
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="fixed bottom-24 right-6 rounded-full border border-white/15 bg-black/60 px-3 py-2 text-xs font-medium text-white/80 shadow-xl backdrop-blur transition hover:bg-black/75 hover:text-white"
+              aria-label="Voltar ao topo"
+            >
+              ↑ Topo
+            </button>
+          )}
         </div>
       </div>
 

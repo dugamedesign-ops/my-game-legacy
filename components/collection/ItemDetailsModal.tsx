@@ -628,8 +628,8 @@ export function ItemDetailsModal({
           Fechar
         </button>
 
-        <div className="grid max-h-[90vh] grid-cols-1 overflow-y-auto lg:grid-cols-[360px_1fr]">
-          <div className="border-b border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-black lg:border-b-0 lg:border-r">
+        <div className="grid max-h-[90vh] grid-cols-1 overflow-y-auto lg:grid-cols-[1fr_360px]">
+          <div className="border-b border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-black lg:order-2 lg:sticky lg:top-0 lg:self-start lg:border-b-0 lg:border-l">
             <div className="aspect-[3/4] w-full">
               {imageUrlInput ? (
                 <img
@@ -683,7 +683,7 @@ export function ItemDetailsModal({
             </div>
           </div>
 
-          <div className="p-6 sm:p-8">
+          <div className="lg:order-1 p-6 sm:p-8">
             <div className="space-y-6">
               <div>
                 <p className="text-sm uppercase tracking-[0.28em] text-white/40">

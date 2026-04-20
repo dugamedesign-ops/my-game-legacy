@@ -44,6 +44,16 @@ function hasMedia(item: Item, media: "physical" | "digital") {
   return !!item.mediaFormats?.includes(media);
 }
 
+function getGameStatusSeal(item: Item) {
+  if (item.type !== "game") return null;
+  if (item.gameProgressStatus === "backlog") return { icon: "📚", label: "Backlog" };
+  if (item.gameProgressStatus === "playing") return { icon: "🎮", label: "Jogando" };
+  if (item.gameProgressStatus === "paused") return { icon: "⏸️", label: "Pausado" };
+  if (item.gameProgressStatus === "finished") return { icon: "✅", label: "Finalizado" };
+  if (item.gameProgressStatus === "platinum") return { icon: "🏆", label: "Platina" };
+  return null;
+}
+
 function MediaSeal({ icon, label }: { icon: string; label: string }) {
   return (
     <span
@@ -66,6 +76,7 @@ export function ItemCard({
 }: ItemCardProps) {
   const isSmall = size === "small";
   const cornerSeal = getCornerSeal(item);
+  const gameStatusSeal = getGameStatusSeal(item);
 
   const showPhysicalSeal = showMediaSeals && hasMedia(item, "physical");
   const showDigitalSeal = showMediaSeals && hasMedia(item, "digital");
@@ -117,6 +128,9 @@ export function ItemCard({
                 {showPhysicalSeal && <MediaSeal icon="💿" label="Mídia física" />}
                 {showDigitalSeal && <MediaSeal icon="☁️" label="Mídia digital" />}
               </>
+            )}
+            {gameStatusSeal && (
+              <MediaSeal icon={gameStatusSeal.icon} label={gameStatusSeal.label} />
             )}
             {cornerSeal && (
               <span

@@ -1134,7 +1134,10 @@ export function AddItemModal({
                   disabled={!getIsFormValid()}
                   className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Salvar item
+                  Salvar item{" "}
+                  <span className="ml-1 text-[11px] font-normal text-black/70">
+                    (Ctrl/⌘ + Enter)
+                  </span>
                 </button>
               </div>
               </>
