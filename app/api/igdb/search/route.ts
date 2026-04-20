@@ -68,8 +68,24 @@ function buildSearchBody(query: string) {
       franchises.name,
       platforms.name;
     search "${safeQuery}";
-    where category = (0,8,9,10,11);
-    limit 20;
+    limit 25;
+  `;
+}
+
+function buildPartialNameSearchBody(query: string) {
+  const safeQuery = escapeIgdbString(query);
+
+  return `
+    fields
+      name,
+      first_release_date,
+      cover.image_id,
+      genres.name,
+      collections.name,
+      franchises.name,
+      platforms.name;
+    where name ~ *"${safeQuery}"*;
+    limit 25;
   `;
 }
 
@@ -110,31 +126,41 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
+    const assuredClientId = clientId;
 
     const accessToken = await getTwitchAccessToken();
 
-    const response = await fetch(IGDB_GAMES_URL, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Client-ID": clientId,
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: buildSearchBody(query),
-      cache: "no-store",
-    });
+    async function fetchGames(body: string) {
+      const response = await fetch(IGDB_GAMES_URL, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Client-ID": assuredClientId,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body,
+        cache: "no-store",
+      });
 
-    if (!response.ok) {
-      const text = await response.text();
-      return NextResponse.json(
-        { error: `Erro IGDB: ${response.status} - ${text}` },
-        { status: 500 },
-      );
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Erro IGDB: ${response.status} - ${text}`);
+      }
+
+      return (await response.json()) as IgdbGame[];
     }
 
-    const games = (await response.json()) as IgdbGame[];
+    const [searchGames, partialNameGames] = await Promise.all([
+      fetchGames(buildSearchBody(query)),
+      fetchGames(buildPartialNameSearchBody(query)),
+    ]);
 
-    const results = games.map((game) => ({
+    const mergedGames = new Map<number, IgdbGame>();
+    for (const game of [...searchGames, ...partialNameGames]) {
+      mergedGames.set(game.id, game);
+    }
+
+    const results = Array.from(mergedGames.values()).slice(0, 25).map((game) => ({
       id: game.id,
       name: game.name ?? "",
       coverUrl: buildCoverUrl(game.cover?.image_id),
