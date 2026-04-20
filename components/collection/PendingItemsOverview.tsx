@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { uploadSupabaseImage } from "@/lib/supabase";
 import { Item } from "@/types/collection";
 import {
@@ -467,10 +467,23 @@ function PendingInlineEditor({
   const draft = state.values[activeField] ?? { textValue: "", multiValue: [] };
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const textInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (
+      activeField === "amountPaid" ||
+      activeField === "currentValue" ||
+      activeField === "image"
+    ) {
+      textInputRef.current?.focus();
+      textInputRef.current?.select();
+    }
+  }, [activeField]);
 
   if (activeField === "amountPaid" || activeField === "currentValue") {
     return (
       <input
+        ref={textInputRef}
         value={draft.textValue}
         onChange={(event) =>
           onChange({
@@ -491,6 +504,7 @@ function PendingInlineEditor({
     return (
       <div className="space-y-2">
         <input
+          ref={textInputRef}
           value={draft.textValue}
           onChange={(event) =>
             onChange({
