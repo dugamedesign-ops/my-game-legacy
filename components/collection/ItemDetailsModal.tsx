@@ -92,24 +92,6 @@ function formatCurrency(value?: number) {
   }).format(value);
 }
 
-function formatPurchaseDate(
-  purchaseDate?: Item["purchaseDate"],
-): string | null {
-  if (!purchaseDate?.year) return null;
-
-  if (purchaseDate.day && purchaseDate.month) {
-    return `${String(purchaseDate.day).padStart(2, "0")}/${String(
-      purchaseDate.month,
-    ).padStart(2, "0")}/${purchaseDate.year}`;
-  }
-
-  if (purchaseDate.month) {
-    return `${String(purchaseDate.month).padStart(2, "0")}/${purchaseDate.year}`;
-  }
-
-  return `${purchaseDate.year}`;
-}
-
 function formatReleaseDate(releaseDate?: string): string | null {
   if (!releaseDate) return null;
   const date = new Date(releaseDate);
@@ -199,6 +181,7 @@ export function ItemDetailsModal({
   const [ratingInput, setRatingInput] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const imagePanelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!item || !isOpen) return;
@@ -303,6 +286,23 @@ export function ItemDetailsModal({
     return () => window.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose, handleSaveAll]);
 
+  useEffect(() => {
+    if (!isImageActionsOpen) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        imagePanelRef.current &&
+        event.target instanceof Node &&
+        !imagePanelRef.current.contains(event.target)
+      ) {
+        setIsImageActionsOpen(false);
+      }
+    }
+
+    window.addEventListener("mousedown", handleClickOutside);
+    return () => window.removeEventListener("mousedown", handleClickOutside);
+  }, [isImageActionsOpen]);
+
   if (!isOpen || !item) return null;
 
   const isGame = item.type === "game";
@@ -310,14 +310,6 @@ export function ItemDetailsModal({
   const hasPhysicalSelected = mediaFormatsInput?.includes("physical") ?? false;
   const hasDigitalSelected = mediaFormatsInput?.includes("digital") ?? false;
   const hasBothMediaSelected = hasPhysicalSelected && hasDigitalSelected;
-  const gameProgressOptions: CustomSelectOption[] = [
-    { value: "", label: "Não definido" },
-    { value: "backlog", label: "Backlog" },
-    { value: "playing", label: "Jogando" },
-    { value: "paused", label: "Pausado" },
-    { value: "finished", label: "Terminado" },
-    { value: "platinum", label: "Platinado" },
-  ];
   const purchaseOriginSelectOptions: CustomSelectOption[] = [
     { value: "", label: "Em branco" },
     ...purchaseOriginOptions.map((origin) => ({ value: origin, label: origin })),
@@ -350,15 +342,6 @@ export function ItemDetailsModal({
     purchasePriorityInput || undefined,
   );
   const previewReleaseDateLabel = formatReleaseDate(item.releaseDate);
-  const previewPurchaseDateLabel = formatPurchaseDate(
-    purchaseYearInput || purchaseMonthInput || purchaseDayInput
-      ? {
-          year: purchaseYearInput ? Number(purchaseYearInput) : undefined,
-          month: purchaseMonthInput ? Number(purchaseMonthInput) : undefined,
-          day: purchaseDayInput ? Number(purchaseDayInput) : undefined,
-        }
-      : undefined,
-  );
   const purchaseYearNumber = purchaseYearInput ? Number(purchaseYearInput) : undefined;
   const releaseDateObj = item.releaseDate ? new Date(item.releaseDate) : null;
   const releaseYear = releaseDateObj && !Number.isNaN(releaseDateObj.getTime())
@@ -639,11 +622,14 @@ export function ItemDetailsModal({
           onClick={onClose}
           className="absolute right-4 top-4 z-10 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-sm text-white/80 transition hover:bg-white/15 hover:text-white"
         >
-          Fechar
+          X
         </button>
 
         <div className="grid max-h-[90vh] grid-cols-1 overflow-y-auto lg:grid-cols-[360px_1fr]">
-          <div className="border-b border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-black lg:sticky lg:top-0 lg:self-start lg:border-b-0 lg:border-r">
+          <div
+            ref={imagePanelRef}
+            className="border-b border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-black lg:sticky lg:top-0 lg:self-start lg:border-b-0 lg:border-r"
+          >
             <div
               className="relative aspect-[3/4] w-full cursor-pointer"
               onClick={() => setIsImageActionsOpen((prev) => !prev)}
@@ -671,11 +657,19 @@ export function ItemDetailsModal({
                   </div>
                 </div>
               )}
-              {isImageActionsOpen && (
-                <div
-                  className="absolute inset-0 flex items-start justify-center gap-2 bg-black/20 p-3 backdrop-blur-[2px]"
-                  onClick={(event) => event.stopPropagation()}
-                >
+            </div>
+            <div className="space-y-3 border-t border-white/10 px-3 py-3">
+              <div
+                className={`rounded-2xl border p-2 transition ${
+                  isImageActionsOpen
+                    ? "border-cyan-300/50 bg-cyan-500/15"
+                    : "border-white/15 bg-black/25"
+                }`}
+              >
+                <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-white/60">
+                  Ações da imagem
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
                   <IconActionButton
                     icon="✏️"
                     label="Editar imagem"
@@ -701,9 +695,7 @@ export function ItemDetailsModal({
                     />
                   )}
                 </div>
-              )}
-            </div>
-            <div className="space-y-3 border-t border-white/10 px-3 py-3">
+              </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-white/45">Nota</p>
                 <div className="mt-1 flex items-center gap-1">
@@ -737,6 +729,14 @@ export function ItemDetailsModal({
                 {previewReleaseDateLabel && (
                   <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
                     📅 {previewReleaseDateLabel}
+                  </span>
+                )}
+                <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
+                  🕹 {item.platform}
+                </span>
+                {!!item.franchise && (
+                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
+                    🧩 {item.franchise}
                   </span>
                 )}
               </div>
@@ -871,15 +871,9 @@ export function ItemDetailsModal({
                       <span className="mb-2 block text-sm text-white/70">
                         Status do jogo
                       </span>
-                      <CustomSelect
+                      <GameStatusChips
                         value={gameProgressStatusInput}
-                        onChange={(value) =>
-                          setGameProgressStatusInput(
-                            (value as NonNullable<Item["gameProgressStatus"]> | "") ?? "",
-                          )
-                        }
-                        options={gameProgressOptions}
-                        placeholder="Não definido"
+                        onChange={setGameProgressStatusInput}
                       />
                     </label>
                   )}
@@ -1042,64 +1036,64 @@ export function ItemDetailsModal({
                   </label>
                 </div>
 
+                {!isWishlist && (
+                  <>
+                    <div className="mt-4">
+                      <span className="mb-2 block text-sm text-white/70">
+                        Data da compra
+                      </span>
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <label className="block">
+                          <span className="mb-2 block text-sm text-white/60">Dia</span>
+                          <input
+                            value={purchaseDayInput}
+                            onChange={(e) => setPurchaseDayInput(e.target.value)}
+                            placeholder="11"
+                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-2 block text-sm text-white/60">Mês</span>
+                          <input
+                            value={purchaseMonthInput}
+                            onChange={(e) => setPurchaseMonthInput(e.target.value)}
+                            placeholder="04"
+                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-2 block text-sm text-white/60">Ano</span>
+                          <CustomSelect
+                            value={purchaseYearInput}
+                            onChange={setPurchaseYearInput}
+                            options={purchaseYearOptions}
+                            placeholder="2026"
+                          />
+                        </label>
+                      </div>
+                      {purchaseVsReleaseInfo && (
+                        <p className="mt-3 text-sm text-cyan-100/85">{purchaseVsReleaseInfo}</p>
+                      )}
+                    </div>
+
+                    <div className="mt-4 grid gap-4">
+                      <label className="block">
+                        <span className="mb-2 block text-sm text-white/70">
+                          Origem da compra
+                        </span>
+                        <CustomSelect
+                          value={purchaseOriginInput}
+                          onChange={handlePurchaseOriginChange}
+                          options={purchaseOriginSelectOptions}
+                          placeholder="Em branco"
+                        />
+                      </label>
+
+                    </div>
+                  </>
+                )}
+
                 <div className="mt-4">
-                  <span className="mb-2 block text-sm text-white/70">
-                    Data da compra
-                  </span>
-                  {(item.type === "game" || previewReleaseDateLabel) && (
-                    <p className="mb-3 text-xs text-cyan-100/80">
-                      Referência de lançamento:{" "}
-                      {previewReleaseDateLabel
-                        ? `${previewReleaseDateLabel} ${
-                            item.type === "game" ? "(IGDB)" : "(cadastrada)"
-                          }`
-                        : "não informada"}
-                    </p>
-                  )}
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/60">Dia</span>
-                      <input
-                        value={purchaseDayInput}
-                        onChange={(e) => setPurchaseDayInput(e.target.value)}
-                        placeholder="11"
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/60">Mês</span>
-                      <input
-                        value={purchaseMonthInput}
-                        onChange={(e) => setPurchaseMonthInput(e.target.value)}
-                        placeholder="04"
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/60">Ano</span>
-                      <CustomSelect
-                        value={purchaseYearInput}
-                        onChange={setPurchaseYearInput}
-                        options={purchaseYearOptions}
-                        placeholder="2026"
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-4">
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">
-                      Origem da compra
-                    </span>
-                    <CustomSelect
-                      value={purchaseOriginInput}
-                      onChange={handlePurchaseOriginChange}
-                      options={purchaseOriginSelectOptions}
-                      placeholder="Em branco"
-                    />
-                  </label>
-
                   <label className="block">
                     <span className="mb-2 block text-sm text-white/70">Notas</span>
                     <textarea
@@ -1111,82 +1105,47 @@ export function ItemDetailsModal({
                     />
                   </label>
                 </div>
-              </section>
 
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <InfoCard label="Tipo" value={getTypeLabel(item.type)} />
-                <InfoCard label="Plataforma" value={item.platform} />
-                <InfoCard label="Franquia" value={item.franchise || "—"} />
-                <InfoCard label="Gênero" value={item.genre || "—"} />
-                <InfoCard
-                  label="Origem da compra"
-                  value={purchaseOriginInput || "—"}
-                />
-                <InfoCard
-                  label="Data da compra"
-                  value={previewPurchaseDateLabel || "—"}
-                />
-                <InfoCard
-                  label="Data de lançamento"
-                  value={previewReleaseDateLabel || "—"}
-                />
-              </div>
-              {purchaseVsReleaseInfo && (
-                <p className="text-sm text-cyan-100/85">{purchaseVsReleaseInfo}</p>
-              )}
-
-              <div className="grid gap-4 md:grid-cols-2">
-                {isGame && (hasPhysicalSelected || hasDigitalSelected) ? (
-                  <>
-                    {hasPhysicalSelected && (
-                      <MoneyCard
-                        label="Preço (Físico)"
-                        value={formatCurrency(
-                          isWishlist
-                            ? undefined
-                            : parseOptionalNumber(pricePhysicalInput),
-                        )}
-                      />
-                    )}
-                    {hasDigitalSelected && (
-                      <MoneyCard
-                        label="Preço (Digital)"
-                        value={formatCurrency(
-                          isWishlist
-                            ? undefined
-                            : parseOptionalNumber(priceDigitalInput),
-                        )}
-                      />
-                    )}
-                  </>
-                ) : (
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  {isGame && (hasPhysicalSelected || hasDigitalSelected) ? (
+                    <>
+                      {hasPhysicalSelected && (
+                        <MoneyCard
+                          label="Preço (Físico)"
+                          value={formatCurrency(
+                            isWishlist
+                              ? undefined
+                              : parseOptionalNumber(pricePhysicalInput),
+                          )}
+                        />
+                      )}
+                      {hasDigitalSelected && (
+                        <MoneyCard
+                          label="Preço (Digital)"
+                          value={formatCurrency(
+                            isWishlist
+                              ? undefined
+                              : parseOptionalNumber(priceDigitalInput),
+                          )}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <MoneyCard
+                      label={isWishlist ? "Valor referência" : "Valor pago"}
+                      value={formatCurrency(
+                        isWishlist
+                          ? undefined
+                          : parseOptionalNumber(amountPaidInput),
+                      )}
+                    />
+                  )}
                   <MoneyCard
-                    label={isWishlist ? "Valor referência" : "Valor pago"}
-                    value={formatCurrency(
-                      isWishlist
-                        ? undefined
-                        : parseOptionalNumber(amountPaidInput),
-                    )}
+                    label="Valor atual"
+                    value={formatCurrency(parseOptionalNumber(currentValueInput))}
                   />
-                )}
-                <MoneyCard
-                  label="Valor atual"
-                  value={formatCurrency(parseOptionalNumber(currentValueInput))}
-                />
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleSaveAll}
-                  className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-white/90"
-                >
-                  Salvar alterações{" "}
-                  <span className="ml-1 text-[11px] font-normal text-black/70">
-                    (Ctrl/⌘ + Enter)
-                  </span>
-                </button>
-              </div>
+                </div>
+              </section>
               {saveFeedback && <p className="text-sm text-rose-200">{saveFeedback}</p>}
 
               <div className="grid gap-6 xl:grid-cols-2">
@@ -1198,6 +1157,20 @@ export function ItemDetailsModal({
                   title="Histórico de valorização"
                   entries={item.collectionValueHistory}
                 />
+              </div>
+            </div>
+            <div className="sticky bottom-0 mt-6 border-t border-white/10 bg-[#0b1020]/95 p-4 backdrop-blur">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveAll}
+                  className="rounded-2xl bg-white px-6 py-2 text-sm font-semibold text-black transition hover:bg-white/90"
+                >
+                  <span className="block">Salvar</span>
+                  <span className="block text-[11px] font-normal text-black/70">
+                    Ctrl/⌘ + Enter
+                  </span>
+                </button>
               </div>
             </div>
           </div>
@@ -1245,7 +1218,7 @@ function IconActionButton({
       type="button"
       onClick={onClick}
       title={label}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-sm transition hover:bg-white/10"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200/35 bg-cyan-500/15 text-sm shadow-[0_0_0_1px_rgba(103,232,249,0.2)] transition hover:bg-cyan-400/25"
       aria-label={label}
     >
       {icon}
@@ -1274,6 +1247,42 @@ function OwnershipStatusButtons({
           className={`rounded-lg border px-2.5 py-2 text-xs transition ${
             value === option.value
               ? option.active
+              : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function GameStatusChips({
+  value,
+  onChange,
+}: {
+  value: NonNullable<Item["gameProgressStatus"]> | "";
+  onChange: (value: NonNullable<Item["gameProgressStatus"]> | "") => void;
+}) {
+  const options: { value: NonNullable<Item["gameProgressStatus"]> | ""; label: string }[] = [
+    { value: "", label: "—" },
+    { value: "backlog", label: "📚 Backlog" },
+    { value: "playing", label: "🎮 Jogando" },
+    { value: "paused", label: "⏸️ Pausado" },
+    { value: "finished", label: "✅ Terminado" },
+    { value: "platinum", label: "🏆 Platinado" },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => (
+        <button
+          key={option.label}
+          type="button"
+          onClick={() => onChange(option.value)}
+          className={`rounded-full border px-3 py-2 text-sm transition ${
+            value === option.value
+              ? "border-cyan-300/70 bg-cyan-400/20 text-cyan-100"
               : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
           }`}
         >
@@ -1356,25 +1365,6 @@ function RarityButtons({
           {option.label}
         </button>
       ))}
-    </div>
-  );
-}
-
-function getTypeLabel(type: Item["type"]) {
-  const map = {
-    console: "Console",
-    accessory: "Acessório",
-    game: "Jogo",
-  };
-
-  return map[type];
-}
-
-function InfoCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <p className="text-xs uppercase tracking-[0.22em] text-white/40">{label}</p>
-      <p className="mt-2 text-base font-medium text-white">{value}</p>
     </div>
   );
 }
