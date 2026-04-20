@@ -182,6 +182,7 @@ export function ItemDetailsModal({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imagePanelRef = useRef<HTMLDivElement | null>(null);
+  const handleSaveAllRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (!item || !isOpen) return;
@@ -278,13 +279,13 @@ export function ItemDetailsModal({
       }
       if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
         event.preventDefault();
-        handleSaveAll();
+        handleSaveAllRef.current();
       }
     }
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [isOpen, onClose, handleSaveAll]);
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     if (!isImageActionsOpen) return;
@@ -302,6 +303,10 @@ export function ItemDetailsModal({
     window.addEventListener("mousedown", handleClickOutside);
     return () => window.removeEventListener("mousedown", handleClickOutside);
   }, [isImageActionsOpen]);
+
+  useEffect(() => {
+    handleSaveAllRef.current = handleSaveAll;
+  });
 
   if (!isOpen || !item) return null;
 
