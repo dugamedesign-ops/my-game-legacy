@@ -15,6 +15,7 @@ type PlatformSectionProps = {
   onItemClick?: (item: Item) => void;
   onItemContextMenu?: (item: Item, x: number, y: number) => void;
   onAddItem?: (type: ItemType, platform: string) => void;
+  defaultOpen?: boolean;
 };
 
 export function PlatformSection({
@@ -23,8 +24,9 @@ export function PlatformSection({
   onItemClick,
   onItemContextMenu,
   onAddItem,
+  defaultOpen = true,
 }: PlatformSectionProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   const theme = getPlatformTheme(platform);
 
   const categoryData = useMemo(() => {

@@ -92,6 +92,8 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [isFinancialOpen, setIsFinancialOpen] = useState(false);
   const [isPendingOpen, setIsPendingOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [platformDefaultOpen, setPlatformDefaultOpen] = useState(true);
+  const [platformSectionSeed, setPlatformSectionSeed] = useState(0);
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
   const collectionSectionRef = useRef<HTMLElement | null>(null);
@@ -390,6 +392,16 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       });
       window.scrollBy({ top: -72, behavior: "smooth" });
     }, 60);
+  }
+
+  function handleOpenAllPlatforms() {
+    setPlatformDefaultOpen(true);
+    setPlatformSectionSeed((prev) => prev + 1);
+  }
+
+  function handleCloseAllPlatforms() {
+    setPlatformDefaultOpen(false);
+    setPlatformSectionSeed((prev) => prev + 1);
   }
 
   const headerFilters: {
@@ -838,9 +850,25 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             <EmptyCollectionState onAddClick={handleOpenDefaultAdd} />
           ) : groupedPlatforms.length > 0 ? (
             <section ref={collectionSectionRef} className="space-y-6">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleOpenAllPlatforms}
+                  className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/85 transition hover:bg-white/10"
+                >
+                  Abrir todas as plataformas
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCloseAllPlatforms}
+                  className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/85 transition hover:bg-white/10"
+                >
+                  Fechar todas as plataformas
+                </button>
+              </div>
               {groupedPlatforms.map((group) => (
                 <PlatformSection
-                  key={group.platform}
+                  key={`${group.platform}-${platformSectionSeed}`}
                   platform={group.platform}
                   items={group.items}
                   onItemClick={setSelectedItem}
@@ -848,6 +876,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     setContextMenu({ item, x, y });
                   }}
                   onAddItem={handleOpenContextualAdd}
+                  defaultOpen={platformDefaultOpen}
                 />
               ))}
             </section>
