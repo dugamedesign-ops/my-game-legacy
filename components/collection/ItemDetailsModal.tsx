@@ -657,45 +657,41 @@ export function ItemDetailsModal({
                   </div>
                 </div>
               )}
+              {isImageActionsOpen && (
+                <div
+                  className="absolute inset-0 flex items-end justify-center bg-black/35 px-3 py-4 backdrop-blur-[3px]"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-cyan-200/45 bg-black/55 p-2 shadow-[0_0_0_1px_rgba(103,232,249,0.22)]">
+                    <IconActionButton
+                      icon="✏️"
+                      label="Editar imagem"
+                      onClick={() => setIsEditingImage((prev) => !prev)}
+                    />
+                    <IconActionButton
+                      icon="🖼️"
+                      label={isUploadingImage ? "Enviando..." : "Trocar imagem"}
+                      onClick={handlePickImageFromComputer}
+                    />
+                    {isGame && (
+                      <IconActionButton
+                        icon="🔎"
+                        label={isSearchingCover ? "Buscando..." : "IGDB"}
+                        onClick={handleSearchCoverAgain}
+                      />
+                    )}
+                    {imageUrlInput && (
+                      <IconActionButton
+                        icon="🗑️"
+                        label="Remover imagem"
+                        onClick={handleRemoveImage}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="space-y-3 border-t border-white/10 px-3 py-3">
-              <div
-                className={`rounded-2xl border p-2 transition ${
-                  isImageActionsOpen
-                    ? "border-cyan-300/50 bg-cyan-500/15"
-                    : "border-white/15 bg-black/25"
-                }`}
-              >
-                <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-white/60">
-                  Ações da imagem
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <IconActionButton
-                    icon="✏️"
-                    label="Editar imagem"
-                    onClick={() => setIsEditingImage((prev) => !prev)}
-                  />
-                  <IconActionButton
-                    icon="🖼️"
-                    label={isUploadingImage ? "Enviando..." : "Trocar imagem"}
-                    onClick={handlePickImageFromComputer}
-                  />
-                  {isGame && (
-                    <IconActionButton
-                      icon="🔎"
-                      label={isSearchingCover ? "Buscando..." : "IGDB"}
-                      onClick={handleSearchCoverAgain}
-                    />
-                  )}
-                  {imageUrlInput && (
-                    <IconActionButton
-                      icon="🗑️"
-                      label="Remover imagem"
-                      onClick={handleRemoveImage}
-                    />
-                  )}
-                </div>
-              </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-white/45">Nota</p>
                 <div className="mt-1 flex items-center gap-1">
@@ -856,7 +852,7 @@ export function ItemDetailsModal({
                 </h3>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <label className="block">
+                  <div className="block">
                     <span className="mb-2 block text-sm text-white/70">
                       Status de posse
                     </span>
@@ -864,7 +860,25 @@ export function ItemDetailsModal({
                       value={ownershipStatusInput}
                       onChange={(value) => setOwnershipStatusInput(value)}
                     />
-                  </label>
+                    {isGame && (
+                      <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                        <span className="mb-2 block text-sm text-white/70">Mídia</span>
+                        <div className="flex flex-wrap gap-2">
+                          <ToggleChip
+                            label="Física"
+                            active={mediaFormatsInput?.includes("physical") ?? false}
+                            onClick={() => toggleMediaFormat("physical")}
+                          />
+
+                          <ToggleChip
+                            label="Digital"
+                            active={mediaFormatsInput?.includes("digital") ?? false}
+                            onClick={() => toggleMediaFormat("digital")}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {isGame && (
                     <label className="block">
@@ -879,24 +893,6 @@ export function ItemDetailsModal({
                   )}
                 </div>
 
-                {isGame && (
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                    <span className="mb-2 block text-sm text-white/70">Mídia</span>
-                    <div className="flex flex-wrap gap-2">
-                      <ToggleChip
-                        label="Física"
-                        active={mediaFormatsInput?.includes("physical") ?? false}
-                        onClick={() => toggleMediaFormat("physical")}
-                      />
-
-                      <ToggleChip
-                        label="Digital"
-                        active={mediaFormatsInput?.includes("digital") ?? false}
-                        onClick={() => toggleMediaFormat("digital")}
-                      />
-                    </div>
-                  </div>
-                )}
                 {isGame && (
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <label className="block">
@@ -1071,8 +1067,18 @@ export function ItemDetailsModal({
                           />
                         </label>
                       </div>
+                      {(item.type === "game" || previewReleaseDateLabel) && (
+                        <p className="mt-3 text-xs text-cyan-100/80">
+                          Referência de lançamento:{" "}
+                          {previewReleaseDateLabel
+                            ? `${previewReleaseDateLabel} ${
+                                item.type === "game" ? "(IGDB)" : "(cadastrada)"
+                              }`
+                            : "não informada"}
+                        </p>
+                      )}
                       {purchaseVsReleaseInfo && (
-                        <p className="mt-3 text-sm text-cyan-100/85">{purchaseVsReleaseInfo}</p>
+                        <p className="mt-2 text-sm text-cyan-100/85">{purchaseVsReleaseInfo}</p>
                       )}
                     </div>
 
