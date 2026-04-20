@@ -3,18 +3,13 @@
 import { useState } from "react";
 import { Item } from "@/types/collection";
 import { formatCurrencyBRL, getFinancialSummary } from "@/lib/finance-utils";
+import type { FinancialCollectionViewFilters } from "@/lib/collection-view-filters";
 
 type FinancialOverviewProps = {
   items: Item[];
   defaultOpen?: boolean;
   hideToggle?: boolean;
-  onViewInCollection?: (filters: {
-    platforms: string[];
-    types: Item["type"][];
-    ownership: Item["ownershipStatus"][];
-    priorities: NonNullable<Item["purchasePriority"]>[];
-    rarities: NonNullable<Item["rarityTags"]>[number][];
-  }) => void;
+  onViewInCollection?: (filters: FinancialCollectionViewFilters) => void;
 };
 
 export function FinancialOverview({

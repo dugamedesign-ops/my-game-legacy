@@ -18,6 +18,11 @@ import { FiltersBar } from "./FiltersBar";
 import { applyFilters, type Filters } from "@/lib/filter-utils";
 import { useAuth } from "@/providers/AuthProvider";
 import { ItemCard } from "./ItemCard";
+import {
+  createEmptyFinancialCollectionViewFilters,
+  matchesFinancialCollectionViewFilters,
+  type FinancialCollectionViewFilters,
+} from "@/lib/collection-view-filters";
 
 type CollectionDashboardProps = {
   items: Item[];
@@ -123,10 +128,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   );
   const [draggedPlatform, setDraggedPlatform] = useState<string | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const [financialFocusPlatforms, setFinancialFocusPlatforms] = useState<string[]>([]);
-  const [financialFocusRarities, setFinancialFocusRarities] = useState<
-    NonNullable<Item["rarityTags"]>[number][]
-  >([]);
+  const [financialFocusFilters, setFinancialFocusFilters] = useState<FinancialCollectionViewFilters>(
+    createEmptyFinancialCollectionViewFilters,
+  );
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
   const collectionSectionRef = useRef<HTMLElement | null>(null);
@@ -402,24 +406,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
     const byFilters = applyFilters(base, filters);
 
-    return byFilters.filter((item) => {
-      if (
-        financialFocusPlatforms.length > 0 &&
-        !financialFocusPlatforms.includes(item.platform)
-      ) {
-        return false;
-      }
-
-      if (
-        financialFocusRarities.length > 0 &&
-        !(item.rarityTags ?? []).some((rarity) => financialFocusRarities.includes(rarity))
-      ) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [collectionItems, financialFocusPlatforms, financialFocusRarities, search, filters]);
+    return byFilters.filter((item) =>
+      matchesFinancialCollectionViewFilters(item, financialFocusFilters),
+    );
+  }, [collectionItems, financialFocusFilters, search, filters]);
 
   const groupedPlatformsRaw = useMemo(
     () => groupItemsByPlatform(filteredItems),
@@ -501,6 +491,8 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             ? ["finished", "platinum"]
             : [],
     }));
+    setFinancialFocusFilters(createEmptyFinancialCollectionViewFilters());
+    setSearch("");
 
     setTimeout(() => {
       collectionSectionRef.current?.scrollIntoView({
@@ -551,13 +543,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     setCustomPlatformOrder(allActivePlatforms);
   }
 
-  function handleViewFinancialInCollection(next: {
-    platforms: string[];
-    types: Item["type"][];
-    ownership: Item["ownershipStatus"][];
-    priorities: NonNullable<Item["purchasePriority"]>[];
-    rarities: NonNullable<Item["rarityTags"]>[number][];
-  }) {
+  function handleViewFinancialInCollection(next: FinancialCollectionViewFilters) {
     setFilters((prev) => ({
       ...prev,
       types: next.types,
@@ -567,8 +553,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       media: [],
       missing: [],
     }));
-    setFinancialFocusPlatforms(next.platforms);
-    setFinancialFocusRarities(next.rarities);
+    setFinancialFocusFilters(next);
     setSearch(next.platforms.length === 1 ? next.platforms[0] : "");
     setIsFinancialOpen(false);
 
