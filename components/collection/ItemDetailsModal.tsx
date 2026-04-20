@@ -660,7 +660,6 @@ export function ItemDetailsModal({
               {isImageActionsOpen && (
                 <div
                   className="absolute inset-0 flex items-end justify-center bg-black/35 px-3 py-4 backdrop-blur-[3px]"
-                  onClick={(event) => event.stopPropagation()}
                 >
                   <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-cyan-200/45 bg-black/55 p-2 shadow-[0_0_0_1px_rgba(103,232,249,0.22)]">
                     <IconActionButton
@@ -1222,7 +1221,10 @@ function IconActionButton({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
       title={label}
       className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200/35 bg-cyan-500/15 text-sm shadow-[0_0_0_1px_rgba(103,232,249,0.2)] transition hover:bg-cyan-400/25"
       aria-label={label}

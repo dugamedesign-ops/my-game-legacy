@@ -398,6 +398,12 @@ export function AddItemModal({
           updateField("type", typeOrder[prevIndex]);
           return;
         }
+        if (event.key === "Enter" && !!form.type) {
+          event.preventDefault();
+          event.stopPropagation();
+          setStep(2);
+          return;
+        }
       }
 
       if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {

@@ -43,6 +43,7 @@ export function PendingItemsOverview({
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<Item["type"][]>([]);
   const [selectedOwnership, setSelectedOwnership] = useState<Item["ownershipStatus"][]>([]);
+  const [selectedMissingFields, setSelectedMissingFields] = useState<ItemPendingField[]>([]);
   const [activeEditors, setActiveEditors] = useState<
     Record<string, PendingEditorState | undefined>
   >({});
@@ -68,6 +69,12 @@ export function PendingItemsOverview({
     ) {
       return false;
     }
+    if (
+      selectedMissingFields.length > 0 &&
+      !pending.missingFields.some((field) => selectedMissingFields.includes(field))
+    ) {
+      return false;
+    }
     return true;
   });
   const editingItemIds = Object.entries(activeEditors)
@@ -77,7 +84,8 @@ export function PendingItemsOverview({
   const hasActiveFilters =
     selectedPlatforms.length > 0 ||
     selectedTypes.length > 0 ||
-    selectedOwnership.length > 0;
+    selectedOwnership.length > 0 ||
+    selectedMissingFields.length > 0;
 
   function createFieldDraft(item: Item, field: ItemPendingField) {
     if (field === "amountPaid") {
@@ -292,6 +300,7 @@ export function PendingItemsOverview({
                       setSelectedPlatforms([]);
                       setSelectedTypes([]);
                       setSelectedOwnership([]);
+                      setSelectedMissingFields([]);
                     }}
                     disabled={!hasActiveFilters}
                     className="rounded-full border border-white/15 px-3 py-1 text-xs text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
@@ -299,7 +308,7 @@ export function PendingItemsOverview({
                     Limpar filtros
                   </button>
                 </div>
-                <div className="mt-3 grid gap-4 lg:grid-cols-3">
+                <div className="mt-3 grid gap-4 lg:grid-cols-4">
                   <FilterGroup
                     label="Plataformas"
                     options={availablePlatforms.map((platform) => ({
@@ -336,6 +345,26 @@ export function PendingItemsOverview({
                         selectedOwnership,
                         value as Item["ownershipStatus"],
                         setSelectedOwnership,
+                      )
+                    }
+                  />
+                  <FilterGroup
+                    label="Pendência"
+                    options={[
+                      { value: "image", label: "Imagem" },
+                      { value: "amountPaid", label: "Valor pago" },
+                      { value: "currentValue", label: "Valor atual" },
+                      { value: "purchasePriority", label: "Prioridade" },
+                      { value: "gameProgressStatus", label: "Status jogo" },
+                      { value: "rarity", label: "Raridade" },
+                      { value: "mediaFormats", label: "Mídia" },
+                    ]}
+                    selected={selectedMissingFields}
+                    onToggle={(value) =>
+                      toggleSelection(
+                        selectedMissingFields,
+                        value as ItemPendingField,
+                        setSelectedMissingFields,
                       )
                     }
                   />
@@ -377,7 +406,12 @@ export function PendingItemsOverview({
                           )}
 
                           <div className="mt-3 flex flex-wrap gap-2">
-                            {pending.missingFields.map((field) => (
+                            {(selectedMissingFields.length > 0
+                              ? pending.missingFields.filter((field) =>
+                                  selectedMissingFields.includes(field),
+                                )
+                              : pending.missingFields
+                            ).map((field) => (
                               <button
                                 key={field}
                                 type="button"
