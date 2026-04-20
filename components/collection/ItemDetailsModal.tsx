@@ -39,6 +39,15 @@ function formatProgressLabel(status?: Item["gameProgressStatus"]) {
   return map[status];
 }
 
+function getProgressIcon(status?: Item["gameProgressStatus"]) {
+  if (status === "backlog") return "📚";
+  if (status === "playing") return "🎮";
+  if (status === "paused") return "⏸️";
+  if (status === "finished") return "✅";
+  if (status === "platinum") return "🏆";
+  return "—";
+}
+
 function formatPriorityLabel(priority?: Item["purchasePriority"]) {
   if (!priority) return null;
 
@@ -56,7 +65,7 @@ function formatRarityLabel(tag: NonNullable<Item["rarityTags"]>[number]) {
   const map = {
     normal: "Normal",
     rare: "Raro",
-    special_edition: "Edição especial",
+    special_edition: "Edição Especial",
     highlight: "Destaque",
     repro: "Repro",
     steelbook: "Steelbook",
@@ -148,6 +157,7 @@ export function ItemDetailsModal({
   const [isEditingImage, setIsEditingImage] = useState(false);
   const [isSearchingCover, setIsSearchingCover] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isImageActionsOpen, setIsImageActionsOpen] = useState(false);
 
   const [nameInput, setNameInput] = useState("");
   const [subtitleInput, setSubtitleInput] = useState("");
@@ -186,6 +196,7 @@ export function ItemDetailsModal({
   const [genreOptions, setGenreOptions] = useState<string[]>(GENRE_OPTIONS);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [notesInput, setNotesInput] = useState("");
+  const [ratingInput, setRatingInput] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -239,6 +250,7 @@ export function ItemDetailsModal({
     setPurchaseDayInput(item.purchaseDate?.day ? String(item.purchaseDate.day) : "");
     setPurchaseOriginInput(item.purchaseOrigin ?? "");
     setNotesInput(item.notes ?? "");
+    setRatingInput(item.rating ?? 0);
     setSaveFeedback(null);
     const [primary = "", secondary = ""] = (item.genre ?? "")
       .split("/")
@@ -250,6 +262,7 @@ export function ItemDetailsModal({
     setIsEditingImage(false);
     setIsSearchingCover(false);
     setIsUploadingImage(false);
+    setIsImageActionsOpen(false);
 
     const storedRaw =
       typeof window !== "undefined"
@@ -359,6 +372,8 @@ export function ItemDetailsModal({
           ? `Comprado ${purchaseYearNumber - releaseYear} ano(s) após o lançamento`
           : "Comprado antes do lançamento"
       : null;
+  const progressIcon = getProgressIcon(gameProgressStatusInput || undefined);
+  const previewGenre = [genrePrimaryInput, genreSecondaryInput].filter(Boolean).join(" / ");
 
   function parseOptionalNumber(value: string): number | undefined {
     const normalized = value.replace(",", ".").trim();
@@ -557,9 +572,7 @@ export function ItemDetailsModal({
 
       ownershipStatus: ownershipStatusInput,
       gameProgressStatus:
-        isGame && ownershipStatusInput === "collection"
-          ? gameProgressStatusInput || undefined
-          : undefined,
+        isGame ? gameProgressStatusInput || undefined : undefined,
       mediaFormats: isGame
         ? mediaFormatsInput && mediaFormatsInput.length > 0
           ? mediaFormatsInput
@@ -587,6 +600,7 @@ export function ItemDetailsModal({
           ? purchasePriorityInput || undefined
           : undefined,
       rarityTags: rarityInput ? [rarityInput] : undefined,
+      rating: ratingInput > 0 ? ratingInput : undefined,
 
       purchaseDate:
         year || month || day
@@ -628,9 +642,12 @@ export function ItemDetailsModal({
           Fechar
         </button>
 
-        <div className="grid max-h-[90vh] grid-cols-1 overflow-y-auto lg:grid-cols-[1fr_360px]">
-          <div className="border-b border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-black lg:order-2 lg:sticky lg:top-0 lg:self-start lg:border-b-0 lg:border-l">
-            <div className="aspect-[3/4] w-full">
+        <div className="grid max-h-[90vh] grid-cols-1 overflow-y-auto lg:grid-cols-[360px_1fr]">
+          <div className="border-b border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-black lg:sticky lg:top-0 lg:self-start lg:border-b-0 lg:border-r">
+            <div
+              className="relative aspect-[3/4] w-full cursor-pointer"
+              onClick={() => setIsImageActionsOpen((prev) => !prev)}
+            >
               {imageUrlInput ? (
                 <img
                   src={imageUrlInput}
@@ -654,36 +671,79 @@ export function ItemDetailsModal({
                   </div>
                 </div>
               )}
+              {isImageActionsOpen && (
+                <div
+                  className="absolute inset-0 flex items-start justify-center gap-2 bg-black/20 p-3 backdrop-blur-[2px]"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <IconActionButton
+                    icon="✏️"
+                    label="Editar imagem"
+                    onClick={() => setIsEditingImage((prev) => !prev)}
+                  />
+                  <IconActionButton
+                    icon="🖼️"
+                    label={isUploadingImage ? "Enviando..." : "Trocar imagem"}
+                    onClick={handlePickImageFromComputer}
+                  />
+                  {isGame && (
+                    <IconActionButton
+                      icon="🔎"
+                      label={isSearchingCover ? "Buscando..." : "IGDB"}
+                      onClick={handleSearchCoverAgain}
+                    />
+                  )}
+                  {imageUrlInput && (
+                    <IconActionButton
+                      icon="🗑️"
+                      label="Remover imagem"
+                      onClick={handleRemoveImage}
+                    />
+                  )}
+                </div>
+              )}
             </div>
-            <div className="flex items-center justify-center gap-2 border-t border-white/10 px-3 py-3">
-              <IconActionButton
-                icon="✏️"
-                label="Editar imagem"
-                onClick={() => setIsEditingImage((prev) => !prev)}
-              />
-              <IconActionButton
-                icon="🖼️"
-                label={isUploadingImage ? "Enviando..." : "Trocar imagem"}
-                onClick={handlePickImageFromComputer}
-              />
-              {isGame && (
-                <IconActionButton
-                  icon="🔎"
-                  label={isSearchingCover ? "Buscando..." : "IGDB"}
-                  onClick={handleSearchCoverAgain}
-                />
-              )}
-              {imageUrlInput && (
-                <IconActionButton
-                  icon="🗑️"
-                  label="Remover imagem"
-                  onClick={handleRemoveImage}
-                />
-              )}
+            <div className="space-y-3 border-t border-white/10 px-3 py-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-white/45">Nota</p>
+                <div className="mt-1 flex items-center gap-1">
+                  {Array.from({ length: 5 }, (_, index) => {
+                    const star = index + 1;
+                    return (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setRatingInput(star === ratingInput ? 0 : star)}
+                        className="text-lg"
+                        aria-label={`Definir nota ${star}`}
+                      >
+                        {star <= ratingInput ? "★" : "☆"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs text-white/80">
+                {isGame && (
+                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
+                    {progressIcon} {previewProgressLabel || "Sem status"}
+                  </span>
+                )}
+                {!!previewGenre && (
+                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
+                    🎯 {previewGenre}
+                  </span>
+                )}
+                {previewReleaseDateLabel && (
+                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
+                    📅 {previewReleaseDateLabel}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="lg:order-1 p-6 sm:p-8">
+          <div className="p-6 sm:p-8">
             <div className="space-y-6">
               <div>
                 <p className="text-sm uppercase tracking-[0.28em] text-white/40">
@@ -1121,7 +1181,10 @@ export function ItemDetailsModal({
                   onClick={handleSaveAll}
                   className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-white/90"
                 >
-                  Salvar alterações
+                  Salvar alterações{" "}
+                  <span className="ml-1 text-[11px] font-normal text-black/70">
+                    (Ctrl/⌘ + Enter)
+                  </span>
                 </button>
               </div>
               {saveFeedback && <p className="text-sm text-rose-200">{saveFeedback}</p>}

@@ -649,6 +649,14 @@ function PendingInlineEditor({
       "repro",
       ...(item.type === "game" ? (["steelbook"] as const) : []),
     ];
+    const formatRarityLabel = (value: NonNullable<Item["rarityTags"]>[number]) => {
+      if (value === "normal") return "Normal";
+      if (value === "rare") return "Raro";
+      if (value === "special_edition") return "Edição Especial";
+      if (value === "highlight") return "Destaque";
+      if (value === "steelbook") return "Steelbook";
+      return "Repro";
+    };
     return (
       <div className="flex flex-wrap gap-2">
         {options.map((option) => (
@@ -670,7 +678,7 @@ function PendingInlineEditor({
                 : "border-white/10 bg-black/20 text-white/75"
             }`}
           >
-            {option}
+            {formatRarityLabel(option)}
           </button>
         ))}
       </div>

@@ -64,6 +64,7 @@ export type Item = {
 
   franchise?: string;
   genre?: string;
+  rating?: number;
 
   imageUrl?: string;
   notes?: string;

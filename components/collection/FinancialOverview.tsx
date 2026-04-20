@@ -29,14 +29,6 @@ export function FinancialOverview({
   const platformOptions = Array.from(
     new Set(items.filter((item) => !item.isRemoved).map((item) => item.platform).filter(Boolean)),
   ).sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
-  const priorityOptions = Array.from(
-    new Set(
-      items
-        .filter((item) => !item.isRemoved)
-        .map((item) => item.purchasePriority)
-        .filter(Boolean) as NonNullable<Item["purchasePriority"]>[],
-    ),
-  );
   const rarityOptions = Array.from(
     new Set(
       items
@@ -116,6 +108,15 @@ export function FinancialOverview({
     );
   }
 
+  function formatRarityLabel(rarity: NonNullable<Item["rarityTags"]>[number]) {
+    if (rarity === "normal") return "Normal";
+    if (rarity === "rare") return "Raro";
+    if (rarity === "special_edition") return "Edição Especial";
+    if (rarity === "highlight") return "Destaque";
+    if (rarity === "steelbook") return "Steelbook";
+    return "Repro";
+  }
+
   return (
     <section className="mb-8 rounded-[32px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -187,7 +188,7 @@ export function FinancialOverview({
               </button>
             </div>
 
-            <div className="mt-4 grid gap-4 lg:grid-cols-3 2xl:grid-cols-5">
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
               <FilterGroup
                 label="Plataformas"
                 options={platformOptions.map((platform) => ({
@@ -199,68 +200,75 @@ export function FinancialOverview({
                   toggleSelection(selectedPlatforms, value, setSelectedPlatforms)
                 }
               />
-              <FilterGroup
-                label="Categoria"
-                options={[
-                  { value: "console", label: "Consoles" },
-                  { value: "accessory", label: "Acessórios" },
-                  { value: "game", label: "Jogos" },
-                ]}
-                selected={selectedTypes}
-                onToggle={(value) =>
-                  toggleSelection(selectedTypes, value as Item["type"], setSelectedTypes)
-                }
-              />
-              <FilterGroup
-                label="Status"
-                options={[
-                  { value: "collection", label: "Na coleção" },
-                  { value: "wishlist", label: "Wishlist" },
-                  { value: "preorder", label: "Pré-venda" },
-                ]}
-                selected={selectedOwnership}
-                onToggle={(value) =>
-                  toggleSelection(
-                    selectedOwnership,
-                    value as Item["ownershipStatus"],
-                    setSelectedOwnership,
-                  )
-                }
-              />
-              <FilterGroup
-                label="Prioridade"
-                options={priorityOptions.map((priority) => ({
-                  value: priority,
-                  label:
-                    priority === "low"
-                      ? "Baixa"
-                      : priority === "medium"
-                        ? "Média"
-                        : priority === "high"
-                          ? "Alta"
-                          : "Máxima",
-                }))}
-                selected={selectedPriorities}
-                onToggle={(value) =>
-                  toggleSelection(
-                    selectedPriorities,
-                    value as NonNullable<Item["purchasePriority"]>,
-                    setSelectedPriorities,
-                  )
-                }
-              />
-              <FilterGroup
-                label="Raridade"
-                options={rarityOptions.map((rarity) => ({ value: rarity, label: rarity }))}
-                selected={selectedRarities}
-                onToggle={(value) =>
-                  toggleSelection(
-                    selectedRarities,
-                    value as NonNullable<Item["rarityTags"]>[number],
-                    setSelectedRarities,
-                  )
-                }
-              />
+              <div className="space-y-4">
+                <FilterGroup
+                  label="Categoria"
+                  options={[
+                    { value: "console", label: "Consoles" },
+                    { value: "accessory", label: "Acessórios" },
+                    { value: "game", label: "Jogos" },
+                  ]}
+                  selected={selectedTypes}
+                  onToggle={(value) =>
+                    toggleSelection(selectedTypes, value as Item["type"], setSelectedTypes)
+                  }
+                />
+                <FilterGroup
+                  label="Prioridade"
+                  options={["low", "medium", "high", "maximum"].map((priority) => ({
+                    value: priority,
+                    label:
+                      priority === "low"
+                        ? "Baixa"
+                        : priority === "medium"
+                          ? "Média"
+                          : priority === "high"
+                            ? "Alta"
+                            : "Máxima",
+                  }))}
+                  selected={selectedPriorities}
+                  onToggle={(value) =>
+                    toggleSelection(
+                      selectedPriorities,
+                      value as NonNullable<Item["purchasePriority"]>,
+                      setSelectedPriorities,
+                    )
+                  }
+                />
+              </div>
+              <div className="space-y-4">
+                <FilterGroup
+                  label="Status"
+                  options={[
+                    { value: "collection", label: "Na coleção" },
+                    { value: "wishlist", label: "Wishlist" },
+                    { value: "preorder", label: "Pré-venda" },
+                  ]}
+                  selected={selectedOwnership}
+                  onToggle={(value) =>
+                    toggleSelection(
+                      selectedOwnership,
+                      value as Item["ownershipStatus"],
+                      setSelectedOwnership,
+                    )
+                  }
+                />
+                <FilterGroup
+                  label="Raridade"
+                  options={rarityOptions.map((rarity) => ({
+                    value: rarity,
+                    label: formatRarityLabel(rarity),
+                  }))}
+                  selected={selectedRarities}
+                  onToggle={(value) =>
+                    toggleSelection(
+                      selectedRarities,
+                      value as NonNullable<Item["rarityTags"]>[number],
+                      setSelectedRarities,
+                    )
+                  }
+                />
+              </div>
             </div>
             <p className="mt-3 text-xs text-white/55">
               {filteredItems.length} item(ns) incluído(s) neste resumo.
