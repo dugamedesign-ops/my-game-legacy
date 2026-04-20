@@ -121,6 +121,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [customPlatformOrder, setCustomPlatformOrder] = useState<string[]>(
     getInitialCustomPlatformOrder,
   );
+  const [draggedPlatform, setDraggedPlatform] = useState<string | null>(null);
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
   const collectionSectionRef = useRef<HTMLElement | null>(null);
@@ -487,22 +488,29 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     setPlatformSectionSeed((prev) => prev + 1);
   }
 
-  function handleMovePlatform(platform: string, direction: "up" | "down") {
+  function handleDragStartPlatform(platform: string) {
     setPlatformOrderMode("custom");
+    setDraggedPlatform(platform);
+  }
+
+  function handleDropPlatform(targetPlatform: string) {
+    if (!draggedPlatform || draggedPlatform === targetPlatform) return;
+
     setCustomPlatformOrder((prev) => {
       const working =
         prev.length > 0 ? [...prev] : [...effectiveCustomPlatformOrder];
-      const index = working.indexOf(platform);
-      if (index === -1) return working;
+      const fromIndex = working.indexOf(draggedPlatform);
+      const toIndex = working.indexOf(targetPlatform);
 
-      const targetIndex = direction === "up" ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= working.length) return working;
+      if (fromIndex === -1 || toIndex === -1) return working;
 
       const next = [...working];
-      const [moved] = next.splice(index, 1);
-      next.splice(targetIndex, 0, moved);
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
       return next;
     });
+
+    setDraggedPlatform(null);
   }
 
   function handleResetAlphabeticalPlatformOrder() {
@@ -988,34 +996,35 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                 </div>
 
                 {platformOrderMode === "custom" && groupedPlatforms.length > 1 && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {groupedPlatforms.map((group, index) => (
-                      <div
-                        key={`order-chip-${group.platform}`}
-                        className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/25 px-2 py-1 text-xs text-white/80"
-                      >
-                        <span>{group.platform}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleMovePlatform(group.platform, "up")}
-                          disabled={index === 0}
-                          className="rounded border border-white/10 px-1 text-[10px] disabled:opacity-35"
-                          aria-label={`Mover ${group.platform} para cima`}
+                  <>
+                    <p className="mt-3 text-xs text-white/50">
+                      Arraste e solte as plataformas para reorganizar.
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {groupedPlatforms.map((group) => (
+                        <div
+                          key={`order-chip-${group.platform}`}
+                          draggable
+                          onDragStart={() => handleDragStartPlatform(group.platform)}
+                          onDragOver={(event) => {
+                            event.preventDefault();
+                          }}
+                          onDrop={() => handleDropPlatform(group.platform)}
+                          onDragEnd={() => setDraggedPlatform(null)}
+                          className={`inline-flex cursor-grab items-center gap-1 rounded-full border px-2 py-1 text-xs text-white/80 ${
+                            draggedPlatform === group.platform
+                              ? "border-cyan-300/70 bg-cyan-500/20"
+                              : "border-white/15 bg-black/25"
+                          }`}
                         >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleMovePlatform(group.platform, "down")}
-                          disabled={index === groupedPlatforms.length - 1}
-                          className="rounded border border-white/10 px-1 text-[10px] disabled:opacity-35"
-                          aria-label={`Mover ${group.platform} para baixo`}
-                        >
-                          ↓
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                          <span className="text-white/50" aria-hidden>
+                            ⋮⋮
+                          </span>
+                          <span>{group.platform}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
 
