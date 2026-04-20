@@ -111,7 +111,7 @@ export function AddItemModal({
     platformOverride?: string | null,
   ): FormState {
     return {
-      type: typeOverride ?? "game",
+      type: typeOverride ?? "console",
       platform: platformOverride ?? "",
       title: "",
       subtitle: "",
