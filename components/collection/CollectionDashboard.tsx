@@ -354,14 +354,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     setIsAddModalOpen(true);
   }
 
-
-  function handleOpenQuickAdd(type: "console" | "accessory" | "game") {
-    setPrefilledType(type);
-    setPrefilledPlatform(null);
-    setIsAddModalOpen(true);
-    setIsMobileSidebarOpen(false);
-  }
-
   function handleLegacyTitleSave() {
     setLegacyTitleOverride((current) => current.trim());
     setIsEditingLegacyTitle(false);
@@ -778,22 +770,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     <p className="text-xs text-white/50">Sincronizando coleção online...</p>
                   </div>
                 )}
-                <div className="mt-4 space-y-2">
-                  <div className="grid grid-cols-3 gap-2">
-                    <button type="button" onClick={() => handleOpenQuickAdd("game")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-1.5 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
-                      <span className="text-center text-[10px] font-semibold leading-tight">+ Jogo</span>
-                      <span className="mt-1 text-lg leading-none">🎮</span>
-                    </button>
-                    <button type="button" onClick={() => handleOpenQuickAdd("console")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-1.5 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
-                      <span className="text-center text-[10px] font-semibold leading-tight">+ Console</span>
-                      <span className="mt-1 text-lg leading-none">🕹️</span>
-                    </button>
-                    <button type="button" onClick={() => handleOpenQuickAdd("accessory")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-1.5 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
-                      <span className="text-center text-[10px] font-semibold leading-tight">+ Acessório</span>
-                      <span className="mt-1 text-lg leading-none">🎧</span>
-                    </button>
-                  </div>
-                </div>
                 <div className="mt-4 space-y-2 pt-1">
                   <SidebarActionButton
                     label="Financeiro"
