@@ -4,6 +4,7 @@ export type FinancialCollectionViewFilters = {
   platforms: string[];
   types: Item["type"][];
   ownership: Item["ownershipStatus"][];
+  acquisitionStatuses: NonNullable<Item["acquisitionStatus"]>[];
   priorities: NonNullable<Item["purchasePriority"]>[];
   rarities: NonNullable<Item["rarityTags"]>[number][];
 };
@@ -13,6 +14,7 @@ export function createEmptyFinancialCollectionViewFilters(): FinancialCollection
     platforms: [],
     types: [],
     ownership: [],
+    acquisitionStatuses: [],
     priorities: [],
     rarities: [],
   };
@@ -32,6 +34,14 @@ export function matchesFinancialCollectionViewFilters(
 
   if (filters.ownership.length > 0 && !filters.ownership.includes(item.ownershipStatus)) {
     return false;
+  }
+
+  if (filters.acquisitionStatuses.length > 0) {
+    if (item.ownershipStatus !== "preorder") return false;
+    const acquisitionStatus = item.acquisitionStatus === "purchased" ? "purchased" : "preorder";
+    if (!filters.acquisitionStatuses.includes(acquisitionStatus)) {
+      return false;
+    }
   }
 
   if (

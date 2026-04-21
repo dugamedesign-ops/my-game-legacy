@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Item } from "@/types/collection";
 import { formatCurrencyBRL, getFinancialSummary } from "@/lib/finance-utils";
 import type { FinancialCollectionViewFilters } from "@/lib/collection-view-filters";
+import { getAcquisitionStatusLabel, getNormalizedAcquisitionStatus } from "@/lib/acquisition-utils";
 
 type FinancialOverviewProps = {
   items: Item[];
@@ -22,6 +23,9 @@ export function FinancialOverview({
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<Item["type"][]>([]);
   const [selectedOwnership, setSelectedOwnership] = useState<Item["ownershipStatus"][]>([]);
+  const [selectedAcquisitionStatuses, setSelectedAcquisitionStatuses] = useState<
+    NonNullable<Item["acquisitionStatus"]>[]
+  >([]);
   const [selectedPriorities, setSelectedPriorities] = useState<
     NonNullable<Item["purchasePriority"]>[]
   >([]);
@@ -60,6 +64,12 @@ export function FinancialOverview({
     ) {
       return false;
     }
+    if (selectedAcquisitionStatuses.length > 0) {
+      const acquisitionStatus = getNormalizedAcquisitionStatus(item);
+      if (!acquisitionStatus || !selectedAcquisitionStatuses.includes(acquisitionStatus)) {
+        return false;
+      }
+    }
     if (
       selectedPriorities.length > 0 &&
       (!item.purchasePriority || !selectedPriorities.includes(item.purchasePriority))
@@ -96,6 +106,7 @@ export function FinancialOverview({
     selectedPlatforms.length > 0 ||
     selectedTypes.length > 0 ||
     selectedOwnership.length > 0 ||
+    selectedAcquisitionStatuses.length > 0 ||
     selectedPriorities.length > 0 ||
     selectedRarities.length > 0;
 
@@ -181,6 +192,7 @@ export function FinancialOverview({
                   setSelectedPlatforms([]);
                   setSelectedTypes([]);
                   setSelectedOwnership([]);
+                  setSelectedAcquisitionStatuses([]);
                   setSelectedPriorities([]);
                   setSelectedRarities([]);
                 }}
@@ -257,6 +269,21 @@ export function FinancialOverview({
                   }
                 />
                 <FilterGroup
+                  label="Compra"
+                  options={[
+                    { value: "preorder", label: getAcquisitionStatusLabel("preorder") },
+                    { value: "purchased", label: getAcquisitionStatusLabel("purchased") },
+                  ]}
+                  selected={selectedAcquisitionStatuses}
+                  onToggle={(value) =>
+                    toggleSelection(
+                      selectedAcquisitionStatuses,
+                      value as NonNullable<Item["acquisitionStatus"]>,
+                      setSelectedAcquisitionStatuses,
+                    )
+                  }
+                />
+                <FilterGroup
                   label="Raridade"
                   options={rarityOptions.map((rarity) => ({
                     value: rarity,
@@ -284,6 +311,7 @@ export function FinancialOverview({
                     platforms: selectedPlatforms,
                     types: selectedTypes,
                     ownership: selectedOwnership,
+                    acquisitionStatuses: selectedAcquisitionStatuses,
                     priorities: selectedPriorities,
                     rarities: selectedRarities,
                   })

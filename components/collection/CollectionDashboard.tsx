@@ -23,6 +23,7 @@ import {
   matchesFinancialCollectionViewFilters,
   type FinancialCollectionViewFilters,
 } from "@/lib/collection-view-filters";
+import { isItemReleased } from "@/lib/acquisition-utils";
 
 type CollectionDashboardProps = {
   items: Item[];
@@ -544,6 +545,50 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   function handleResetAlphabeticalPlatformOrder() {
     setPlatformOrderMode("alphabetical");
     setCustomPlatformOrder(allActivePlatforms);
+  }
+
+  function applyWishlistPurchaseStatus(
+    item: Item,
+    acquisitionStatus: "preorder" | "purchased",
+  ) {
+    if (item.ownershipStatus !== "wishlist") return;
+
+    let expectedArrivalDate = item.expectedArrivalDate;
+    if (acquisitionStatus === "purchased") {
+      const promptValue = window.prompt(
+        "Data prevista de chegada (opcional, formato AAAA-MM-DD):",
+        item.expectedArrivalDate ?? "",
+      );
+      if (promptValue === null) return;
+
+      const normalized = promptValue.trim();
+      if (normalized.length === 0) {
+        expectedArrivalDate = undefined;
+      } else {
+        const parsed = new Date(normalized);
+        if (Number.isNaN(parsed.getTime())) {
+          window.alert("Data inválida. Use o formato AAAA-MM-DD.");
+          return;
+        }
+        expectedArrivalDate = normalized;
+      }
+    } else {
+      expectedArrivalDate = undefined;
+    }
+
+    const updated: Item = {
+      ...item,
+      ownershipStatus: "preorder",
+      acquisitionStatus,
+      expectedArrivalDate,
+      updatedAt: new Date().toISOString(),
+    };
+
+    updateItem(updated);
+    if (selectedItem?.id === updated.id) {
+      setSelectedItem(updated);
+    }
+    setContextMenu(null);
   }
 
   function handleViewFinancialInCollection(next: FinancialCollectionViewFilters) {
@@ -1166,6 +1211,22 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
+          {contextMenu.item.ownershipStatus === "wishlist" && (
+            <button
+              type="button"
+              onClick={() =>
+                applyWishlistPurchaseStatus(
+                  contextMenu.item,
+                  isItemReleased(contextMenu.item) ? "purchased" : "preorder",
+                )
+              }
+              className="mb-1 flex w-full rounded-xl px-3 py-2 text-left text-sm text-red-100 transition hover:bg-red-500/10"
+            >
+              {isItemReleased(contextMenu.item)
+                ? "Marcar como comprado"
+                : "Marcar como pré-venda"}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {

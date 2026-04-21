@@ -1,4 +1,5 @@
 import { Item } from "@/types/collection";
+import { getAcquisitionStatusLabel, getNormalizedAcquisitionStatus } from "@/lib/acquisition-utils";
 
 type CardSize = "large" | "medium" | "small";
 
@@ -36,7 +37,10 @@ function getCornerSeal(item: Item) {
 
 function getCornerSealLabel(item: Item) {
   if (item.ownershipStatus === "wishlist") return "Wishlist";
-  if (item.ownershipStatus === "preorder") return "Pré-venda";
+  if (item.ownershipStatus === "preorder") {
+    const acquisitionStatus = getNormalizedAcquisitionStatus(item);
+    return acquisitionStatus ? getAcquisitionStatusLabel(acquisitionStatus) : "Pré-venda";
+  }
   return "";
 }
 
@@ -77,6 +81,10 @@ export function ItemCard({
   const isSmall = size === "small";
   const cornerSeal = getCornerSeal(item);
   const gameStatusSeal = getGameStatusSeal(item);
+  const acquisitionStatus = getNormalizedAcquisitionStatus(item);
+  const preorderRibbonLabel = acquisitionStatus
+    ? getAcquisitionStatusLabel(acquisitionStatus).toUpperCase()
+    : null;
 
   const showPhysicalSeal = showMediaSeals && hasMedia(item, "physical");
   const showDigitalSeal = showMediaSeals && hasMedia(item, "digital");
@@ -93,6 +101,11 @@ export function ItemCard({
       className={`group w-full rounded-[26px] bg-white/[0.03] p-1 text-left transition duration-300 hover:-translate-y-1 hover:bg-white/[0.06] ${getOwnershipFrame(item)}`}
     >
       <div className={`relative overflow-hidden rounded-[20px] ${sizeConfig[size]}`}>
+        {preorderRibbonLabel && (
+          <span className="absolute left-0 top-3 z-10 rounded-r-lg bg-red-600/95 px-2.5 py-1 text-[10px] font-bold tracking-[0.08em] text-white shadow-lg">
+            {preorderRibbonLabel}
+          </span>
+        )}
         {item.imageUrl ? (
           <img
             src={item.imageUrl}

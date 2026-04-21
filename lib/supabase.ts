@@ -31,6 +31,7 @@ export type PublicCollectionItem = {
   title: string;
   subtitle?: string;
   ownershipStatus?: "collection" | "wishlist" | "preorder";
+  acquisitionStatus?: "preorder" | "purchased";
   mediaFormats?: string[];
   gameProgressStatus?: string;
   purchasePriority?: string;
@@ -42,6 +43,7 @@ export type PublicCollectionItem = {
   purchaseOrigin?: string;
   purchaseDate?: { year?: number; month?: number; day?: number };
   releaseDate?: string;
+  expectedArrivalDate?: string;
   createdAt?: string;
   updatedAt?: string;
 };

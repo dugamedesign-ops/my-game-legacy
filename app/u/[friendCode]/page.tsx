@@ -83,6 +83,14 @@ function mapPublicEntryToItem(entry: PublicCollectionEntry): Item {
     imageUrl: entry.item.imageUrl,
     purchaseDate: entry.item.purchaseDate,
     releaseDate: entry.item.releaseDate,
+    acquisitionStatus:
+      normalizedOwnership === "preorder"
+        ? entry.item.acquisitionStatus === "purchased"
+          ? "purchased"
+          : "preorder"
+        : undefined,
+    expectedArrivalDate:
+      normalizedOwnership === "preorder" ? entry.item.expectedArrivalDate : undefined,
     createdAt: entry.item.createdAt ?? new Date(0).toISOString(),
     updatedAt: entry.item.updatedAt ?? new Date(0).toISOString(),
   };

@@ -1,6 +1,7 @@
 export type ItemType = "console" | "accessory" | "game";
 
 export type OwnershipStatus = "collection" | "wishlist" | "preorder";
+export type AcquisitionStatus = "preorder" | "purchased";
 
 export type GameProgressStatus =
   | "backlog"
@@ -54,6 +55,7 @@ export type Item = {
   subtitle?: string;
 
   ownershipStatus: OwnershipStatus;
+  acquisitionStatus?: AcquisitionStatus;
 
   mediaFormats?: MediaFormat[];
 
@@ -72,6 +74,7 @@ export type Item = {
 
   purchaseDate?: PurchaseDate;
   releaseDate?: string;
+  expectedArrivalDate?: string;
 
   amountPaid?: number;
   pricePhysical?: number;
