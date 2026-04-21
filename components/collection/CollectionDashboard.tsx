@@ -146,6 +146,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [isLatestAddedPaused, setIsLatestAddedPaused] = useState(false);
+  const [latestCarouselItems, setLatestCarouselItems] = useState<Item[]>([]);
 
   const [prefilledType, setPrefilledType] = useState<
     "console" | "accessory" | "game" | null
@@ -463,24 +464,38 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   }, [collectionItems]);
 
   useEffect(() => {
+    setLatestCarouselItems(latestAddedItems);
+  }, [latestAddedItems]);
+
+  useEffect(() => {
     const carousel = latestAddedCarouselRef.current;
     if (!carousel) return;
-    if (latestAddedItems.length <= 1 || isLatestAddedPaused) return;
+    if (latestCarouselItems.length <= 1 || isLatestAddedPaused) return;
 
-    const intervalId = window.setInterval(() => {
-      const maxScrollLeft = carousel.scrollWidth - carousel.clientWidth;
-      const isNearEnd = carousel.scrollLeft >= maxScrollLeft - 12;
+    const cardGap = 12; // Tailwind gap-3
+    const speedPerFrame = 0.35;
+    let frameId = 0;
 
-      if (isNearEnd) {
-        carousel.scrollTo({ left: 0, behavior: "smooth" });
-        return;
+    const tick = () => {
+      carousel.scrollLeft += speedPerFrame;
+      const firstCard = carousel.firstElementChild as HTMLElement | null;
+
+      if (firstCard) {
+        const cyclePoint = firstCard.offsetWidth + cardGap;
+        if (carousel.scrollLeft >= cyclePoint) {
+          setLatestCarouselItems((prev) =>
+            prev.length > 1 ? [...prev.slice(1), prev[0]] : prev,
+          );
+          carousel.scrollLeft -= cyclePoint;
+        }
       }
 
-      carousel.scrollBy({ left: 176, behavior: "smooth" });
-    }, 2800);
+      frameId = window.requestAnimationFrame(tick);
+    };
 
-    return () => window.clearInterval(intervalId);
-  }, [isLatestAddedPaused, latestAddedItems.length]);
+    frameId = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frameId);
+  }, [isLatestAddedPaused, latestCarouselItems.length]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1048,10 +1063,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                 onMouseLeave={() => setIsLatestAddedPaused(false)}
                 onTouchStart={() => setIsLatestAddedPaused(true)}
                 onTouchEnd={() => setIsLatestAddedPaused(false)}
-                className="styled-scrollbar mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2 snap-x snap-mandatory"
+                className="styled-scrollbar mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2"
               >
-                {latestAddedItems.map((item) => (
-                  <div key={item.id} className="w-[148px] shrink-0 snap-start sm:w-[156px]">
+                {latestCarouselItems.map((item) => (
+                  <div key={`${item.id}-${item.updatedAt ?? item.createdAt}`} className="w-[148px] shrink-0 sm:w-[156px]">
                     <ItemCard
                       item={item}
                       size="small"
