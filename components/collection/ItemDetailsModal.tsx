@@ -240,6 +240,11 @@ export function ItemDetailsModal({
     setExpectedArrivalDateInput("");
   }, [ownershipStatusInput]);
 
+  useEffect(() => {
+    if (acquisitionStatusInput) return;
+    setExpectedArrivalDateInput("");
+  }, [acquisitionStatusInput]);
+
   if (!isOpen || !item) return null;
 
   const isGame = item.type === "game";
@@ -1037,7 +1042,11 @@ export function ItemDetailsModal({
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           <button
                             type="button"
-                            onClick={() => setAcquisitionStatusInput("preorder")}
+                            onClick={() =>
+                              setAcquisitionStatusInput((current) =>
+                                current === "preorder" ? "" : "preorder",
+                              )
+                            }
                             className={`rounded-xl border px-3 py-2 text-sm transition ${
                               acquisitionStatusInput === "preorder"
                                 ? "border-fuchsia-300 bg-fuchsia-500/20 text-fuchsia-100"
@@ -1048,7 +1057,11 @@ export function ItemDetailsModal({
                           </button>
                           <button
                             type="button"
-                            onClick={() => setAcquisitionStatusInput("purchased")}
+                            onClick={() =>
+                              setAcquisitionStatusInput((current) =>
+                                current === "purchased" ? "" : "purchased",
+                              )
+                            }
                             className={`rounded-xl border px-3 py-2 text-sm transition ${
                               acquisitionStatusInput === "purchased"
                                 ? "border-red-300 bg-red-500/20 text-red-100"
