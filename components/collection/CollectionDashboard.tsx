@@ -1059,7 +1059,8 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               </div>
               <div
                 ref={latestAddedCarouselRef}
-                onMouseEnter={() => setIsLatestAddedPaused(true)}
+                onMouseDown={() => setIsLatestAddedPaused(true)}
+                onMouseUp={() => setIsLatestAddedPaused(false)}
                 onMouseLeave={() => setIsLatestAddedPaused(false)}
                 onTouchStart={() => setIsLatestAddedPaused(true)}
                 onTouchEnd={() => setIsLatestAddedPaused(false)}
