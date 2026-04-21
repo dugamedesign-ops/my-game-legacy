@@ -146,7 +146,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [isLatestAddedPaused, setIsLatestAddedPaused] = useState(false);
-  const [latestCarouselItems, setLatestCarouselItems] = useState<Item[]>([]);
 
   const [prefilledType, setPrefilledType] = useState<
     "console" | "accessory" | "game" | null
@@ -462,52 +461,41 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       })
       .slice(0, 10);
   }, [collectionItems]);
-
-  useEffect(() => {
-    setLatestCarouselItems(latestAddedItems);
-  }, [latestAddedItems]);
+  const latestAddedLoopItems = useMemo(
+    () =>
+      latestAddedItems.length > 1
+        ? [...latestAddedItems, ...latestAddedItems]
+        : latestAddedItems,
+    [latestAddedItems],
+  );
 
   useEffect(() => {
     const carousel = latestAddedCarouselRef.current;
     if (!carousel) return;
-    if (latestCarouselItems.length <= 1 || isLatestAddedPaused) return;
+    if (latestAddedItems.length <= 1 || isLatestAddedPaused) return;
 
-    const cardGap = 12; // Tailwind gap-3
-    const speedPerFrame = 0.6;
-    let lastRotateAt = 0;
+    const speedPerFrame = 0.45;
+    const cycleWidth = carousel.scrollWidth / 2;
+    if (cycleWidth <= 0) return;
     let frameId = 0;
 
-    const tick = (now: number) => {
-      const maxScrollLeft = carousel.scrollWidth - carousel.clientWidth;
-
-      if (maxScrollLeft > 1) {
-        carousel.scrollLeft += speedPerFrame;
+    const tick = () => {
+      carousel.scrollLeft += speedPerFrame;
+      if (carousel.scrollLeft >= cycleWidth) {
+        carousel.scrollLeft -= cycleWidth;
       }
-
-      const firstCard = carousel.firstElementChild as HTMLElement | null;
-
-      if (firstCard) {
-        const cyclePoint = firstCard.offsetWidth + cardGap;
-        const shouldRotateByScroll = maxScrollLeft > 1 && carousel.scrollLeft >= cyclePoint;
-        const shouldRotateByTimer = maxScrollLeft <= 1 && now - lastRotateAt >= 2200;
-
-        if (shouldRotateByScroll || shouldRotateByTimer) {
-          setLatestCarouselItems((prev) =>
-            prev.length > 1 ? [...prev.slice(1), prev[0]] : prev,
-          );
-          if (shouldRotateByScroll) {
-            carousel.scrollLeft -= cyclePoint;
-          }
-          lastRotateAt = now;
-        }
-      }
-
       frameId = window.requestAnimationFrame(tick);
     };
 
     frameId = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frameId);
-  }, [isLatestAddedPaused, latestCarouselItems.length]);
+  }, [isLatestAddedPaused, latestAddedItems.length, latestAddedLoopItems.length]);
+
+  useEffect(() => {
+    const carousel = latestAddedCarouselRef.current;
+    if (!carousel) return;
+    carousel.scrollLeft = 0;
+  }, [latestAddedItems]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1076,10 +1064,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                 onMouseLeave={() => setIsLatestAddedPaused(false)}
                 onTouchStart={() => setIsLatestAddedPaused(true)}
                 onTouchEnd={() => setIsLatestAddedPaused(false)}
-                className="styled-scrollbar mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2"
+                className="styled-scrollbar styled-scrollbar-hover mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2"
               >
-                {latestCarouselItems.map((item) => (
-                  <div key={`${item.id}-${item.updatedAt ?? item.createdAt}`} className="w-[148px] shrink-0 sm:w-[156px]">
+                {latestAddedLoopItems.map((item, index) => (
+                  <div key={`${item.id}-${index}`} className="w-[148px] shrink-0 sm:w-[156px]">
                     <ItemCard
                       item={item}
                       size="small"

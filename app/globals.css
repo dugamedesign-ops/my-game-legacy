@@ -79,3 +79,21 @@ button:active {
   border-radius: 9999px;
   border: 2px solid rgba(15, 23, 42, 0.35);
 }
+
+.styled-scrollbar-hover {
+  scrollbar-width: none;
+}
+
+.styled-scrollbar-hover::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.styled-scrollbar-hover:hover {
+  scrollbar-width: thin;
+}
+
+.styled-scrollbar-hover:hover::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
