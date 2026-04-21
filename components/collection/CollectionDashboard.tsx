@@ -135,7 +135,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
   const collectionSectionRef = useRef<HTMLElement | null>(null);
-  const latestAddedCarouselRef = useRef<HTMLDivElement | null>(null);
   const legacyMenuRef = useRef<HTMLDivElement | null>(null);
   const isModalOpenRef = useRef(false);
   const isMobileSidebarOpenRef = useRef(false);
@@ -146,7 +145,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [isLatestAddedPaused, setIsLatestAddedPaused] = useState(false);
-  const [latestCarouselLayoutVersion, setLatestCarouselLayoutVersion] = useState(0);
 
   const [prefilledType, setPrefilledType] = useState<
     "console" | "accessory" | "game" | null
@@ -462,74 +460,13 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       })
       .slice(0, 10);
   }, [collectionItems]);
-  const [latestCarouselItems, setLatestCarouselItems] = useState(latestAddedItems);
-  useEffect(() => {
-    setLatestCarouselItems(latestAddedItems);
-  }, [latestAddedItems]);
   const latestAddedLoopItems = useMemo(
     () =>
-      latestCarouselItems.length > 1
-        ? [...latestCarouselItems, ...latestCarouselItems]
-        : latestCarouselItems,
-    [latestCarouselItems],
+      latestAddedItems.length > 1
+        ? [...latestAddedItems, ...latestAddedItems]
+        : latestAddedItems,
+    [latestAddedItems],
   );
-
-  useEffect(() => {
-    const carousel = latestAddedCarouselRef.current;
-    if (!carousel || typeof ResizeObserver === "undefined") return;
-
-    const observer = new ResizeObserver(() => {
-      setLatestCarouselLayoutVersion((current) => current + 1);
-    });
-
-    observer.observe(carousel);
-    return () => observer.disconnect();
-  }, [latestAddedLoopItems.length]);
-
-  useEffect(() => {
-    const carousel = latestAddedCarouselRef.current;
-    if (!carousel) return;
-    if (latestCarouselItems.length <= 1 || isLatestAddedPaused) return;
-
-    const speedPerFrame = 0.45;
-    const hasOverflow = carousel.scrollWidth - carousel.clientWidth > 1;
-    let scrollIntervalId: number | null = null;
-    let rotateIntervalId: number | null = null;
-
-    if (hasOverflow) {
-      scrollIntervalId = window.setInterval(() => {
-        const cycleWidth = carousel.scrollWidth / 2;
-        if (cycleWidth <= 0) return;
-
-        const nextPosition = carousel.scrollLeft + speedPerFrame;
-        carousel.scrollLeft =
-          nextPosition >= cycleWidth ? nextPosition - cycleWidth : nextPosition;
-      }, 16);
-    } else {
-      rotateIntervalId = window.setInterval(() => {
-        setLatestCarouselItems((current) => {
-          if (current.length <= 1) return current;
-          return [...current.slice(1), current[0]];
-        });
-      }, 2600);
-    }
-
-    return () => {
-      if (scrollIntervalId) window.clearInterval(scrollIntervalId);
-      if (rotateIntervalId) window.clearInterval(rotateIntervalId);
-    };
-  }, [
-    isLatestAddedPaused,
-    latestCarouselItems.length,
-    latestAddedLoopItems.length,
-    latestCarouselLayoutVersion,
-  ]);
-
-  useEffect(() => {
-    const carousel = latestAddedCarouselRef.current;
-    if (!carousel) return;
-    carousel.scrollLeft = 0;
-  }, [latestCarouselItems, latestAddedItems]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1092,24 +1029,29 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                 <h2 className="text-base font-semibold tracking-wide text-white">Últimos adicionados</h2>
               </div>
               <div
-                ref={latestAddedCarouselRef}
                 onMouseDown={() => setIsLatestAddedPaused(true)}
                 onMouseUp={() => setIsLatestAddedPaused(false)}
                 onMouseLeave={() => setIsLatestAddedPaused(false)}
                 onTouchStart={() => setIsLatestAddedPaused(true)}
                 onTouchEnd={() => setIsLatestAddedPaused(false)}
-                className="styled-scrollbar styled-scrollbar-hover mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2"
+                className="mx-auto max-w-[980px] overflow-hidden pb-2"
               >
-                {latestAddedLoopItems.map((item, index) => (
-                  <div key={`${item.id}-${index}`} className="w-[148px] shrink-0 sm:w-[156px]">
-                    <ItemCard
-                      item={item}
-                      size="small"
-                      onClick={setSelectedItem}
-                      showMediaSeals={false}
-                    />
-                  </div>
-                ))}
+                <div
+                  className={`flex w-max gap-3 ${
+                    latestAddedItems.length > 1 ? "latest-added-marquee" : ""
+                  } ${isLatestAddedPaused ? "latest-added-marquee-paused" : ""}`}
+                >
+                  {latestAddedLoopItems.map((item, index) => (
+                    <div key={`${item.id}-${index}`} className="w-[148px] shrink-0 sm:w-[156px]">
+                      <ItemCard
+                        item={item}
+                        size="small"
+                        onClick={setSelectedItem}
+                        showMediaSeals={false}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </section>
           )}

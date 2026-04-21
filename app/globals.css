@@ -97,3 +97,27 @@ button:active {
   width: 10px;
   height: 10px;
 }
+
+@keyframes latest-added-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(calc(-50% - 0.375rem), 0, 0);
+  }
+}
+
+.latest-added-marquee {
+  animation: latest-added-marquee 34s linear infinite;
+  will-change: transform;
+}
+
+.latest-added-marquee-paused {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .latest-added-marquee {
+    animation: none;
+  }
+}
