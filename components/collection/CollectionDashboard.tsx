@@ -473,20 +473,32 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     if (latestCarouselItems.length <= 1 || isLatestAddedPaused) return;
 
     const cardGap = 12; // Tailwind gap-3
-    const speedPerFrame = 0.35;
+    const speedPerFrame = 0.6;
+    let lastRotateAt = 0;
     let frameId = 0;
 
-    const tick = () => {
-      carousel.scrollLeft += speedPerFrame;
+    const tick = (now: number) => {
+      const maxScrollLeft = carousel.scrollWidth - carousel.clientWidth;
+
+      if (maxScrollLeft > 1) {
+        carousel.scrollLeft += speedPerFrame;
+      }
+
       const firstCard = carousel.firstElementChild as HTMLElement | null;
 
       if (firstCard) {
         const cyclePoint = firstCard.offsetWidth + cardGap;
-        if (carousel.scrollLeft >= cyclePoint) {
+        const shouldRotateByScroll = maxScrollLeft > 1 && carousel.scrollLeft >= cyclePoint;
+        const shouldRotateByTimer = maxScrollLeft <= 1 && now - lastRotateAt >= 2200;
+
+        if (shouldRotateByScroll || shouldRotateByTimer) {
           setLatestCarouselItems((prev) =>
             prev.length > 1 ? [...prev.slice(1), prev[0]] : prev,
           );
-          carousel.scrollLeft -= cyclePoint;
+          if (shouldRotateByScroll) {
+            carousel.scrollLeft -= cyclePoint;
+          }
+          lastRotateAt = now;
         }
       }
 
