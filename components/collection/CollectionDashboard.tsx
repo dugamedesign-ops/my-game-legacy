@@ -1204,6 +1204,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
       <ItemDetailsModal
         item={selectedItem}
+        existingItems={collectionItems}
         isOpen={!!selectedItem}
         onClose={() => setSelectedItem(null)}
         onUpdateItem={(updatedItem) => {

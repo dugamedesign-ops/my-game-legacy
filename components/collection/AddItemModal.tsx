@@ -1208,7 +1208,7 @@ function OwnershipStatusButtons({
   onChange: (value: OwnershipStatus) => void;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       <button
         type="button"
         onClick={() => onChange("collection")}
@@ -1230,17 +1230,6 @@ function OwnershipStatusButtons({
         }`}
       >
         Wishlist
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange("preorder")}
-        className={`rounded-xl border px-3 py-2 text-sm transition ${
-          value === "preorder"
-            ? "border-fuchsia-400 bg-fuchsia-500 text-white"
-            : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
-        }`}
-      >
-        Pré-venda
       </button>
     </div>
   );

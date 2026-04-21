@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Item } from "@/types/collection";
 import { StatusBadge } from "./StatusBadge";
 import { searchIgdbCover } from "@/lib/igdb";
@@ -23,6 +23,7 @@ import {
 
 type ItemDetailsModalProps = {
   item: Item | null;
+  existingItems: Item[];
   isOpen: boolean;
   onClose: () => void;
   onUpdateItem: (updatedItem: Item) => void;
@@ -30,6 +31,7 @@ type ItemDetailsModalProps = {
 
 export function ItemDetailsModal({
   item,
+  existingItems,
   isOpen,
   onClose,
   onUpdateItem,
@@ -83,6 +85,23 @@ export function ItemDetailsModal({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imagePanelRef = useRef<HTMLDivElement | null>(null);
   const handleSaveAllRef = useRef<() => void>(() => {});
+  const platformOptions = useMemo(() => {
+    const options = Array.from(
+      new Set(
+        existingItems
+          .filter((entry) => !entry.isRemoved)
+          .map((entry) => entry.platform.trim())
+          .filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+
+    const current = platformInput.trim();
+    if (current && !options.includes(current)) {
+      options.unshift(current);
+    }
+
+    return options;
+  }, [existingItems, platformInput]);
 
   useEffect(() => {
     if (!item || !isOpen) return;
@@ -452,6 +471,9 @@ export function ItemDetailsModal({
     const year = purchaseYearInput.trim() ? Number(purchaseYearInput.trim()) : undefined;
     const month = purchaseMonthInput.trim() ? Number(purchaseMonthInput.trim()) : undefined;
     const day = purchaseDayInput.trim() ? Number(purchaseDayInput.trim()) : undefined;
+    const hasWishlistAcquisitionStatus =
+      ownershipStatusInput === "wishlist" &&
+      (item.acquisitionStatus === "preorder" || item.acquisitionStatus === "purchased");
 
     const updatedItem: Item = {
       ...item,
@@ -478,7 +500,7 @@ export function ItemDetailsModal({
           : undefined,
 
       amountPaid:
-        ownershipStatusInput === "wishlist"
+        ownershipStatusInput === "wishlist" && !hasWishlistAcquisitionStatus
           ? undefined
           : isGame
             ? getConsolidatedAmountPaid()
@@ -486,8 +508,16 @@ export function ItemDetailsModal({
       currentValue: parseOptionalNumber(currentValueInput),
 
       purchasePriority:
-        ownershipStatusInput === "wishlist"
+        ownershipStatusInput === "wishlist" && !hasWishlistAcquisitionStatus
           ? purchasePriorityInput || undefined
+          : undefined,
+      acquisitionStatus:
+        ownershipStatusInput === "wishlist"
+          ? item.acquisitionStatus
+          : undefined,
+      expectedArrivalDate:
+        ownershipStatusInput === "wishlist"
+          ? item.expectedArrivalDate
           : undefined,
       rarityTags: rarityInput ? [rarityInput] : undefined,
       rating: ratingInput > 0 ? ratingInput : undefined,
@@ -511,6 +541,26 @@ export function ItemDetailsModal({
 
       updatedAt: new Date().toISOString(),
     };
+
+    const normalizedTitle = updatedItem.title.trim().toLowerCase();
+    const normalizedPlatform = updatedItem.platform.trim().toLowerCase();
+    const normalizedSubtitle = (updatedItem.subtitle ?? "").trim().toLowerCase();
+    const hasDuplicateOnTargetPlatform = existingItems.some((other) => {
+      if (other.id === updatedItem.id || other.isRemoved) return false;
+
+      return (
+        other.title.trim().toLowerCase() === normalizedTitle &&
+        other.platform.trim().toLowerCase() === normalizedPlatform &&
+        (other.subtitle ?? "").trim().toLowerCase() === normalizedSubtitle
+      );
+    });
+
+    if (hasDuplicateOnTargetPlatform) {
+      setSaveFeedback(
+        "Já existe um item com o mesmo nome, subtítulo e plataforma. Altere os dados para continuar.",
+      );
+      return;
+    }
 
     try {
       onUpdateItem(updatedItem);
@@ -668,9 +718,7 @@ export function ItemDetailsModal({
                   variant={
                     ownershipStatusInput === "wishlist"
                       ? "wishlist"
-                      : ownershipStatusInput === "preorder"
-                        ? "preorder"
-                        : "default"
+                      : "default"
                   }
                 />
 
@@ -729,11 +777,22 @@ export function ItemDetailsModal({
                     <span className="mb-2 block text-sm text-white/70">
                       Plataforma
                     </span>
-                    <input
+                    <select
                       value={platformInput}
                       onChange={(e) => setPlatformInput(e.target.value)}
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                    />
+                    >
+                      {platformOptions.length === 0 && (
+                        <option value="" className="bg-[#0b1020]">
+                          Sem plataforma cadastrada
+                        </option>
+                      )}
+                      {platformOptions.map((platform) => (
+                        <option key={platform} value={platform} className="bg-[#0b1020]">
+                          {platform}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                 </div>
               </section>
@@ -1160,11 +1219,10 @@ function OwnershipStatusButtons({
   onChange: (value: Item["ownershipStatus"]) => void;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {[
         { value: "collection", label: "Na coleção", active: "border-white/25 bg-white text-black" },
         { value: "wishlist", label: "Wishlist", active: "border-amber-300 bg-amber-300 text-black" },
-        { value: "preorder", label: "Pré-venda", active: "border-fuchsia-400 bg-fuchsia-500 text-white" },
       ].map((option) => (
         <button
           key={option.value}

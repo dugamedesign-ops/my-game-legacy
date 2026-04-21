@@ -99,7 +99,7 @@ export function FinancialOverview({
       ? `${summary.missingWishlistCurrentCount} item(ns) da wishlist sem valor monitorado`
       : null,
     summary.missingPreorderPaidCount > 0
-      ? `${summary.missingPreorderPaidCount} pré-venda(s) sem valor pago`
+      ? `${summary.missingPreorderPaidCount} comprado(s) em rota sem valor pago`
       : null,
   ].filter(Boolean) as string[];
   const hasActiveFilters =
@@ -177,7 +177,7 @@ export function FinancialOverview({
               tone="warning"
             />
             <FinanceCard
-              label="Pré-vendas pagas"
+              label="Comprados (em rota)"
               value={formatCurrencyBRL(summary.preorderPaidValue)}
               tone="accent"
             />
@@ -257,7 +257,6 @@ export function FinancialOverview({
                   options={[
                     { value: "collection", label: "Na coleção" },
                     { value: "wishlist", label: "Wishlist" },
-                    { value: "preorder", label: "Pré-venda" },
                   ]}
                   selected={selectedOwnership}
                   onToggle={(value) =>

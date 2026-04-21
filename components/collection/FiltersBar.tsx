@@ -142,11 +142,6 @@ export function FiltersBar({ filters, setFilters, compact = false }: Props) {
             active={filters.ownership.includes("wishlist")}
             onClick={() => toggleOwnership("wishlist")}
           />
-          <FilterChip
-            label="Pré-venda"
-            active={filters.ownership.includes("preorder")}
-            onClick={() => toggleOwnership("preorder")}
-          />
         </FilterGroup>
 
         <FilterGroup label="Prioridade">
