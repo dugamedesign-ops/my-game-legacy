@@ -135,6 +135,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
   const collectionSectionRef = useRef<HTMLElement | null>(null);
+  const latestAddedCarouselRef = useRef<HTMLDivElement | null>(null);
   const legacyMenuRef = useRef<HTMLDivElement | null>(null);
   const isModalOpenRef = useRef(false);
   const isMobileSidebarOpenRef = useRef(false);
@@ -144,6 +145,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const skipNextSidebarPopstateRef = useRef(false);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [isLatestAddedPaused, setIsLatestAddedPaused] = useState(false);
 
   const [prefilledType, setPrefilledType] = useState<
     "console" | "accessory" | "game" | null
@@ -459,6 +461,26 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       })
       .slice(0, 10);
   }, [collectionItems]);
+
+  useEffect(() => {
+    const carousel = latestAddedCarouselRef.current;
+    if (!carousel) return;
+    if (latestAddedItems.length <= 1 || isLatestAddedPaused) return;
+
+    const intervalId = window.setInterval(() => {
+      const maxScrollLeft = carousel.scrollWidth - carousel.clientWidth;
+      const isNearEnd = carousel.scrollLeft >= maxScrollLeft - 12;
+
+      if (isNearEnd) {
+        carousel.scrollTo({ left: 0, behavior: "smooth" });
+        return;
+      }
+
+      carousel.scrollBy({ left: 176, behavior: "smooth" });
+    }, 2800);
+
+    return () => window.clearInterval(intervalId);
+  }, [isLatestAddedPaused, latestAddedItems.length]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1020,7 +1042,14 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-base font-semibold tracking-wide text-white">Últimos adicionados</h2>
               </div>
-              <div className="styled-scrollbar mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+              <div
+                ref={latestAddedCarouselRef}
+                onMouseEnter={() => setIsLatestAddedPaused(true)}
+                onMouseLeave={() => setIsLatestAddedPaused(false)}
+                onTouchStart={() => setIsLatestAddedPaused(true)}
+                onTouchEnd={() => setIsLatestAddedPaused(false)}
+                className="styled-scrollbar mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2 snap-x snap-mandatory"
+              >
                 {latestAddedItems.map((item) => (
                   <div key={item.id} className="w-[148px] shrink-0 snap-start sm:w-[156px]">
                     <ItemCard
