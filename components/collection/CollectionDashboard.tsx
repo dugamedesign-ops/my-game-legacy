@@ -23,7 +23,7 @@ import {
   matchesFinancialCollectionViewFilters,
   type FinancialCollectionViewFilters,
 } from "@/lib/collection-view-filters";
-import { isItemReleased } from "@/lib/acquisition-utils";
+import { getNormalizedAcquisitionStatus, isItemReleased } from "@/lib/acquisition-utils";
 
 type CollectionDashboardProps = {
   items: Item[];
@@ -39,7 +39,7 @@ type HeaderFilterKey =
   | "all"
   | "collection"
   | "wishlist"
-  | "preorder"
+  | "purchased"
   | "playing"
   | "finished";
 
@@ -482,7 +482,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     setFilters({
       types: [],
       ownership:
-        next === "collection" || next === "wishlist" || next === "preorder"
+        next === "collection" || next === "wishlist"
           ? [next]
           : [],
       priorities: [],
@@ -495,7 +495,14 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       media: [],
       missing: [],
     });
-    setFinancialFocusFilters(createEmptyFinancialCollectionViewFilters());
+    setFinancialFocusFilters(
+      next === "purchased"
+        ? {
+            ...createEmptyFinancialCollectionViewFilters(),
+            acquisitionStatuses: ["preorder", "purchased"],
+          }
+        : createEmptyFinancialCollectionViewFilters(),
+    );
     setSearch("");
 
     setTimeout(() => {
@@ -556,7 +563,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     let expectedArrivalDate = item.expectedArrivalDate;
     if (acquisitionStatus === "purchased") {
       const promptValue = window.prompt(
-        "Data prevista de chegada (opcional, formato AAAA-MM-DD):",
+        "Data prevista de chegada (opcional, formato DD-MM-AAAA):",
         item.expectedArrivalDate ?? "",
       );
       if (promptValue === null) return;
@@ -565,9 +572,23 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       if (normalized.length === 0) {
         expectedArrivalDate = undefined;
       } else {
-        const parsed = new Date(normalized);
+        const dateParts = normalized.split("-");
+        const isValidPtBrFormat =
+          dateParts.length === 3 &&
+          dateParts.every((part) => /^\d+$/.test(part)) &&
+          dateParts[0].length === 2 &&
+          dateParts[1].length === 2 &&
+          dateParts[2].length === 4;
+
+        if (!isValidPtBrFormat) {
+          window.alert("Data inválida. Use o formato DD-MM-AAAA.");
+          return;
+        }
+
+        const [dayText, monthText, yearText] = dateParts;
+        const parsed = new Date(`${yearText}-${monthText}-${dayText}T00:00:00`);
         if (Number.isNaN(parsed.getTime())) {
-          window.alert("Data inválida. Use o formato AAAA-MM-DD.");
+          window.alert("Data inválida. Use o formato DD-MM-AAAA.");
           return;
         }
         expectedArrivalDate = normalized;
@@ -578,7 +599,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
     const updated: Item = {
       ...item,
-      ownershipStatus: "preorder",
+      ownershipStatus: "wishlist",
       acquisitionStatus,
       expectedArrivalDate,
       updatedAt: new Date().toISOString(),
@@ -643,9 +664,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
         "border-yellow-300/80 bg-yellow-400/10 text-yellow-100 shadow-[0_8px_26px_rgba(250,204,21,0.25)]",
     },
     {
-      key: "preorder",
-      label: "Pré-venda",
-      value: summary.preorderCount,
+      key: "purchased",
+      label: "Comprado",
+      value: collectionItems.filter((item) => !!getNormalizedAcquisitionStatus(item)).length,
       icon: "⚡",
       activeClassName:
         "border-violet-300/80 bg-violet-500/10 text-violet-100 shadow-[0_8px_26px_rgba(168,85,247,0.24)]",

@@ -42,6 +42,7 @@ export function ItemDetailsModal({
 
   const [nameInput, setNameInput] = useState("");
   const [subtitleInput, setSubtitleInput] = useState("");
+  const [platformInput, setPlatformInput] = useState("");
   const [imageUrlInput, setImageUrlInput] = useState("");
 
   const [ownershipStatusInput, setOwnershipStatusInput] =
@@ -88,6 +89,7 @@ export function ItemDetailsModal({
 
     setNameInput(item.title ?? "");
     setSubtitleInput(item.subtitle ?? "");
+    setPlatformInput(item.platform ?? "");
     setImageUrlInput(item.imageUrl ?? "");
 
     setOwnershipStatusInput(item.ownershipStatus);
@@ -297,7 +299,7 @@ export function ItemDetailsModal({
     if (!isGame || !item) return;
 
     const currentTitle = nameInput.trim() || item.title;
-    const currentPlatform = item.platform;
+    const currentPlatform = platformInput.trim() || item.platform;
 
     setIsSearchingCover(true);
 
@@ -455,6 +457,7 @@ export function ItemDetailsModal({
       ...item,
       title: nameInput.trim() || item.title,
       subtitle: subtitleInput.trim() || undefined,
+      platform: platformInput.trim() || item.platform,
       imageUrl: imageUrlInput.trim() || undefined,
 
       ownershipStatus: ownershipStatusInput,
@@ -548,7 +551,7 @@ export function ItemDetailsModal({
                 <div className="flex h-full w-full items-end bg-gradient-to-br from-slate-700/60 via-slate-900 to-black p-6">
                   <div>
                     <p className="text-xs uppercase tracking-[0.25em] text-white/45">
-                      {item.platform}
+                      {platformInput || item.platform}
                     </p>
                     <h2 className="mt-2 text-3xl font-semibold text-white">
                       {nameInput || item.title}
@@ -631,7 +634,7 @@ export function ItemDetailsModal({
                   </span>
                 )}
                 <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                  🕹 {item.platform}
+                  🕹 {platformInput || item.platform}
                 </span>
                 {!!item.franchise && (
                   <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
@@ -719,6 +722,17 @@ export function ItemDetailsModal({
                       onChange={(e) => setSubtitleInput(e.target.value)}
                       placeholder="Opcional"
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                    />
+                  </label>
+
+                  <label className="block md:col-span-2">
+                    <span className="mb-2 block text-sm text-white/70">
+                      Plataforma
+                    </span>
+                    <input
+                      value={platformInput}
+                      onChange={(e) => setPlatformInput(e.target.value)}
+                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
                     />
                   </label>
                 </div>

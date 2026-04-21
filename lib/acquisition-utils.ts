@@ -11,8 +11,10 @@ export function isItemReleased(item: Pick<Item, "releaseDate">, now = new Date()
 export function getNormalizedAcquisitionStatus(
   item: Pick<Item, "ownershipStatus" | "acquisitionStatus">,
 ) {
-  if (item.ownershipStatus !== "preorder") return null;
-  return item.acquisitionStatus === "purchased" ? "purchased" : "preorder";
+  if (item.acquisitionStatus === "purchased") return "purchased";
+  if (item.acquisitionStatus === "preorder") return "preorder";
+  if (item.ownershipStatus === "preorder") return "preorder";
+  return null;
 }
 
 export function getAcquisitionStatusLabel(status: "preorder" | "purchased") {

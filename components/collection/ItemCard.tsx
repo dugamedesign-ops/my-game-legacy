@@ -23,7 +23,7 @@ function getOwnershipFrame(item: Item) {
   }
 
   if (item.ownershipStatus === "preorder") {
-    return "border-2 border-fuchsia-400/90 shadow-[0_0_0_1px_rgba(232,121,249,0.35)]";
+    return "border-2 border-amber-300/90 shadow-[0_0_0_1px_rgba(252,211,77,0.35)]";
   }
 
   return "border-2 border-white/12";

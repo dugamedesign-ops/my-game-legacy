@@ -1,4 +1,5 @@
 import { Item } from "@/types/collection";
+import { getNormalizedAcquisitionStatus } from "./acquisition-utils";
 
 export type FinancialCollectionViewFilters = {
   platforms: string[];
@@ -37,8 +38,8 @@ export function matchesFinancialCollectionViewFilters(
   }
 
   if (filters.acquisitionStatuses.length > 0) {
-    if (item.ownershipStatus !== "preorder") return false;
-    const acquisitionStatus = item.acquisitionStatus === "purchased" ? "purchased" : "preorder";
+    const acquisitionStatus = getNormalizedAcquisitionStatus(item);
+    if (!acquisitionStatus) return false;
     if (!filters.acquisitionStatuses.includes(acquisitionStatus)) {
       return false;
     }
