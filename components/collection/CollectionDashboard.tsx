@@ -146,6 +146,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [isLatestAddedPaused, setIsLatestAddedPaused] = useState(false);
+  const [latestCarouselLayoutVersion, setLatestCarouselLayoutVersion] = useState(0);
 
   const [prefilledType, setPrefilledType] = useState<
     "console" | "accessory" | "game" | null
@@ -475,6 +476,18 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
   useEffect(() => {
     const carousel = latestAddedCarouselRef.current;
+    if (!carousel || typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(() => {
+      setLatestCarouselLayoutVersion((current) => current + 1);
+    });
+
+    observer.observe(carousel);
+    return () => observer.disconnect();
+  }, [latestAddedLoopItems.length]);
+
+  useEffect(() => {
+    const carousel = latestAddedCarouselRef.current;
     if (!carousel) return;
     if (latestCarouselItems.length <= 1 || isLatestAddedPaused) return;
 
@@ -509,7 +522,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       if (frameId) window.cancelAnimationFrame(frameId);
       if (intervalId) window.clearInterval(intervalId);
     };
-  }, [isLatestAddedPaused, latestCarouselItems.length, latestAddedLoopItems.length]);
+  }, [
+    isLatestAddedPaused,
+    latestCarouselItems.length,
+    latestAddedLoopItems.length,
+    latestCarouselLayoutVersion,
+  ]);
 
   useEffect(() => {
     const carousel = latestAddedCarouselRef.current;
