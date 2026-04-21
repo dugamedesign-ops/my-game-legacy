@@ -493,24 +493,20 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
     const speedPerFrame = 0.45;
     const hasOverflow = carousel.scrollWidth - carousel.clientWidth > 1;
-    let frameId = 0;
-    let intervalId: number | null = null;
+    let scrollIntervalId: number | null = null;
+    let rotateIntervalId: number | null = null;
 
     if (hasOverflow) {
-      const cycleWidth = carousel.scrollWidth / 2;
-      if (cycleWidth <= 0) return;
+      scrollIntervalId = window.setInterval(() => {
+        const cycleWidth = carousel.scrollWidth / 2;
+        if (cycleWidth <= 0) return;
 
-      const tick = () => {
-        carousel.scrollLeft += speedPerFrame;
-        if (carousel.scrollLeft >= cycleWidth) {
-          carousel.scrollLeft -= cycleWidth;
-        }
-        frameId = window.requestAnimationFrame(tick);
-      };
-
-      frameId = window.requestAnimationFrame(tick);
+        const nextPosition = carousel.scrollLeft + speedPerFrame;
+        carousel.scrollLeft =
+          nextPosition >= cycleWidth ? nextPosition - cycleWidth : nextPosition;
+      }, 16);
     } else {
-      intervalId = window.setInterval(() => {
+      rotateIntervalId = window.setInterval(() => {
         setLatestCarouselItems((current) => {
           if (current.length <= 1) return current;
           return [...current.slice(1), current[0]];
@@ -519,8 +515,8 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     }
 
     return () => {
-      if (frameId) window.cancelAnimationFrame(frameId);
-      if (intervalId) window.clearInterval(intervalId);
+      if (scrollIntervalId) window.clearInterval(scrollIntervalId);
+      if (rotateIntervalId) window.clearInterval(rotateIntervalId);
     };
   }, [
     isLatestAddedPaused,
