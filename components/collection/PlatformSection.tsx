@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Item, ItemType } from "@/types/collection";
 import {
   CATEGORY_ORDER,
@@ -28,6 +28,7 @@ export function PlatformSection({
 }: PlatformSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+  const addMenuRef = useRef<HTMLDivElement | null>(null);
   const theme = getPlatformTheme(platform);
 
   const categoryData = useMemo(() => {
@@ -47,6 +48,23 @@ export function PlatformSection({
     };
   }, [items]);
 
+  useEffect(() => {
+    if (!isAddMenuOpen) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        addMenuRef.current &&
+        event.target instanceof Node &&
+        !addMenuRef.current.contains(event.target)
+      ) {
+        setIsAddMenuOpen(false);
+      }
+    }
+
+    window.addEventListener("mousedown", handleClickOutside);
+    return () => window.removeEventListener("mousedown", handleClickOutside);
+  }, [isAddMenuOpen]);
+
   return (
     <section className="overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] shadow-[0_10px_40px_rgb(0,0,0,0.22)]">
       <div
@@ -61,7 +79,7 @@ export function PlatformSection({
           </div>
 
           <div className="flex shrink-0 items-center gap-2 text-sm text-white/70">
-            <div className="relative">
+            <div ref={addMenuRef} className="relative">
               <button
                 type="button"
                 onClick={() => setIsAddMenuOpen((prev) => !prev)}

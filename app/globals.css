@@ -57,3 +57,25 @@ button:active {
   outline-offset: 2px;
   box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.28);
 }
+
+.styled-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.55) rgba(15, 23, 42, 0.35);
+  scrollbar-gutter: stable both-edges;
+}
+
+.styled-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.styled-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.35);
+  border-radius: 9999px;
+}
+
+.styled-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(100, 116, 139, 0.9), rgba(71, 85, 105, 0.9));
+  border-radius: 9999px;
+  border: 2px solid rgba(15, 23, 42, 0.35);
+}

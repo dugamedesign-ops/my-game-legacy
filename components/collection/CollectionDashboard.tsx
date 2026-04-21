@@ -739,7 +739,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               id="mobile-sidebar"
               className={`mb-6 lg:sticky lg:top-6 lg:mb-0 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto ${
                 isMobileSidebarOpen
-                  ? "fixed inset-y-0 left-0 z-50 w-[86vw] max-w-[320px] overflow-y-auto border-r border-white/10 bg-[#0b1220] p-4 shadow-2xl sm:w-[380px] lg:static lg:inset-auto lg:z-auto lg:w-auto lg:max-w-none lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
+                  ? "styled-scrollbar fixed inset-y-0 left-0 z-50 w-[86vw] max-w-[320px] overflow-y-auto border-r border-white/10 bg-[#0b1220] p-4 shadow-2xl sm:w-[380px] lg:static lg:inset-auto lg:z-auto lg:w-auto lg:max-w-none lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
                   : "hidden lg:block"
               }`}
             >
@@ -1019,11 +1019,8 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             <section className="mb-8 rounded-[28px] border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.03] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-base font-semibold tracking-wide text-white">Últimos adicionados</h2>
-                <span className="text-xs uppercase tracking-[0.18em] text-white/45">
-                  vitrine
-                </span>
               </div>
-              <div className="mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+              <div className="styled-scrollbar mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
                 {latestAddedItems.map((item) => (
                   <div key={item.id} className="w-[148px] shrink-0 snap-start sm:w-[156px]">
                     <ItemCard
