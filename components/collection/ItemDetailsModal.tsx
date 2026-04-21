@@ -64,6 +64,10 @@ export function ItemDetailsModal({
   const [purchasePriorityInput, setPurchasePriorityInput] = useState<
     Item["purchasePriority"] | ""
   >("");
+  const [acquisitionStatusInput, setAcquisitionStatusInput] = useState<
+    NonNullable<Item["acquisitionStatus"]> | ""
+  >("");
+  const [expectedArrivalDateInput, setExpectedArrivalDateInput] = useState("");
   const [rarityInput, setRarityInput] = useState<
     NonNullable<Item["rarityTags"]>[number] | ""
   >("");
@@ -147,6 +151,8 @@ export function ItemDetailsModal({
     );
 
     setPurchasePriorityInput(item.purchasePriority ?? "");
+    setAcquisitionStatusInput(item.acquisitionStatus ?? "");
+    setExpectedArrivalDateInput(item.expectedArrivalDate ?? "");
     setRarityInput(item.rarityTags?.[0] ?? "");
 
     setPurchaseYearInput(item.purchaseDate?.year ? String(item.purchaseDate.year) : "2026");
@@ -228,10 +234,20 @@ export function ItemDetailsModal({
     handleSaveAllRef.current = handleSaveAll;
   });
 
+  useEffect(() => {
+    if (ownershipStatusInput === "wishlist") return;
+    setAcquisitionStatusInput("");
+    setExpectedArrivalDateInput("");
+  }, [ownershipStatusInput]);
+
   if (!isOpen || !item) return null;
 
   const isGame = item.type === "game";
   const isWishlist = ownershipStatusInput === "wishlist";
+  const hasAcquisitionInWishlist =
+    isWishlist &&
+    (acquisitionStatusInput === "preorder" || acquisitionStatusInput === "purchased");
+  const shouldDisablePaidInputs = isWishlist && !hasAcquisitionInWishlist;
   const hasPhysicalSelected = mediaFormatsInput?.includes("physical") ?? false;
   const hasDigitalSelected = mediaFormatsInput?.includes("digital") ?? false;
   const hasBothMediaSelected = hasPhysicalSelected && hasDigitalSelected;
@@ -473,7 +489,7 @@ export function ItemDetailsModal({
     const day = purchaseDayInput.trim() ? Number(purchaseDayInput.trim()) : undefined;
     const hasWishlistAcquisitionStatus =
       ownershipStatusInput === "wishlist" &&
-      (item.acquisitionStatus === "preorder" || item.acquisitionStatus === "purchased");
+      (acquisitionStatusInput === "preorder" || acquisitionStatusInput === "purchased");
 
     const updatedItem: Item = {
       ...item,
@@ -513,11 +529,11 @@ export function ItemDetailsModal({
           : undefined,
       acquisitionStatus:
         ownershipStatusInput === "wishlist"
-          ? item.acquisitionStatus
+          ? acquisitionStatusInput || undefined
           : undefined,
       expectedArrivalDate:
         ownershipStatusInput === "wishlist"
-          ? item.expectedArrivalDate
+          ? expectedArrivalDateInput.trim() || undefined
           : undefined,
       rarityTags: rarityInput ? [rarityInput] : undefined,
       rating: ratingInput > 0 ? ratingInput : undefined,
@@ -681,6 +697,11 @@ export function ItemDetailsModal({
                 {previewReleaseDateLabel && (
                   <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
                     📅 {previewReleaseDateLabel}
+                  </span>
+                )}
+                {expectedArrivalDateInput && (
+                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
+                    🚚 Entrega: {expectedArrivalDateInput}
                   </span>
                 )}
                 <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
@@ -895,7 +916,7 @@ export function ItemDetailsModal({
 
               <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
                 <h3 className="text-lg font-semibold text-white">
-                  Financeiro e metadados
+                  Financeiro e Metadados
                 </h3>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -909,8 +930,8 @@ export function ItemDetailsModal({
                               <input
                                 value={pricePhysicalInput}
                                 onChange={(e) => setPricePhysicalInput(e.target.value)}
-                                placeholder={isWishlist ? "Opcional na wishlist" : "Ex: 299.90"}
-                                disabled={isWishlist}
+                                placeholder={shouldDisablePaidInputs ? "Opcional na wishlist" : "Ex: 299.90"}
+                                disabled={shouldDisablePaidInputs}
                                 className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
                               />
                             </label>
@@ -921,8 +942,8 @@ export function ItemDetailsModal({
                               <input
                                 value={priceDigitalInput}
                                 onChange={(e) => setPriceDigitalInput(e.target.value)}
-                                placeholder={isWishlist ? "Opcional na wishlist" : "Ex: 249.90"}
-                                disabled={isWishlist}
+                                placeholder={shouldDisablePaidInputs ? "Opcional na wishlist" : "Ex: 249.90"}
+                                disabled={shouldDisablePaidInputs}
                                 className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
                               />
                             </label>
@@ -937,11 +958,11 @@ export function ItemDetailsModal({
                             value={amountPaidInput}
                             onChange={(e) => setAmountPaidInput(e.target.value)}
                             placeholder={
-                              isWishlist
+                              shouldDisablePaidInputs
                                 ? "Wishlist não usa valor pago"
                                 : "Ex: 299.90"
                             }
-                            disabled={isWishlist}
+                            disabled={shouldDisablePaidInputs}
                             className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
                           />
                         </label>
@@ -956,11 +977,11 @@ export function ItemDetailsModal({
                         value={amountPaidInput}
                         onChange={(e) => setAmountPaidInput(e.target.value)}
                         placeholder={
-                          isWishlist
+                          shouldDisablePaidInputs
                             ? "Wishlist não usa valor pago"
                             : "Ex: 299.90"
                         }
-                        disabled={isWishlist}
+                        disabled={shouldDisablePaidInputs}
                         className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
                       />
                     </label>
@@ -1006,6 +1027,57 @@ export function ItemDetailsModal({
                       onChange={(value) => setRarityInput(value)}
                     />
                   </label>
+
+                  {isWishlist && (
+                    <>
+                      <label className="block md:col-span-2">
+                        <span className="mb-2 block text-sm text-white/70">
+                          Substatus de compra
+                        </span>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() => setAcquisitionStatusInput("preorder")}
+                            className={`rounded-xl border px-3 py-2 text-sm transition ${
+                              acquisitionStatusInput === "preorder"
+                                ? "border-fuchsia-300 bg-fuchsia-500/20 text-fuchsia-100"
+                                : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
+                            }`}
+                          >
+                            Pré-venda
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAcquisitionStatusInput("purchased")}
+                            className={`rounded-xl border px-3 py-2 text-sm transition ${
+                              acquisitionStatusInput === "purchased"
+                                ? "border-red-300 bg-red-500/20 text-red-100"
+                                : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
+                            }`}
+                          >
+                            Comprado
+                          </button>
+                        </div>
+                      </label>
+
+                      {acquisitionStatusInput && (
+                        <label className="block md:col-span-2">
+                          <span className="mb-2 block text-sm text-white/70">
+                            Previsão de entrega (opcional)
+                          </span>
+                          <input
+                            value={expectedArrivalDateInput}
+                            onChange={(e) => setExpectedArrivalDateInput(e.target.value)}
+                            placeholder="DD-MM-AAAA"
+                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                          />
+                          <p className="mt-2 text-xs text-white/55">
+                            Você pode preencher agora ou editar depois neste mesmo modal.
+                          </p>
+                        </label>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 {!isWishlist && (
