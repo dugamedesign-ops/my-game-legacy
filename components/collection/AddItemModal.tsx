@@ -282,6 +282,13 @@ export function AddItemModal({
     return undefined;
   }
 
+  function isFutureReleaseDate(releaseDate?: string) {
+    if (!releaseDate) return false;
+    const parsed = new Date(releaseDate);
+    if (Number.isNaN(parsed.getTime())) return false;
+    return parsed.getTime() > Date.now();
+  }
+
   const duplicateCheck = useMemo(() => {
     const isConsole = form.type === "console";
     const comparableTitle = isConsole ? form.platform : form.title;
@@ -455,6 +462,10 @@ export function AddItemModal({
 
     const pricePhysical = parseOptionalNumber(form.pricePhysical);
     const priceDigital = parseOptionalNumber(form.priceDigital);
+    const shouldForceWishlist = form.type === "game" && isFutureReleaseDate(form.releaseDate);
+    const effectiveOwnershipStatus: OwnershipStatus = shouldForceWishlist
+      ? "wishlist"
+      : form.ownershipStatus;
 
     return {
       id: crypto.randomUUID(),
@@ -463,14 +474,14 @@ export function AddItemModal({
       platform: form.platform.trim(),
       title,
       subtitle,
-      ownershipStatus: form.ownershipStatus,
+      ownershipStatus: effectiveOwnershipStatus,
       gameProgressStatus:
         form.type === "game" ? form.gameProgressStatus || undefined : undefined,
       mediaFormats: form.type === "game" ? mediaFormats : undefined,
       pricePhysical: form.type === "game" && form.physical ? pricePhysical : undefined,
       priceDigital: form.type === "game" && form.digital ? priceDigital : undefined,
       amountPaid:
-        form.type === "game" && form.ownershipStatus !== "wishlist"
+        form.type === "game" && effectiveOwnershipStatus !== "wishlist"
           ? getConsolidatedAmountPaid()
           : undefined,
       franchise:
@@ -520,12 +531,17 @@ export function AddItemModal({
 
   function applySearchResult(result: IgdbSearchResult) {
     skipNextAutoSearchRef.current = true;
+    const releaseDate = result.releaseDate;
 
     setForm((prev) => ({
       ...prev,
       title: result.name || prev.title,
       imageUrl: result.coverUrl || prev.imageUrl,
-      releaseDate: prev.releaseDate || result.releaseDate || prev.releaseDate,
+      releaseDate: prev.releaseDate || releaseDate || prev.releaseDate,
+      ownershipStatus:
+        isFutureReleaseDate(prev.releaseDate || releaseDate || prev.releaseDate)
+          ? "wishlist"
+          : prev.ownershipStatus,
       franchise: result.franchise || prev.franchise,
       genrePrimary: prev.genrePrimary || result.genre || prev.genrePrimary,
       platform:

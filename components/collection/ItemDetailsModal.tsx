@@ -1003,7 +1003,7 @@ export function ItemDetailsModal({
                     />
                   </label>
 
-                  {isWishlist ? (
+                  {isWishlist && !hasAcquisitionInWishlist ? (
                     <label className="block md:col-span-2">
                       <span className="mb-2 block text-sm text-white/70">
                         Prioridade
