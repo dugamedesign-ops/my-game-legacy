@@ -40,10 +40,8 @@ export function applyFilters(items: Item[], filters: Filters) {
     }
 
     // Status do jogo
-    if (
-      filters.gameStatus.length > 0 &&
-      item.type === "game"
-    ) {
+    if (filters.gameStatus.length > 0) {
+      if (item.type !== "game") return false;
       if (!item.gameProgressStatus) return false;
 
       if (!filters.gameStatus.includes(item.gameProgressStatus)) {
