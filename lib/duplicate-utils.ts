@@ -72,7 +72,7 @@ export function formatOwnershipLabel(status: Item["ownershipStatus"]) {
   const map = {
     collection: "Na coleção",
     wishlist: "Wishlist",
-    preorder: "Pré-venda",
+    preorder: "Comprado",
   };
 
   return map[status];

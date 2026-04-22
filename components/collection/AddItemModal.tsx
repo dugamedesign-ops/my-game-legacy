@@ -111,7 +111,7 @@ export function AddItemModal({
     platformOverride?: string | null,
   ): FormState {
     return {
-      type: typeOverride ?? "game",
+      type: typeOverride ?? "console",
       platform: platformOverride ?? "",
       title: "",
       subtitle: "",
@@ -282,6 +282,13 @@ export function AddItemModal({
     return undefined;
   }
 
+  function isFutureReleaseDate(releaseDate?: string) {
+    if (!releaseDate) return false;
+    const parsed = new Date(releaseDate);
+    if (Number.isNaN(parsed.getTime())) return false;
+    return parsed.getTime() > Date.now();
+  }
+
   const duplicateCheck = useMemo(() => {
     const isConsole = form.type === "console";
     const comparableTitle = isConsole ? form.platform : form.title;
@@ -357,24 +364,50 @@ export function AddItemModal({
       if (!isOpen) return;
 
       if (step === 1 && !isTypingTarget(event.target)) {
+        const typeOrder: Array<FormState["type"]> = ["console", "accessory", "game"];
+        const currentIndex = typeOrder.findIndex((type) => type === form.type);
+
         if (event.key === "1") {
-          event.preventDefault();
-          event.stopPropagation();
-          updateField("type", "game");
-          setStep(2);
-          return;
-        }
-        if (event.key === "2") {
           event.preventDefault();
           event.stopPropagation();
           updateField("type", "console");
           setStep(2);
           return;
         }
-        if (event.key === "3") {
+        if (event.key === "2") {
           event.preventDefault();
           event.stopPropagation();
           updateField("type", "accessory");
+          setStep(2);
+          return;
+        }
+        if (event.key === "3") {
+          event.preventDefault();
+          event.stopPropagation();
+          updateField("type", "game");
+          setStep(2);
+          return;
+        }
+        if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+          event.preventDefault();
+          event.stopPropagation();
+          const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % typeOrder.length;
+          updateField("type", typeOrder[nextIndex]);
+          return;
+        }
+        if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+          event.preventDefault();
+          event.stopPropagation();
+          const prevIndex =
+            currentIndex === -1
+              ? typeOrder.length - 1
+              : (currentIndex - 1 + typeOrder.length) % typeOrder.length;
+          updateField("type", typeOrder[prevIndex]);
+          return;
+        }
+        if (event.key === "Enter" && !!form.type) {
+          event.preventDefault();
+          event.stopPropagation();
           setStep(2);
           return;
         }
@@ -429,6 +462,10 @@ export function AddItemModal({
 
     const pricePhysical = parseOptionalNumber(form.pricePhysical);
     const priceDigital = parseOptionalNumber(form.priceDigital);
+    const shouldForceWishlist = form.type === "game" && isFutureReleaseDate(form.releaseDate);
+    const effectiveOwnershipStatus: OwnershipStatus = shouldForceWishlist
+      ? "wishlist"
+      : form.ownershipStatus;
 
     return {
       id: crypto.randomUUID(),
@@ -437,14 +474,14 @@ export function AddItemModal({
       platform: form.platform.trim(),
       title,
       subtitle,
-      ownershipStatus: form.ownershipStatus,
+      ownershipStatus: effectiveOwnershipStatus,
       gameProgressStatus:
         form.type === "game" ? form.gameProgressStatus || undefined : undefined,
       mediaFormats: form.type === "game" ? mediaFormats : undefined,
       pricePhysical: form.type === "game" && form.physical ? pricePhysical : undefined,
       priceDigital: form.type === "game" && form.digital ? priceDigital : undefined,
       amountPaid:
-        form.type === "game" && form.ownershipStatus !== "wishlist"
+        form.type === "game" && effectiveOwnershipStatus !== "wishlist"
           ? getConsolidatedAmountPaid()
           : undefined,
       franchise:
@@ -494,12 +531,17 @@ export function AddItemModal({
 
   function applySearchResult(result: IgdbSearchResult) {
     skipNextAutoSearchRef.current = true;
+    const releaseDate = result.releaseDate;
 
     setForm((prev) => ({
       ...prev,
       title: result.name || prev.title,
       imageUrl: result.coverUrl || prev.imageUrl,
-      releaseDate: prev.releaseDate || result.releaseDate || prev.releaseDate,
+      releaseDate: prev.releaseDate || releaseDate || prev.releaseDate,
+      ownershipStatus:
+        isFutureReleaseDate(prev.releaseDate || releaseDate || prev.releaseDate)
+          ? "wishlist"
+          : prev.ownershipStatus,
       franchise: result.franchise || prev.franchise,
       genrePrimary: prev.genrePrimary || result.genre || prev.genrePrimary,
       platform:
@@ -713,19 +755,19 @@ export function AddItemModal({
 
                 <div className="grid gap-3 sm:grid-cols-3">
                   <TypeCard
-                    title="1. Jogo"
-                    active={form.type === "game"}
-                    onClick={() => updateField("type", "game")}
-                  />
-                  <TypeCard
-                    title="2. Console"
+                    title="Console (1)"
                     active={form.type === "console"}
                     onClick={() => updateField("type", "console")}
                   />
                   <TypeCard
-                    title="3. Acessório"
+                    title="Acessório (2)"
                     active={form.type === "accessory"}
                     onClick={() => updateField("type", "accessory")}
+                  />
+                  <TypeCard
+                    title="Jogo (3)"
+                    active={form.type === "game"}
+                    onClick={() => updateField("type", "game")}
                   />
                 </div>
               </div>
@@ -1134,7 +1176,10 @@ export function AddItemModal({
                   disabled={!getIsFormValid()}
                   className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Salvar item
+                  Salvar item{" "}
+                  <span className="ml-1 text-[11px] font-normal text-black/70">
+                    (Ctrl/⌘ + Enter)
+                  </span>
                 </button>
               </div>
               </>
@@ -1179,7 +1224,7 @@ function OwnershipStatusButtons({
   onChange: (value: OwnershipStatus) => void;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       <button
         type="button"
         onClick={() => onChange("collection")}
@@ -1201,17 +1246,6 @@ function OwnershipStatusButtons({
         }`}
       >
         Wishlist
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange("preorder")}
-        className={`rounded-xl border px-3 py-2 text-sm transition ${
-          value === "preorder"
-            ? "border-fuchsia-400 bg-fuchsia-500 text-white"
-            : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
-        }`}
-      >
-        Pré-venda
       </button>
     </div>
   );

@@ -1,4 +1,5 @@
 import { Item } from "@/types/collection";
+import { getNormalizedAcquisitionStatus } from "./acquisition-utils";
 
 export type ItemPendingField =
   | "image"
@@ -60,14 +61,14 @@ export function getPendingItems(items: Item[]): ItemPendingInfo[] {
         missingFields.push("currentValue");
       }
 
+      if (getNormalizedAcquisitionStatus(item) === "purchased") {
+        if (item.amountPaid === undefined) {
+          missingFields.push("amountPaid");
+        }
+      }
+
       if (!item.purchasePriority) {
         missingFields.push("purchasePriority");
-      }
-    }
-
-    if (item.ownershipStatus === "preorder") {
-      if (item.amountPaid === undefined) {
-        missingFields.push("amountPaid");
       }
     }
 
@@ -101,11 +102,7 @@ export function getPendingItems(items: Item[]): ItemPendingInfo[] {
     }
   }
 
-  return pendingItems.sort((a, b) => {
-    if (b.missingFields.length !== a.missingFields.length) {
-      return b.missingFields.length - a.missingFields.length;
-    }
-
-    return a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" });
-  });
+  return pendingItems.sort((a, b) =>
+    a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" }),
+  );
 }

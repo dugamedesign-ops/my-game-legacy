@@ -1,4 +1,5 @@
-import { Item, ItemType, OwnershipStatus } from "@/types/collection";
+import { Item, ItemType } from "@/types/collection";
+import { getNormalizedAcquisitionStatus } from "./acquisition-utils";
 
 export const CATEGORY_ORDER: ItemType[] = ["console", "accessory", "game"];
 
@@ -8,7 +9,11 @@ export const CATEGORY_LABELS: Record<ItemType, string> = {
   game: "Jogos",
 };
 
-const OWNERSHIP_ORDER: OwnershipStatus[] = ["collection", "preorder", "wishlist"];
+function getOwnershipSortRank(item: Item) {
+  if (item.ownershipStatus === "collection") return 0;
+  if (getNormalizedAcquisitionStatus(item)) return 1;
+  return 2;
+}
 
 export function groupItemsByPlatform(items: Item[]) {
   const grouped = new Map<string, Item[]>();
@@ -31,8 +36,8 @@ export function groupItemsByPlatform(items: Item[]) {
 
 export function sortItemsByOwnership(items: Item[]) {
   return [...items].sort((a, b) => {
-    const aIndex = OWNERSHIP_ORDER.indexOf(a.ownershipStatus);
-    const bIndex = OWNERSHIP_ORDER.indexOf(b.ownershipStatus);
+    const aIndex = getOwnershipSortRank(a);
+    const bIndex = getOwnershipSortRank(b);
 
     if (aIndex !== bIndex) {
       return aIndex - bIndex;
@@ -50,11 +55,13 @@ export function getCollectionSummary(items: Item[]) {
   const activeItems = items.filter((item) => !item.isRemoved);
 
   const wishlistCount = activeItems.filter(
-    (item) => item.ownershipStatus === "wishlist",
+    (item) =>
+      item.ownershipStatus === "wishlist" &&
+      !getNormalizedAcquisitionStatus(item),
   ).length;
 
   const preorderCount = activeItems.filter(
-    (item) => item.ownershipStatus === "preorder",
+    (item) => !!getNormalizedAcquisitionStatus(item),
   ).length;
 
   const collectionCount = activeItems.filter(
