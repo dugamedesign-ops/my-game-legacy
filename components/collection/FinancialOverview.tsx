@@ -11,6 +11,7 @@ type FinancialOverviewProps = {
   defaultOpen?: boolean;
   hideToggle?: boolean;
   onViewInCollection?: (filters: FinancialCollectionViewFilters) => void;
+  onUpdateItem?: (item: Item) => void;
 };
 
 export function FinancialOverview({
@@ -18,6 +19,7 @@ export function FinancialOverview({
   defaultOpen = false,
   hideToggle = false,
   onViewInCollection,
+  onUpdateItem,
 }: FinancialOverviewProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
@@ -32,6 +34,10 @@ export function FinancialOverview({
   const [selectedRarities, setSelectedRarities] = useState<
     NonNullable<Item["rarityTags"]>[number][]
   >([]);
+  const [activeMissingKey, setActiveMissingKey] = useState<
+    "collection_paid" | "collection_current" | "wishlist_current" | "purchased_paid" | null
+  >(null);
+  const [missingDraftValues, setMissingDraftValues] = useState<Record<string, string>>({});
 
   const platformOptions = Array.from(
     new Set(items.filter((item) => !item.isRemoved).map((item) => item.platform).filter(Boolean)),
@@ -88,17 +94,54 @@ export function FinancialOverview({
 
   const summary = getFinancialSummary(filteredItems);
 
-  const missingMessages = [
-    summary.missingCollectionPaidCount > 0
-      ? `${summary.missingCollectionPaidCount} item(ns) da coleção sem valor pago`
-      : null,
-    summary.missingCollectionCurrentCount > 0
-      ? `${summary.missingCollectionCurrentCount} item(ns) da coleção sem valor atual`
-      : null,
-    summary.missingWishlistCurrentCount > 0
-      ? `${summary.missingWishlistCurrentCount} item(ns) da wishlist sem valor monitorado`
-      : null,
-  ].filter(Boolean) as string[];
+  const missingGroups = (() => {
+    const collectionMissingPaid = filteredItems.filter(
+      (item) => item.ownershipStatus === "collection" && item.amountPaid === undefined,
+    );
+    const collectionMissingCurrent = filteredItems.filter(
+      (item) => item.ownershipStatus === "collection" && item.currentValue === undefined,
+    );
+    const wishlistMissingCurrent = filteredItems.filter(
+      (item) =>
+        item.ownershipStatus === "wishlist" &&
+        !getNormalizedAcquisitionStatus(item) &&
+        item.currentValue === undefined,
+    );
+    const purchasedMissingPaid = filteredItems.filter(
+      (item) =>
+        item.ownershipStatus === "wishlist" &&
+        getNormalizedAcquisitionStatus(item) === "purchased" &&
+        item.amountPaid === undefined,
+    );
+
+    return [
+      {
+        key: "collection_paid" as const,
+        label: `${collectionMissingPaid.length} ${collectionMissingPaid.length === 1 ? "item" : "itens"} da coleção sem valor pago`,
+        items: collectionMissingPaid,
+        field: "amountPaid" as const,
+      },
+      {
+        key: "collection_current" as const,
+        label: `${collectionMissingCurrent.length} ${collectionMissingCurrent.length === 1 ? "item" : "itens"} da coleção sem valor atual`,
+        items: collectionMissingCurrent,
+        field: "currentValue" as const,
+      },
+      {
+        key: "wishlist_current" as const,
+        label: `${wishlistMissingCurrent.length} ${wishlistMissingCurrent.length === 1 ? "item" : "itens"} da wishlist sem valor monitorado`,
+        items: wishlistMissingCurrent,
+        field: "currentValue" as const,
+      },
+      {
+        key: "purchased_paid" as const,
+        label: `${purchasedMissingPaid.length} ${purchasedMissingPaid.length === 1 ? "item" : "itens"} comprado(s) sem valor pago`,
+        items: purchasedMissingPaid,
+        field: "amountPaid" as const,
+      },
+    ].filter((group) => group.items.length > 0);
+  })();
+  const activeMissingGroup = missingGroups.find((group) => group.key === activeMissingKey) ?? null;
   const hasActiveFilters =
     selectedPlatforms.length > 0 ||
     selectedTypes.length > 0 ||
@@ -291,7 +334,7 @@ export function FinancialOverview({
               </div>
             </div>
             <p className="mt-3 text-xs text-white/55">
-              {filteredItems.length} item(ns) incluído(s) neste resumo.
+              {filteredItems.length} {filteredItems.length === 1 ? "item incluído" : "itens incluídos"} neste resumo.
             </p>
             {hasActiveFilters && filteredItems.length > 0 && (
               <button
@@ -314,19 +357,90 @@ export function FinancialOverview({
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
-            <p className="text-sm font-medium text-white">Pendências financeiras</p>
+            <p className="text-sm font-medium text-white">Campos para completar</p>
 
-            {missingMessages.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {missingMessages.map((message) => (
-                  <span
-                    key={message}
-                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/75"
-                  >
-                    {message}
-                  </span>
-                ))}
-              </div>
+            {missingGroups.length > 0 ? (
+              <>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {missingGroups.map((group) => (
+                    <button
+                      key={group.key}
+                      type="button"
+                      onClick={() =>
+                        setActiveMissingKey((current) =>
+                          current === group.key ? null : group.key,
+                        )
+                      }
+                      className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                        activeMissingKey === group.key
+                          ? "border-cyan-300/70 bg-cyan-500/15 text-cyan-100"
+                          : "border-white/10 bg-white/5 text-white/75 hover:bg-white/10"
+                      }`}
+                    >
+                      {group.label}
+                    </button>
+                  ))}
+                </div>
+
+                {activeMissingGroup && (
+                  <div className="mt-4 space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                    {activeMissingGroup.items.map((item) => {
+                      const draft = missingDraftValues[item.id] ?? "";
+                      const inputLabel =
+                        activeMissingGroup.field === "amountPaid"
+                          ? "Valor pago"
+                          : "Valor atual";
+                      return (
+                        <div
+                          key={item.id}
+                          className="rounded-xl border border-white/10 bg-black/20 p-2.5"
+                        >
+                          <p className="text-xs font-semibold text-white">
+                            {item.title}
+                            {item.subtitle ? ` — ${item.subtitle}` : ""}
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-white/55">{item.platform}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <input
+                              value={draft}
+                              onChange={(event) =>
+                                setMissingDraftValues((current) => ({
+                                  ...current,
+                                  [item.id]: event.target.value,
+                                }))
+                              }
+                              placeholder={`${inputLabel} (R$)`}
+                              inputMode="decimal"
+                              className="min-w-[170px] flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/35"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const normalized = draft.replace(",", ".").trim();
+                                if (!normalized) return;
+                                const numeric = Number(normalized);
+                                if (!Number.isFinite(numeric)) return;
+                                onUpdateItem?.({
+                                  ...item,
+                                  [activeMissingGroup.field]: numeric,
+                                  updatedAt: new Date().toISOString(),
+                                });
+                                setMissingDraftValues((current) => ({
+                                  ...current,
+                                  [item.id]: "",
+                                }));
+                              }}
+                              className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs text-white transition hover:bg-white/15"
+                            >
+                              Salvar
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             ) : (
               <p className="mt-3 text-sm text-white/60">
                 Todos os itens relevantes para o financeiro já têm valores preenchidos.

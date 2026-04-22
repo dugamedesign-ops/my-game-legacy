@@ -1306,6 +1306,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             defaultOpen
             hideToggle
             onViewInCollection={handleViewFinancialInCollection}
+            onUpdateItem={updateItem}
           />
         </OverlayPanel>
       )}
