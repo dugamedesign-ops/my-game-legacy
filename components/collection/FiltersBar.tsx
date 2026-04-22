@@ -22,9 +22,13 @@ export function FiltersBar({ filters, setFilters, compact = false }: Props) {
   }
 
   function toggleType(value: ItemType) {
+    const nextTypes = toggleValue(filters.types, value);
+    const hasNonGameTypes = nextTypes.includes("console") || nextTypes.includes("accessory");
+
     setFilters({
       ...filters,
-      types: toggleValue(filters.types, value),
+      types: nextTypes,
+      gameStatus: hasNonGameTypes ? [] : filters.gameStatus,
     });
   }
 
@@ -137,11 +141,6 @@ export function FiltersBar({ filters, setFilters, compact = false }: Props) {
             label="Wishlist"
             active={filters.ownership.includes("wishlist")}
             onClick={() => toggleOwnership("wishlist")}
-          />
-          <FilterChip
-            label="Pré-venda"
-            active={filters.ownership.includes("preorder")}
-            onClick={() => toggleOwnership("preorder")}
           />
         </FilterGroup>
 

@@ -1,4 +1,5 @@
 import { Item } from "@/types/collection";
+import { getNormalizedAcquisitionStatus } from "./acquisition-utils";
 
 export type FinancialSummary = {
   investedInCollection: number;
@@ -40,7 +41,9 @@ export function getFinancialSummary(items: Item[]): FinancialSummary {
       }
     }
 
-    if (item.ownershipStatus === "wishlist") {
+    const acquisitionStatus = getNormalizedAcquisitionStatus(item);
+
+    if (item.ownershipStatus === "wishlist" && !acquisitionStatus) {
       if (typeof item.currentValue === "number") {
         wishlistMonitoredValue += item.currentValue;
       } else {
@@ -48,7 +51,7 @@ export function getFinancialSummary(items: Item[]): FinancialSummary {
       }
     }
 
-    if (item.ownershipStatus === "preorder") {
+    if (acquisitionStatus) {
       if (typeof item.amountPaid === "number") {
         preorderPaidValue += item.amountPaid;
       } else {

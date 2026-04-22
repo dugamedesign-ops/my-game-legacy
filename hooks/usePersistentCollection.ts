@@ -14,10 +14,22 @@ type CloudRow = {
   updated_at: string;
 };
 
+function normalizeLegacyOwnership(item: Item): Item {
+  if (item.ownershipStatus !== "preorder") return item;
+
+  return {
+    ...item,
+    ownershipStatus: "wishlist",
+    acquisitionStatus: item.acquisitionStatus ?? "preorder",
+  };
+}
+
 function readLocalItems() {
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY);
-    return saved ? (JSON.parse(saved) as Item[]) : null;
+    return saved
+      ? (JSON.parse(saved) as Item[]).map(normalizeLegacyOwnership)
+      : null;
   } catch (error) {
     console.error("Erro ao ler coleção local:", error);
     return null;
@@ -35,7 +47,9 @@ function writeLocalItems(items: Item[]) {
 function readPendingItems(userId: string): Item[] {
   try {
     const saved = window.localStorage.getItem(`${PENDING_SYNC_PREFIX}${userId}`);
-    return saved ? (JSON.parse(saved) as Item[]) : [];
+    return saved
+      ? (JSON.parse(saved) as Item[]).map(normalizeLegacyOwnership)
+      : [];
   } catch (error) {
     console.error("Erro ao ler fila de sincronização:", error);
     return [];
@@ -80,7 +94,7 @@ export function usePersistentCollection(initialItems: Item[]) {
   const upsertCloudItem = useCallback(async (item: Item) => {
     if (!session?.access_token || !user) return;
 
-    const normalized = { ...item, userId: user.id };
+    const normalized = normalizeLegacyOwnership({ ...item, userId: user.id });
     queuePendingItem(normalized);
 
     try {
@@ -152,7 +166,7 @@ export function usePersistentCollection(initialItems: Item[]) {
         if (isCancelled) return;
 
         const cloudItems = data.map((entry) => ({
-          ...entry.payload,
+          ...normalizeLegacyOwnership(entry.payload),
           id: entry.id,
           userId: currentUserId,
         }));
@@ -238,7 +252,7 @@ export function usePersistentCollection(initialItems: Item[]) {
         if (localItems.length === 0) return { imported: 0 };
 
         const rows = localItems.map((item) => {
-          const normalized = { ...item, userId: user.id };
+          const normalized = normalizeLegacyOwnership({ ...item, userId: user.id });
           return {
             id: normalized.id,
             user_id: user.id,
@@ -275,15 +289,15 @@ export function usePersistentCollection(initialItems: Item[]) {
       },
       setItems,
       addItem: (item: Item) => {
-        const normalized = { ...item, userId: user?.id ?? item.userId };
+        const normalized = normalizeLegacyOwnership({ ...item, userId: user?.id ?? item.userId });
         setItems((prev) => [normalized, ...prev]);
         void upsertCloudItem(normalized);
       },
       updateItem: (updatedItem: Item) => {
-        const normalized = {
+        const normalized = normalizeLegacyOwnership({
           ...updatedItem,
           userId: user?.id ?? updatedItem.userId,
-        };
+        });
         setItems((prev) =>
           prev.map((item) => (item.id === normalized.id ? normalized : item)),
         );

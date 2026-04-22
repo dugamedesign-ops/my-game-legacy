@@ -16,9 +16,14 @@ import { FinancialOverview } from "./FinancialOverview";
 import { PendingItemsOverview } from "./PendingItemsOverview";
 import { FiltersBar } from "./FiltersBar";
 import { applyFilters, type Filters } from "@/lib/filter-utils";
-import { AuthPanel } from "@/components/auth/AuthPanel";
 import { useAuth } from "@/providers/AuthProvider";
 import { ItemCard } from "./ItemCard";
+import {
+  createEmptyFinancialCollectionViewFilters,
+  matchesFinancialCollectionViewFilters,
+  type FinancialCollectionViewFilters,
+} from "@/lib/collection-view-filters";
+import { getNormalizedAcquisitionStatus, isItemReleased } from "@/lib/acquisition-utils";
 
 type CollectionDashboardProps = {
   items: Item[];
@@ -34,12 +39,34 @@ type HeaderFilterKey =
   | "all"
   | "collection"
   | "wishlist"
-  | "preorder"
+  | "purchased"
   | "playing"
   | "finished";
 
+type PlatformOrderMode = "alphabetical" | "custom";
+
+function getInitialPlatformOrderMode(): PlatformOrderMode {
+  if (typeof window === "undefined") return "alphabetical";
+  const saved = window.localStorage.getItem(
+    "my-game-legacy-platform-order-mode",
+  );
+  return saved === "custom" ? "custom" : "alphabetical";
+}
+
+function getInitialCustomPlatformOrder() {
+  if (typeof window === "undefined") return [] as string[];
+  const raw = window.localStorage.getItem("my-game-legacy-platform-order");
+  if (!raw) return [] as string[];
+  try {
+    const parsed = JSON.parse(raw) as string[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
-  const { user: authUser, signOut } = useAuth();
+  const { user: authUser, signOut, publicProfile, setProfileVisibility } = useAuth();
   const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
   const metadataFullName =
     typeof userMetadata.full_name === "string"
@@ -93,14 +120,31 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [isFinancialOpen, setIsFinancialOpen] = useState(false);
   const [isPendingOpen, setIsPendingOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [platformDefaultOpen, setPlatformDefaultOpen] = useState(true);
+  const [platformSectionSeed, setPlatformSectionSeed] = useState(0);
+  const [platformOrderMode, setPlatformOrderMode] =
+    useState<PlatformOrderMode>(getInitialPlatformOrderMode);
+  const [customPlatformOrder, setCustomPlatformOrder] = useState<string[]>(
+    getInitialCustomPlatformOrder,
+  );
+  const [draggedPlatform, setDraggedPlatform] = useState<string | null>(null);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const [financialFocusFilters, setFinancialFocusFilters] = useState<FinancialCollectionViewFilters>(
+    createEmptyFinancialCollectionViewFilters,
+  );
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
   const collectionSectionRef = useRef<HTMLElement | null>(null);
+  const legacyMenuRef = useRef<HTMLDivElement | null>(null);
   const isModalOpenRef = useRef(false);
+  const isMobileSidebarOpenRef = useRef(false);
   const hasModalHistoryEntryRef = useRef(false);
+  const hasSidebarHistoryEntryRef = useRef(false);
   const skipNextPopstateRef = useRef(false);
+  const skipNextSidebarPopstateRef = useRef(false);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [isLatestAddedPaused, setIsLatestAddedPaused] = useState(false);
 
   const [prefilledType, setPrefilledType] = useState<
     "console" | "accessory" | "game" | null
@@ -130,7 +174,14 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   }, [authUser?.email, legacyTitleOverride, metadataFullName, metadataName]);
 
   useEffect(() => {
-    function handleCloseContextMenu() {
+    function handleCloseContextMenu(event: Event) {
+      if (
+        event.target instanceof Node &&
+        legacyMenuRef.current?.contains(event.target)
+      ) {
+        return;
+      }
+
       setContextMenu(null);
       setIsLegacyMenuOpen(false);
     }
@@ -146,11 +197,25 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     };
   }, []);
 
+  useEffect(() => {
+    function handleScroll() {
+      setShowBackToTop(window.scrollY > 900);
+    }
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const isAnyModalOpen = isAddModalOpen || !!selectedItem;
 
   useEffect(() => {
     isModalOpenRef.current = isAnyModalOpen;
   }, [isAnyModalOpen]);
+
+  useEffect(() => {
+    isMobileSidebarOpenRef.current = isMobileSidebarOpen;
+  }, [isMobileSidebarOpen]);
 
   useEffect(() => {
     if (!isAnyModalOpen || hasModalHistoryEntryRef.current) return;
@@ -171,9 +236,38 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   }, [isAnyModalOpen]);
 
   useEffect(() => {
+    if (!isMobileSidebarOpen || hasSidebarHistoryEntryRef.current) return;
+
+    window.history.pushState(
+      { ...(window.history.state ?? {}), __mglSidebar: true },
+      "",
+    );
+    hasSidebarHistoryEntryRef.current = true;
+  }, [isMobileSidebarOpen]);
+
+  useEffect(() => {
+    if (isMobileSidebarOpen || !hasSidebarHistoryEntryRef.current) return;
+
+    skipNextSidebarPopstateRef.current = true;
+    hasSidebarHistoryEntryRef.current = false;
+    window.history.back();
+  }, [isMobileSidebarOpen]);
+
+  useEffect(() => {
     function handlePopState() {
+      if (skipNextSidebarPopstateRef.current) {
+        skipNextSidebarPopstateRef.current = false;
+        return;
+      }
+
       if (skipNextPopstateRef.current) {
         skipNextPopstateRef.current = false;
+        return;
+      }
+
+      if (isMobileSidebarOpenRef.current) {
+        hasSidebarHistoryEntryRef.current = false;
+        setIsMobileSidebarOpen(false);
         return;
       }
 
@@ -261,18 +355,35 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     setIsAddModalOpen(true);
   }
 
-
-  function handleOpenQuickAdd(type: "console" | "accessory" | "game") {
-    setPrefilledType(type);
-    setPrefilledPlatform(null);
-    setIsAddModalOpen(true);
-    setIsMobileSidebarOpen(false);
-  }
-
   function handleLegacyTitleSave() {
     setLegacyTitleOverride((current) => current.trim());
     setIsEditingLegacyTitle(false);
   }
+
+  async function handleCopyPublicLink() {
+    if (!publicProfile?.friend_code || !publicProfile.is_public) return;
+
+    try {
+      const publicLink = `${window.location.origin}/u/${publicProfile.friend_code}`;
+      await navigator.clipboard.writeText(publicLink);
+    } catch {}
+  }
+
+  function handleOpenPublicProfile() {
+    if (!publicProfile?.friend_code || !publicProfile.is_public) return;
+    const publicLink = `${window.location.origin}/u/${publicProfile.friend_code}`;
+    window.open(publicLink, "_blank", "noopener,noreferrer");
+  }
+
+  const allActivePlatforms = useMemo(() => {
+    return Array.from(
+      new Set(
+        collectionItems
+          .filter((item) => !item.isRemoved)
+          .map((item) => item.platform),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  }, [collectionItems]);
 
   const filteredItems = useMemo(() => {
     const base = collectionItems.filter((item) => {
@@ -287,13 +398,54 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       return matchesSearch;
     });
 
-    return applyFilters(base, filters);
-  }, [collectionItems, search, filters]);
+    const byFilters = applyFilters(base, filters);
 
-  const groupedPlatforms = useMemo(
+    return byFilters.filter((item) =>
+      matchesFinancialCollectionViewFilters(item, financialFocusFilters),
+    );
+  }, [collectionItems, financialFocusFilters, search, filters]);
+
+  const groupedPlatformsRaw = useMemo(
     () => groupItemsByPlatform(filteredItems),
     [filteredItems],
   );
+
+  const effectiveCustomPlatformOrder = useMemo(() => {
+    const normalized = customPlatformOrder.filter((platform) =>
+      allActivePlatforms.includes(platform),
+    );
+    const missing = allActivePlatforms.filter(
+      (platform) => !normalized.includes(platform),
+    );
+    return [...normalized, ...missing];
+  }, [allActivePlatforms, customPlatformOrder]);
+
+  const groupedPlatforms = useMemo(() => {
+    const sortedAlphabetically = [...groupedPlatformsRaw].sort((a, b) =>
+      a.platform.localeCompare(b.platform, "pt-BR", { sensitivity: "base" }),
+    );
+
+    if (platformOrderMode !== "custom") {
+      return sortedAlphabetically;
+    }
+
+    const orderIndex = new Map(
+      effectiveCustomPlatformOrder.map((platform, index) => [platform, index]),
+    );
+
+    return [...groupedPlatformsRaw].sort((a, b) => {
+      const aIndex = orderIndex.get(a.platform);
+      const bIndex = orderIndex.get(b.platform);
+
+      if (aIndex !== undefined && bIndex !== undefined) {
+        return aIndex - bIndex;
+      }
+      if (aIndex !== undefined) return -1;
+      if (bIndex !== undefined) return 1;
+
+      return a.platform.localeCompare(b.platform, "pt-BR", { sensitivity: "base" });
+    });
+  }, [effectiveCustomPlatformOrder, groupedPlatformsRaw, platformOrderMode]);
 
   const summary = useMemo(
     () => getCollectionSummary(collectionItems),
@@ -308,22 +460,50 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       })
       .slice(0, 10);
   }, [collectionItems]);
+  const latestAddedLoopItems = useMemo(
+    () =>
+      latestAddedItems.length > 1
+        ? [...latestAddedItems, ...latestAddedItems]
+        : latestAddedItems,
+    [latestAddedItems],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("my-game-legacy-platform-order-mode", platformOrderMode);
+    window.localStorage.setItem(
+      "my-game-legacy-platform-order",
+      JSON.stringify(effectiveCustomPlatformOrder),
+    );
+  }, [effectiveCustomPlatformOrder, platformOrderMode]);
 
   function applyQuickFilter(next: HeaderFilterKey) {
     setActiveQuickFilter(next);
-    setFilters((prev) => ({
-      ...prev,
+    setFilters({
+      types: [],
       ownership:
-        next === "collection" || next === "wishlist" || next === "preorder"
+        next === "collection" || next === "wishlist"
           ? [next]
           : [],
+      priorities: [],
       gameStatus:
         next === "playing"
           ? ["playing"]
           : next === "finished"
             ? ["finished", "platinum"]
             : [],
-    }));
+      media: [],
+      missing: [],
+    });
+    setFinancialFocusFilters(
+      next === "purchased"
+        ? {
+            ...createEmptyFinancialCollectionViewFilters(),
+            acquisitionStatuses: ["preorder", "purchased"],
+          }
+        : createEmptyFinancialCollectionViewFilters(),
+    );
+    setSearch("");
 
     setTimeout(() => {
       collectionSectionRef.current?.scrollIntoView({
@@ -332,6 +512,124 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       });
       window.scrollBy({ top: -72, behavior: "smooth" });
     }, 60);
+  }
+
+  function handleOpenAllPlatforms() {
+    setPlatformDefaultOpen(true);
+    setPlatformSectionSeed((prev) => prev + 1);
+  }
+
+  function handleCloseAllPlatforms() {
+    setPlatformDefaultOpen(false);
+    setPlatformSectionSeed((prev) => prev + 1);
+  }
+
+  function handleDragStartPlatform(platform: string) {
+    setPlatformOrderMode("custom");
+    setDraggedPlatform(platform);
+  }
+
+  function handleDropPlatform(targetPlatform: string) {
+    if (!draggedPlatform || draggedPlatform === targetPlatform) return;
+
+    setCustomPlatformOrder((prev) => {
+      const working =
+        prev.length > 0 ? [...prev] : [...effectiveCustomPlatformOrder];
+      const fromIndex = working.indexOf(draggedPlatform);
+      const toIndex = working.indexOf(targetPlatform);
+
+      if (fromIndex === -1 || toIndex === -1) return working;
+
+      const next = [...working];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+
+    setDraggedPlatform(null);
+  }
+
+  function handleResetAlphabeticalPlatformOrder() {
+    setPlatformOrderMode("alphabetical");
+    setCustomPlatformOrder(allActivePlatforms);
+  }
+
+  function applyWishlistPurchaseStatus(
+    item: Item,
+    acquisitionStatus: "preorder" | "purchased",
+  ) {
+    if (item.ownershipStatus !== "wishlist") return;
+
+    let expectedArrivalDate = item.expectedArrivalDate;
+    if (acquisitionStatus === "purchased") {
+      const promptValue = window.prompt(
+        "Data prevista de chegada (opcional, formato DD-MM-AAAA):",
+        item.expectedArrivalDate ?? "",
+      );
+      if (promptValue === null) return;
+
+      const normalized = promptValue.trim();
+      if (normalized.length === 0) {
+        expectedArrivalDate = undefined;
+      } else {
+        const dateParts = normalized.split("-");
+        const isValidPtBrFormat =
+          dateParts.length === 3 &&
+          dateParts.every((part) => /^\d+$/.test(part)) &&
+          dateParts[0].length === 2 &&
+          dateParts[1].length === 2 &&
+          dateParts[2].length === 4;
+
+        if (!isValidPtBrFormat) {
+          window.alert("Data inválida. Use o formato DD-MM-AAAA.");
+          return;
+        }
+
+        const [dayText, monthText, yearText] = dateParts;
+        const parsed = new Date(`${yearText}-${monthText}-${dayText}T00:00:00`);
+        if (Number.isNaN(parsed.getTime())) {
+          window.alert("Data inválida. Use o formato DD-MM-AAAA.");
+          return;
+        }
+        expectedArrivalDate = normalized;
+      }
+    } else {
+      expectedArrivalDate = undefined;
+    }
+
+    const updated: Item = {
+      ...item,
+      ownershipStatus: "wishlist",
+      acquisitionStatus,
+      expectedArrivalDate,
+      updatedAt: new Date().toISOString(),
+    };
+
+    updateItem(updated);
+    if (selectedItem?.id === updated.id) {
+      setSelectedItem(updated);
+    }
+    setContextMenu(null);
+  }
+
+  function handleViewFinancialInCollection(next: FinancialCollectionViewFilters) {
+    setFilters((prev) => ({
+      ...prev,
+      types: next.types,
+      ownership: next.ownership,
+      priorities: next.priorities,
+      gameStatus: [],
+      media: [],
+      missing: [],
+    }));
+    setFinancialFocusFilters(next);
+    setSearch(next.platforms.length === 1 ? next.platforms[0] : "");
+    setIsFinancialOpen(false);
+
+    setTimeout(() => {
+      collectionSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollBy({ top: -72, behavior: "smooth" });
+    }, 80);
   }
 
   const headerFilters: {
@@ -366,9 +664,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
         "border-yellow-300/80 bg-yellow-400/10 text-yellow-100 shadow-[0_8px_26px_rgba(250,204,21,0.25)]",
     },
     {
-      key: "preorder",
-      label: "Pré-venda",
-      value: summary.preorderCount,
+      key: "purchased",
+      label: "Comprado",
+      value: collectionItems.filter((item) => !!getNormalizedAcquisitionStatus(item)).length,
       icon: "⚡",
       activeClassName:
         "border-violet-300/80 bg-violet-500/10 text-violet-100 shadow-[0_8px_26px_rgba(168,85,247,0.24)]",
@@ -395,14 +693,13 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     },
   ];
 
-  const legacyName = legacyTitle.replace(/'s Legacy$/i, "").trim();
   const legacyUsername =
     metadataUsername ??
     metadataUserName ??
     authUser?.email?.split("@")[0] ??
     "username";
   const legacyAvatarSrc = metadataAvatarUrl ?? null;
-  const legacyAvatarLabel = legacyName.slice(0, 2).toUpperCase() || "LG";
+  const legacyAvatarLabel = legacyTitle.slice(0, 2).toUpperCase() || "LG";
 
   const isEmpty = collectionItems.length === 0;
 
@@ -450,7 +747,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               id="mobile-sidebar"
               className={`mb-6 lg:sticky lg:top-6 lg:mb-0 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto ${
                 isMobileSidebarOpen
-                  ? "fixed inset-y-0 left-0 z-50 w-[86vw] max-w-[320px] overflow-y-auto border-r border-white/10 bg-[#0b1220] p-4 shadow-2xl sm:w-[380px] lg:static lg:inset-auto lg:z-auto lg:w-auto lg:max-w-none lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
+                  ? "styled-scrollbar fixed inset-y-0 left-0 z-50 w-[86vw] max-w-[320px] overflow-y-auto border-r border-white/10 bg-[#0b1220] p-4 shadow-2xl sm:w-[380px] lg:static lg:inset-auto lg:z-auto lg:w-auto lg:max-w-none lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
                   : "hidden lg:block"
               }`}
             >
@@ -476,28 +773,11 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     />
                   </div>
                 </div>
-                <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
-                  <AuthPanel />
-                  {isSyncing && (
-                    <p className="mt-2 text-xs text-white/50">Sincronizando coleção online...</p>
-                  )}
-                </div>
-                <div className="mt-4 space-y-2">
-                  <div className="grid grid-cols-3 gap-2">
-                    <button type="button" onClick={() => handleOpenQuickAdd("game")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-1.5 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
-                      <span className="text-center text-[10px] font-semibold leading-tight">+ Jogo</span>
-                      <span className="mt-1 text-lg leading-none">🎮</span>
-                    </button>
-                    <button type="button" onClick={() => handleOpenQuickAdd("console")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-1.5 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
-                      <span className="text-center text-[10px] font-semibold leading-tight">+ Console</span>
-                      <span className="mt-1 text-lg leading-none">🕹️</span>
-                    </button>
-                    <button type="button" onClick={() => handleOpenQuickAdd("accessory")} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl border border-white/15 px-1.5 py-2 text-white/85 transition hover:bg-white/10 active:scale-[0.97]">
-                      <span className="text-center text-[10px] font-semibold leading-tight">+ Acessório</span>
-                      <span className="mt-1 text-lg leading-none">🎧</span>
-                    </button>
+                {isSyncing && (
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <p className="text-xs text-white/50">Sincronizando coleção online...</p>
                   </div>
-                </div>
+                )}
                 <div className="mt-4 space-y-2 pt-1">
                   <SidebarActionButton
                     label="Financeiro"
@@ -594,18 +874,36 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               <div className="space-y-1">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-white/20 bg-white/10">
-                      {legacyAvatarSrc ? (
-                        <Image
-                          src={legacyAvatarSrc}
-                          alt="Avatar da legacy"
-                          fill
-                          sizes="56px"
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-cyan-100/90">
-                          {legacyAvatarLabel}
+                    <div className="shrink-0">
+                      <div className="relative h-14 w-14 overflow-hidden rounded-full border border-white/20 bg-white/10">
+                        {legacyAvatarSrc ? (
+                          <Image
+                            src={legacyAvatarSrc}
+                            alt="Avatar da legacy"
+                            fill
+                            sizes="56px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-cyan-100/90">
+                            {legacyAvatarLabel}
+                          </div>
+                        )}
+                      </div>
+                      {publicProfile?.friend_code && (
+                        <div className="mt-1 flex items-center justify-center gap-1.5">
+                          <p className="text-center text-[10px] font-medium text-cyan-100/75">
+                            ID #{publicProfile.friend_code}
+                          </p>
+                          <span
+                            className={`rounded-full border px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] ${
+                              publicProfile.is_public
+                                ? "border-emerald-300/35 bg-emerald-500/15 text-emerald-100"
+                                : "border-amber-300/30 bg-amber-500/15 text-amber-100"
+                            }`}
+                          >
+                            {publicProfile.is_public ? "Público" : "Privado"}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -636,7 +934,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     </div>
                   </div>
 
-                  <div className="relative">
+                  <div className="relative" ref={legacyMenuRef}>
                     <button
                       type="button"
                       onClick={() => setIsLegacyMenuOpen((open) => !open)}
@@ -649,6 +947,50 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     </button>
                     {isLegacyMenuOpen && (
                       <div className="absolute right-0 top-9 z-20 min-w-[196px] rounded-xl border border-white/15 bg-[#0b1220] p-1 shadow-2xl">
+                        {publicProfile?.friend_code && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleOpenPublicProfile();
+                                setIsLegacyMenuOpen(false);
+                              }}
+                              className="w-full rounded-lg px-3 py-2 text-left text-sm text-cyan-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+                              disabled={!publicProfile.is_public}
+                            >
+                              Ver perfil público
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void handleCopyPublicLink();
+                                setIsLegacyMenuOpen(false);
+                              }}
+                              className="w-full rounded-lg px-3 py-2 text-left text-sm text-cyan-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+                              disabled={!publicProfile.is_public}
+                            >
+                              Copiar link do perfil
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const result = await setProfileVisibility(
+                                  !publicProfile.is_public,
+                                );
+                                if (result.error) {
+                                  window.alert(result.error);
+                                }
+                                setIsLegacyMenuOpen(false);
+                              }}
+                              className="w-full rounded-lg px-3 py-2 text-left text-sm text-cyan-100 transition hover:bg-white/10"
+                            >
+                              {publicProfile.is_public
+                                ? "Desativar perfil público"
+                                : "Ativar perfil público"}
+                            </button>
+                            <div className="my-1 h-px bg-white/10" />
+                          </>
+                        )}
                         <button
                           type="button"
                           onClick={() => {
@@ -663,7 +1005,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-white/45">{legacyName}</p>
               </div>
 
               <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
@@ -686,21 +1027,32 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             <section className="mb-8 rounded-[28px] border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.03] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-base font-semibold tracking-wide text-white">Últimos adicionados</h2>
-                <span className="text-xs uppercase tracking-[0.18em] text-white/45">
-                  vitrine
-                </span>
               </div>
-              <div className="mx-auto flex max-w-[980px] gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
-                {latestAddedItems.map((item) => (
-                  <div key={item.id} className="w-[148px] shrink-0 snap-start sm:w-[156px]">
-                    <ItemCard
-                      item={item}
-                      size="small"
-                      onClick={setSelectedItem}
-                      showMediaSeals={false}
-                    />
-                  </div>
-                ))}
+              <div
+                onMouseDown={() => setIsLatestAddedPaused(true)}
+                onMouseUp={() => setIsLatestAddedPaused(false)}
+                onMouseLeave={() => setIsLatestAddedPaused(false)}
+                onTouchStart={() => setIsLatestAddedPaused(true)}
+                onTouchEnd={() => setIsLatestAddedPaused(false)}
+                onTouchCancel={() => setIsLatestAddedPaused(false)}
+                className="styled-scrollbar styled-scrollbar-hover mx-auto max-w-[980px] touch-pan-x overflow-x-auto pb-2"
+              >
+                <div
+                  className={`flex w-max gap-3 ${
+                    latestAddedItems.length > 1 ? "latest-added-marquee" : ""
+                  } ${isLatestAddedPaused ? "latest-added-marquee-paused" : ""}`}
+                >
+                  {latestAddedLoopItems.map((item, index) => (
+                    <div key={`${item.id}-${index}`} className="w-[148px] shrink-0 sm:w-[156px]">
+                      <ItemCard
+                        item={item}
+                        size="small"
+                        onClick={setSelectedItem}
+                        showMediaSeals={false}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </section>
           )}
@@ -721,9 +1073,89 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             <EmptyCollectionState onAddClick={handleOpenDefaultAdd} />
           ) : groupedPlatforms.length > 0 ? (
             <section ref={collectionSectionRef} className="space-y-6">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/45">
+                    Ordem das plataformas
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPlatformOrderMode("custom")}
+                      className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                        platformOrderMode === "custom"
+                          ? "border-cyan-300/70 bg-cyan-500/15 text-cyan-100"
+                          : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10"
+                      }`}
+                    >
+                      Minha ordem
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetAlphabeticalPlatformOrder}
+                      className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                        platformOrderMode === "alphabetical"
+                          ? "border-cyan-300/70 bg-cyan-500/15 text-cyan-100"
+                          : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10"
+                      }`}
+                    >
+                      Ordem alfabética
+                    </button>
+                  </div>
+                </div>
+
+                {platformOrderMode === "custom" && groupedPlatforms.length > 1 && (
+                  <>
+                    <p className="mt-3 text-xs text-white/50">
+                      Arraste e solte as plataformas para reorganizar.
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {groupedPlatforms.map((group) => (
+                        <div
+                          key={`order-chip-${group.platform}`}
+                          draggable
+                          onDragStart={() => handleDragStartPlatform(group.platform)}
+                          onDragOver={(event) => {
+                            event.preventDefault();
+                          }}
+                          onDrop={() => handleDropPlatform(group.platform)}
+                          onDragEnd={() => setDraggedPlatform(null)}
+                          className={`inline-flex cursor-grab items-center gap-1 rounded-full border px-2 py-1 text-xs text-white/80 ${
+                            draggedPlatform === group.platform
+                              ? "border-cyan-300/70 bg-cyan-500/20"
+                              : "border-white/15 bg-black/25"
+                          }`}
+                        >
+                          <span className="text-white/50" aria-hidden>
+                            ⋮⋮
+                          </span>
+                          <span>{group.platform}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleOpenAllPlatforms}
+                  className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/85 transition hover:bg-white/10"
+                >
+                  Abrir todas as plataformas
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCloseAllPlatforms}
+                  className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/85 transition hover:bg-white/10"
+                >
+                  Fechar todas as plataformas
+                </button>
+              </div>
               {groupedPlatforms.map((group) => (
                 <PlatformSection
-                  key={group.platform}
+                  key={`${group.platform}-${platformSectionSeed}`}
                   platform={group.platform}
                   items={group.items}
                   onItemClick={setSelectedItem}
@@ -731,6 +1163,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     setContextMenu({ item, x, y });
                   }}
                   onAddItem={handleOpenContextualAdd}
+                  defaultOpen={platformDefaultOpen}
                 />
               ))}
             </section>
@@ -741,20 +1174,32 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             </div>
           </div>
 
-              <button
+          <button
             type="button"
             onClick={handleOpenDefaultAdd}
             className="fixed bottom-6 right-6 rounded-full border border-white/10 bg-white text-black shadow-2xl transition hover:scale-[1.03] hover:bg-white/90"
           >
             <span className="block px-5 py-4 text-sm font-semibold">
-              ＋ Adicionar item <span className="ml-1 text-[11px] font-normal text-black/70">(A)</span>
+              ＋ Adicionar <span className="ml-1 text-[11px] font-normal text-black/70">(A)</span>
             </span>
           </button>
+
+          {showBackToTop && (
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="fixed bottom-24 right-6 rounded-full border border-white/15 bg-black/60 px-3 py-2 text-xs font-medium text-white/80 shadow-xl backdrop-blur transition hover:bg-black/75 hover:text-white"
+              aria-label="Voltar ao topo"
+            >
+              ↑ Topo
+            </button>
+          )}
         </div>
       </div>
 
       <ItemDetailsModal
         item={selectedItem}
+        existingItems={collectionItems}
         isOpen={!!selectedItem}
         onClose={() => setSelectedItem(null)}
         onUpdateItem={(updatedItem) => {
@@ -783,6 +1228,22 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
+          {contextMenu.item.ownershipStatus === "wishlist" && (
+            <button
+              type="button"
+              onClick={() =>
+                applyWishlistPurchaseStatus(
+                  contextMenu.item,
+                  isItemReleased(contextMenu.item) ? "purchased" : "preorder",
+                )
+              }
+              className="mb-1 flex w-full rounded-xl px-3 py-2 text-left text-sm text-red-100 transition hover:bg-red-500/10"
+            >
+              {isItemReleased(contextMenu.item)
+                ? "Marcar como comprado"
+                : "Marcar como pré-venda"}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -808,7 +1269,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
       {isFinancialOpen && (
         <OverlayPanel title="Financeiro" onClose={() => setIsFinancialOpen(false)}>
-          <FinancialOverview items={collectionItems} defaultOpen hideToggle />
+          <FinancialOverview
+            items={collectionItems}
+            defaultOpen
+            hideToggle
+            onViewInCollection={handleViewFinancialInCollection}
+          />
         </OverlayPanel>
       )}
 
@@ -820,6 +1286,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               setSelectedItem(item);
               setIsPendingOpen(false);
             }}
+            onUpdateItem={updateItem}
             defaultOpen
             hideToggle
           />

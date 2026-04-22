@@ -1,144 +1,37 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Item } from "@/types/collection";
 import { StatusBadge } from "./StatusBadge";
 import { searchIgdbCover } from "@/lib/igdb";
 import { CustomSelect, type CustomSelectOption } from "@/components/ui/CustomSelect";
 import { uploadSupabaseImage } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
+import {
+  formatCurrency,
+  formatMediaLabel,
+  formatOwnershipLabel,
+  formatPriorityLabel,
+  formatProgressLabel,
+  formatRarityLabel,
+  formatReleaseDate,
+  GENRE_OPTIONS,
+  getProgressIcon,
+  NEW_GENRE_OPTION,
+  PURCHASE_ORIGIN_OPTIONS,
+} from "@/lib/item-details-utils";
 
 type ItemDetailsModalProps = {
   item: Item | null;
+  existingItems: Item[];
   isOpen: boolean;
   onClose: () => void;
   onUpdateItem: (updatedItem: Item) => void;
 };
 
-function formatOwnershipLabel(status: Item["ownershipStatus"]) {
-  const map = {
-    collection: "Na coleção",
-    wishlist: "Wishlist",
-    preorder: "Pré-venda",
-  };
-
-  return map[status];
-}
-
-function formatProgressLabel(status?: Item["gameProgressStatus"]) {
-  if (!status) return null;
-
-  const map = {
-    backlog: "Backlog",
-    playing: "Jogando",
-    paused: "Pausado",
-    finished: "Terminado",
-    platinum: "Platinado",
-  };
-
-  return map[status];
-}
-
-function formatPriorityLabel(priority?: Item["purchasePriority"]) {
-  if (!priority) return null;
-
-  const map = {
-    low: "Baixa",
-    medium: "Média",
-    high: "Alta",
-    maximum: "Prioridade Máxima",
-  };
-
-  return map[priority];
-}
-
-function formatRarityLabel(tag: NonNullable<Item["rarityTags"]>[number]) {
-  const map = {
-    normal: "Normal",
-    rare: "Raro",
-    special_edition: "Edição especial",
-    highlight: "Destaque",
-    repro: "Repro",
-  };
-
-  return map[tag];
-}
-
-function formatMediaLabel(format: NonNullable<Item["mediaFormats"]>[number]) {
-  const map = {
-    physical: "Físico",
-    digital: "Digital",
-  };
-
-  return map[format];
-}
-
-function formatCurrency(value?: number) {
-  if (value === undefined || value === null || Number.isNaN(value)) return "—";
-
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value);
-}
-
-function formatPurchaseDate(
-  purchaseDate?: Item["purchaseDate"],
-): string | null {
-  if (!purchaseDate?.year) return null;
-
-  if (purchaseDate.day && purchaseDate.month) {
-    return `${String(purchaseDate.day).padStart(2, "0")}/${String(
-      purchaseDate.month,
-    ).padStart(2, "0")}/${purchaseDate.year}`;
-  }
-
-  if (purchaseDate.month) {
-    return `${String(purchaseDate.month).padStart(2, "0")}/${purchaseDate.year}`;
-  }
-
-  return `${purchaseDate.year}`;
-}
-
-function formatReleaseDate(releaseDate?: string): string | null {
-  if (!releaseDate) return null;
-  const date = new Date(releaseDate);
-  if (Number.isNaN(date.getTime())) return releaseDate;
-  return date.toLocaleDateString("pt-BR");
-}
-const PURCHASE_ORIGIN_OPTIONS = [
-  "Loja física",
-  "Online BR",
-  "Online internacional",
-  "Paraguai",
-  "Presente",
-  "Outro",
-];
-const GENRE_OPTIONS = [
-  "Action",
-  "Adventure",
-  "Role-playing (RPG)",
-  "Strategy",
-  "Shooter",
-  "Puzzle",
-  "Platform",
-  "Fighting",
-  "Racing",
-  "Sports",
-  "Simulation",
-  "Turn-based strategy (TBS)",
-  "Hack and slash/Beat 'em up",
-  "Tactical",
-  "Visual Novel",
-  "Point-and-click",
-  "Survival",
-  "Horror",
-  "Arcade",
-];
-const NEW_GENRE_OPTION = "__new_genre__";
-
 export function ItemDetailsModal({
   item,
+  existingItems,
   isOpen,
   onClose,
   onUpdateItem,
@@ -147,9 +40,11 @@ export function ItemDetailsModal({
   const [isEditingImage, setIsEditingImage] = useState(false);
   const [isSearchingCover, setIsSearchingCover] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isImageActionsOpen, setIsImageActionsOpen] = useState(false);
 
   const [nameInput, setNameInput] = useState("");
   const [subtitleInput, setSubtitleInput] = useState("");
+  const [platformInput, setPlatformInput] = useState("");
   const [imageUrlInput, setImageUrlInput] = useState("");
 
   const [ownershipStatusInput, setOwnershipStatusInput] =
@@ -169,6 +64,10 @@ export function ItemDetailsModal({
   const [purchasePriorityInput, setPurchasePriorityInput] = useState<
     Item["purchasePriority"] | ""
   >("");
+  const [acquisitionStatusInput, setAcquisitionStatusInput] = useState<
+    NonNullable<Item["acquisitionStatus"]> | ""
+  >("");
+  const [expectedArrivalDateInput, setExpectedArrivalDateInput] = useState("");
   const [rarityInput, setRarityInput] = useState<
     NonNullable<Item["rarityTags"]>[number] | ""
   >("");
@@ -178,21 +77,42 @@ export function ItemDetailsModal({
   const [purchaseDayInput, setPurchaseDayInput] = useState("");
   const [purchaseOriginInput, setPurchaseOriginInput] = useState("");
   const [purchaseOriginOptions, setPurchaseOriginOptions] = useState<string[]>(
-    PURCHASE_ORIGIN_OPTIONS,
+    [...PURCHASE_ORIGIN_OPTIONS],
   );
   const [genrePrimaryInput, setGenrePrimaryInput] = useState("");
   const [genreSecondaryInput, setGenreSecondaryInput] = useState("");
-  const [genreOptions, setGenreOptions] = useState<string[]>(GENRE_OPTIONS);
+  const [genreOptions, setGenreOptions] = useState<string[]>([...GENRE_OPTIONS]);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [notesInput, setNotesInput] = useState("");
+  const [ratingInput, setRatingInput] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const imagePanelRef = useRef<HTMLDivElement | null>(null);
+  const handleSaveAllRef = useRef<() => void>(() => {});
+  const platformOptions = useMemo(() => {
+    const options = Array.from(
+      new Set(
+        existingItems
+          .filter((entry) => !entry.isRemoved)
+          .map((entry) => entry.platform.trim())
+          .filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+
+    const current = platformInput.trim();
+    if (current && !options.includes(current)) {
+      options.unshift(current);
+    }
+
+    return options;
+  }, [existingItems, platformInput]);
 
   useEffect(() => {
     if (!item || !isOpen) return;
 
     setNameInput(item.title ?? "");
     setSubtitleInput(item.subtitle ?? "");
+    setPlatformInput(item.platform ?? "");
     setImageUrlInput(item.imageUrl ?? "");
 
     setOwnershipStatusInput(item.ownershipStatus);
@@ -231,6 +151,8 @@ export function ItemDetailsModal({
     );
 
     setPurchasePriorityInput(item.purchasePriority ?? "");
+    setAcquisitionStatusInput(item.acquisitionStatus ?? "");
+    setExpectedArrivalDateInput(item.expectedArrivalDate ?? "");
     setRarityInput(item.rarityTags?.[0] ?? "");
 
     setPurchaseYearInput(item.purchaseDate?.year ? String(item.purchaseDate.year) : "2026");
@@ -238,6 +160,7 @@ export function ItemDetailsModal({
     setPurchaseDayInput(item.purchaseDate?.day ? String(item.purchaseDate.day) : "");
     setPurchaseOriginInput(item.purchaseOrigin ?? "");
     setNotesInput(item.notes ?? "");
+    setRatingInput(item.rating ?? 0);
     setSaveFeedback(null);
     const [primary = "", secondary = ""] = (item.genre ?? "")
       .split("/")
@@ -249,6 +172,7 @@ export function ItemDetailsModal({
     setIsEditingImage(false);
     setIsSearchingCover(false);
     setIsUploadingImage(false);
+    setIsImageActionsOpen(false);
 
     const storedRaw =
       typeof window !== "undefined"
@@ -281,29 +205,57 @@ export function ItemDetailsModal({
       }
       if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
         event.preventDefault();
-        handleSaveAll();
+        handleSaveAllRef.current();
       }
     }
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [isOpen, onClose, handleSaveAll]);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isImageActionsOpen) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        imagePanelRef.current &&
+        event.target instanceof Node &&
+        !imagePanelRef.current.contains(event.target)
+      ) {
+        setIsImageActionsOpen(false);
+      }
+    }
+
+    window.addEventListener("mousedown", handleClickOutside);
+    return () => window.removeEventListener("mousedown", handleClickOutside);
+  }, [isImageActionsOpen]);
+
+  useEffect(() => {
+    handleSaveAllRef.current = handleSaveAll;
+  });
+
+  useEffect(() => {
+    if (ownershipStatusInput === "wishlist") return;
+    setAcquisitionStatusInput("");
+    setExpectedArrivalDateInput("");
+  }, [ownershipStatusInput]);
+
+  useEffect(() => {
+    if (acquisitionStatusInput) return;
+    setExpectedArrivalDateInput("");
+  }, [acquisitionStatusInput]);
 
   if (!isOpen || !item) return null;
 
   const isGame = item.type === "game";
   const isWishlist = ownershipStatusInput === "wishlist";
+  const hasAcquisitionInWishlist =
+    isWishlist &&
+    (acquisitionStatusInput === "preorder" || acquisitionStatusInput === "purchased");
+  const shouldDisablePaidInputs = isWishlist && !hasAcquisitionInWishlist;
   const hasPhysicalSelected = mediaFormatsInput?.includes("physical") ?? false;
   const hasDigitalSelected = mediaFormatsInput?.includes("digital") ?? false;
   const hasBothMediaSelected = hasPhysicalSelected && hasDigitalSelected;
-  const gameProgressOptions: CustomSelectOption[] = [
-    { value: "", label: "Não definido" },
-    { value: "backlog", label: "Backlog" },
-    { value: "playing", label: "Jogando" },
-    { value: "paused", label: "Pausado" },
-    { value: "finished", label: "Terminado" },
-    { value: "platinum", label: "Platinado" },
-  ];
   const purchaseOriginSelectOptions: CustomSelectOption[] = [
     { value: "", label: "Em branco" },
     ...purchaseOriginOptions.map((origin) => ({ value: origin, label: origin })),
@@ -336,15 +288,6 @@ export function ItemDetailsModal({
     purchasePriorityInput || undefined,
   );
   const previewReleaseDateLabel = formatReleaseDate(item.releaseDate);
-  const previewPurchaseDateLabel = formatPurchaseDate(
-    purchaseYearInput || purchaseMonthInput || purchaseDayInput
-      ? {
-          year: purchaseYearInput ? Number(purchaseYearInput) : undefined,
-          month: purchaseMonthInput ? Number(purchaseMonthInput) : undefined,
-          day: purchaseDayInput ? Number(purchaseDayInput) : undefined,
-        }
-      : undefined,
-  );
   const purchaseYearNumber = purchaseYearInput ? Number(purchaseYearInput) : undefined;
   const releaseDateObj = item.releaseDate ? new Date(item.releaseDate) : null;
   const releaseYear = releaseDateObj && !Number.isNaN(releaseDateObj.getTime())
@@ -358,6 +301,8 @@ export function ItemDetailsModal({
           ? `Comprado ${purchaseYearNumber - releaseYear} ano(s) após o lançamento`
           : "Comprado antes do lançamento"
       : null;
+  const progressIcon = getProgressIcon(gameProgressStatusInput || undefined);
+  const previewGenre = [genrePrimaryInput, genreSecondaryInput].filter(Boolean).join(" / ");
 
   function parseOptionalNumber(value: string): number | undefined {
     const normalized = value.replace(",", ".").trim();
@@ -394,7 +339,7 @@ export function ItemDetailsModal({
     if (!isGame || !item) return;
 
     const currentTitle = nameInput.trim() || item.title;
-    const currentPlatform = item.platform;
+    const currentPlatform = platformInput.trim() || item.platform;
 
     setIsSearchingCover(true);
 
@@ -547,18 +492,20 @@ export function ItemDetailsModal({
     const year = purchaseYearInput.trim() ? Number(purchaseYearInput.trim()) : undefined;
     const month = purchaseMonthInput.trim() ? Number(purchaseMonthInput.trim()) : undefined;
     const day = purchaseDayInput.trim() ? Number(purchaseDayInput.trim()) : undefined;
+    const hasWishlistAcquisitionStatus =
+      ownershipStatusInput === "wishlist" &&
+      (acquisitionStatusInput === "preorder" || acquisitionStatusInput === "purchased");
 
     const updatedItem: Item = {
       ...item,
       title: nameInput.trim() || item.title,
       subtitle: subtitleInput.trim() || undefined,
+      platform: platformInput.trim() || item.platform,
       imageUrl: imageUrlInput.trim() || undefined,
 
       ownershipStatus: ownershipStatusInput,
       gameProgressStatus:
-        isGame && ownershipStatusInput === "collection"
-          ? gameProgressStatusInput || undefined
-          : undefined,
+        isGame ? gameProgressStatusInput || undefined : undefined,
       mediaFormats: isGame
         ? mediaFormatsInput && mediaFormatsInput.length > 0
           ? mediaFormatsInput
@@ -574,7 +521,7 @@ export function ItemDetailsModal({
           : undefined,
 
       amountPaid:
-        ownershipStatusInput === "wishlist"
+        ownershipStatusInput === "wishlist" && !hasWishlistAcquisitionStatus
           ? undefined
           : isGame
             ? getConsolidatedAmountPaid()
@@ -582,10 +529,19 @@ export function ItemDetailsModal({
       currentValue: parseOptionalNumber(currentValueInput),
 
       purchasePriority:
-        ownershipStatusInput === "wishlist"
+        ownershipStatusInput === "wishlist" && !hasWishlistAcquisitionStatus
           ? purchasePriorityInput || undefined
           : undefined,
+      acquisitionStatus:
+        ownershipStatusInput === "wishlist"
+          ? acquisitionStatusInput || undefined
+          : undefined,
+      expectedArrivalDate:
+        ownershipStatusInput === "wishlist"
+          ? expectedArrivalDateInput.trim() || undefined
+          : undefined,
       rarityTags: rarityInput ? [rarityInput] : undefined,
+      rating: ratingInput > 0 ? ratingInput : undefined,
 
       purchaseDate:
         year || month || day
@@ -607,6 +563,26 @@ export function ItemDetailsModal({
       updatedAt: new Date().toISOString(),
     };
 
+    const normalizedTitle = updatedItem.title.trim().toLowerCase();
+    const normalizedPlatform = updatedItem.platform.trim().toLowerCase();
+    const normalizedSubtitle = (updatedItem.subtitle ?? "").trim().toLowerCase();
+    const hasDuplicateOnTargetPlatform = existingItems.some((other) => {
+      if (other.id === updatedItem.id || other.isRemoved) return false;
+
+      return (
+        other.title.trim().toLowerCase() === normalizedTitle &&
+        other.platform.trim().toLowerCase() === normalizedPlatform &&
+        (other.subtitle ?? "").trim().toLowerCase() === normalizedSubtitle
+      );
+    });
+
+    if (hasDuplicateOnTargetPlatform) {
+      setSaveFeedback(
+        "Já existe um item com o mesmo nome, subtítulo e plataforma. Altere os dados para continuar.",
+      );
+      return;
+    }
+
     try {
       onUpdateItem(updatedItem);
       onClose();
@@ -624,12 +600,18 @@ export function ItemDetailsModal({
           onClick={onClose}
           className="absolute right-4 top-4 z-10 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-sm text-white/80 transition hover:bg-white/15 hover:text-white"
         >
-          Fechar
+          X
         </button>
 
         <div className="grid max-h-[90vh] grid-cols-1 overflow-y-auto lg:grid-cols-[360px_1fr]">
-          <div className="border-b border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-black lg:border-b-0 lg:border-r">
-            <div className="aspect-[3/4] w-full">
+          <div
+            ref={imagePanelRef}
+            className="border-b border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-black lg:sticky lg:top-0 lg:self-start lg:border-b-0 lg:border-r"
+          >
+            <div
+              className="relative aspect-[3/4] w-full cursor-pointer"
+              onClick={() => setIsImageActionsOpen((prev) => !prev)}
+            >
               {imageUrlInput ? (
                 <img
                   src={imageUrlInput}
@@ -640,7 +622,7 @@ export function ItemDetailsModal({
                 <div className="flex h-full w-full items-end bg-gradient-to-br from-slate-700/60 via-slate-900 to-black p-6">
                   <div>
                     <p className="text-xs uppercase tracking-[0.25em] text-white/45">
-                      {item.platform}
+                      {platformInput || item.platform}
                     </p>
                     <h2 className="mt-2 text-3xl font-semibold text-white">
                       {nameInput || item.title}
@@ -653,32 +635,89 @@ export function ItemDetailsModal({
                   </div>
                 </div>
               )}
+              {isImageActionsOpen && (
+                <div
+                  className="absolute inset-0 flex items-end justify-center bg-black/35 px-3 py-4 backdrop-blur-[3px]"
+                >
+                  <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-cyan-200/45 bg-black/55 p-2 shadow-[0_0_0_1px_rgba(103,232,249,0.22)]">
+                    <IconActionButton
+                      icon="✏️"
+                      label="Editar imagem"
+                      onClick={() => setIsEditingImage((prev) => !prev)}
+                    />
+                    <IconActionButton
+                      icon="🖼️"
+                      label={isUploadingImage ? "Enviando..." : "Trocar imagem"}
+                      onClick={handlePickImageFromComputer}
+                    />
+                    {isGame && (
+                      <IconActionButton
+                        icon="🔎"
+                        label={isSearchingCover ? "Buscando..." : "IGDB"}
+                        onClick={handleSearchCoverAgain}
+                      />
+                    )}
+                    {imageUrlInput && (
+                      <IconActionButton
+                        icon="🗑️"
+                        label="Remover imagem"
+                        onClick={handleRemoveImage}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="flex items-center justify-center gap-2 border-t border-white/10 px-3 py-3">
-              <IconActionButton
-                icon="✏️"
-                label="Editar imagem"
-                onClick={() => setIsEditingImage((prev) => !prev)}
-              />
-              <IconActionButton
-                icon="🖼️"
-                label={isUploadingImage ? "Enviando..." : "Trocar imagem"}
-                onClick={handlePickImageFromComputer}
-              />
-              {isGame && (
-                <IconActionButton
-                  icon="🔎"
-                  label={isSearchingCover ? "Buscando..." : "IGDB"}
-                  onClick={handleSearchCoverAgain}
-                />
-              )}
-              {imageUrlInput && (
-                <IconActionButton
-                  icon="🗑️"
-                  label="Remover imagem"
-                  onClick={handleRemoveImage}
-                />
-              )}
+            <div className="space-y-3 border-t border-white/10 px-3 py-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-white/45">Nota</p>
+                <div className="mt-1 flex items-center gap-1">
+                  {Array.from({ length: 5 }, (_, index) => {
+                    const star = index + 1;
+                    return (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setRatingInput(star === ratingInput ? 0 : star)}
+                        className="text-lg"
+                        aria-label={`Definir nota ${star}`}
+                      >
+                        {star <= ratingInput ? "★" : "☆"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs text-white/80">
+                {isGame && (
+                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
+                    {progressIcon} {previewProgressLabel || "Sem status"}
+                  </span>
+                )}
+                {!!previewGenre && (
+                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
+                    🎯 {previewGenre}
+                  </span>
+                )}
+                {previewReleaseDateLabel && (
+                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
+                    📅 {previewReleaseDateLabel}
+                  </span>
+                )}
+                {expectedArrivalDateInput && (
+                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
+                    🚚 Entrega: {expectedArrivalDateInput}
+                  </span>
+                )}
+                <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
+                  🕹 {platformInput || item.platform}
+                </span>
+                {!!item.franchise && (
+                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
+                    🧩 {item.franchise}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -705,9 +744,7 @@ export function ItemDetailsModal({
                   variant={
                     ownershipStatusInput === "wishlist"
                       ? "wishlist"
-                      : ownershipStatusInput === "preorder"
-                        ? "preorder"
-                        : "default"
+                      : "default"
                   }
                 />
 
@@ -761,6 +798,28 @@ export function ItemDetailsModal({
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                     />
                   </label>
+
+                  <label className="block md:col-span-2">
+                    <span className="mb-2 block text-sm text-white/70">
+                      Plataforma
+                    </span>
+                    <select
+                      value={platformInput}
+                      onChange={(e) => setPlatformInput(e.target.value)}
+                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
+                    >
+                      {platformOptions.length === 0 && (
+                        <option value="" className="bg-[#0b1020]">
+                          Sem plataforma cadastrada
+                        </option>
+                      )}
+                      {platformOptions.map((platform) => (
+                        <option key={platform} value={platform} className="bg-[#0b1020]">
+                          {platform}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
               </section>
 
@@ -795,7 +854,7 @@ export function ItemDetailsModal({
                 </h3>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <label className="block">
+                  <div className="block">
                     <span className="mb-2 block text-sm text-white/70">
                       Status de posse
                     </span>
@@ -803,45 +862,39 @@ export function ItemDetailsModal({
                       value={ownershipStatusInput}
                       onChange={(value) => setOwnershipStatusInput(value)}
                     />
-                  </label>
+                    {isGame && (
+                      <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                        <span className="mb-2 block text-sm text-white/70">Mídia</span>
+                        <div className="flex flex-wrap gap-2">
+                          <ToggleChip
+                            label="Física"
+                            active={mediaFormatsInput?.includes("physical") ?? false}
+                            onClick={() => toggleMediaFormat("physical")}
+                          />
+
+                          <ToggleChip
+                            label="Digital"
+                            active={mediaFormatsInput?.includes("digital") ?? false}
+                            onClick={() => toggleMediaFormat("digital")}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {isGame && (
                     <label className="block">
                       <span className="mb-2 block text-sm text-white/70">
                         Status do jogo
                       </span>
-                      <CustomSelect
+                      <GameStatusChips
                         value={gameProgressStatusInput}
-                        onChange={(value) =>
-                          setGameProgressStatusInput(
-                            (value as NonNullable<Item["gameProgressStatus"]> | "") ?? "",
-                          )
-                        }
-                        options={gameProgressOptions}
-                        placeholder="Não definido"
+                        onChange={setGameProgressStatusInput}
                       />
                     </label>
                   )}
                 </div>
 
-                {isGame && (
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                    <span className="mb-2 block text-sm text-white/70">Mídia</span>
-                    <div className="flex flex-wrap gap-2">
-                      <ToggleChip
-                        label="Física"
-                        active={mediaFormatsInput?.includes("physical") ?? false}
-                        onClick={() => toggleMediaFormat("physical")}
-                      />
-
-                      <ToggleChip
-                        label="Digital"
-                        active={mediaFormatsInput?.includes("digital") ?? false}
-                        onClick={() => toggleMediaFormat("digital")}
-                      />
-                    </div>
-                  </div>
-                )}
                 {isGame && (
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <label className="block">
@@ -868,7 +921,7 @@ export function ItemDetailsModal({
 
               <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
                 <h3 className="text-lg font-semibold text-white">
-                  Financeiro e metadados
+                  Financeiro e Metadados
                 </h3>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -882,8 +935,8 @@ export function ItemDetailsModal({
                               <input
                                 value={pricePhysicalInput}
                                 onChange={(e) => setPricePhysicalInput(e.target.value)}
-                                placeholder={isWishlist ? "Opcional na wishlist" : "Ex: 299.90"}
-                                disabled={isWishlist}
+                                placeholder={shouldDisablePaidInputs ? "Opcional na wishlist" : "Ex: 299.90"}
+                                disabled={shouldDisablePaidInputs}
                                 className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
                               />
                             </label>
@@ -894,8 +947,8 @@ export function ItemDetailsModal({
                               <input
                                 value={priceDigitalInput}
                                 onChange={(e) => setPriceDigitalInput(e.target.value)}
-                                placeholder={isWishlist ? "Opcional na wishlist" : "Ex: 249.90"}
-                                disabled={isWishlist}
+                                placeholder={shouldDisablePaidInputs ? "Opcional na wishlist" : "Ex: 249.90"}
+                                disabled={shouldDisablePaidInputs}
                                 className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
                               />
                             </label>
@@ -910,11 +963,11 @@ export function ItemDetailsModal({
                             value={amountPaidInput}
                             onChange={(e) => setAmountPaidInput(e.target.value)}
                             placeholder={
-                              isWishlist
+                              shouldDisablePaidInputs
                                 ? "Wishlist não usa valor pago"
                                 : "Ex: 299.90"
                             }
-                            disabled={isWishlist}
+                            disabled={shouldDisablePaidInputs}
                             className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
                           />
                         </label>
@@ -929,11 +982,11 @@ export function ItemDetailsModal({
                         value={amountPaidInput}
                         onChange={(e) => setAmountPaidInput(e.target.value)}
                         placeholder={
-                          isWishlist
+                          shouldDisablePaidInputs
                             ? "Wishlist não usa valor pago"
                             : "Ex: 299.90"
                         }
-                        disabled={isWishlist}
+                        disabled={shouldDisablePaidInputs}
                         className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
                       />
                     </label>
@@ -955,7 +1008,7 @@ export function ItemDetailsModal({
                     />
                   </label>
 
-                  {isWishlist ? (
+                  {isWishlist && !hasAcquisitionInWishlist ? (
                     <label className="block md:col-span-2">
                       <span className="mb-2 block text-sm text-white/70">
                         Prioridade
@@ -974,60 +1027,140 @@ export function ItemDetailsModal({
                       Raridade
                     </span>
                     <RarityButtons
+                      itemType={item.type}
                       value={rarityInput}
                       onChange={(value) => setRarityInput(value)}
                     />
                   </label>
+
+                  {isWishlist && (
+                    <>
+                      <label className="block md:col-span-2">
+                        <span className="mb-2 block text-sm text-white/70">
+                          Substatus de compra
+                        </span>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAcquisitionStatusInput((current) =>
+                                current === "preorder" ? "" : "preorder",
+                              )
+                            }
+                            className={`rounded-xl border px-3 py-2 text-sm transition ${
+                              acquisitionStatusInput === "preorder"
+                                ? "border-fuchsia-300 bg-fuchsia-500/20 text-fuchsia-100"
+                                : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
+                            }`}
+                          >
+                            Pré-venda
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAcquisitionStatusInput((current) =>
+                                current === "purchased" ? "" : "purchased",
+                              )
+                            }
+                            className={`rounded-xl border px-3 py-2 text-sm transition ${
+                              acquisitionStatusInput === "purchased"
+                                ? "border-red-300 bg-red-500/20 text-red-100"
+                                : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
+                            }`}
+                          >
+                            Comprado
+                          </button>
+                        </div>
+                      </label>
+
+                      {acquisitionStatusInput && (
+                        <label className="block md:col-span-2">
+                          <span className="mb-2 block text-sm text-white/70">
+                            Previsão de entrega (opcional)
+                          </span>
+                          <input
+                            value={expectedArrivalDateInput}
+                            onChange={(e) => setExpectedArrivalDateInput(e.target.value)}
+                            placeholder="DD-MM-AAAA"
+                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                          />
+                          <p className="mt-2 text-xs text-white/55">
+                            Você pode preencher agora ou editar depois neste mesmo modal.
+                          </p>
+                        </label>
+                      )}
+                    </>
+                  )}
                 </div>
+
+                {!isWishlist && (
+                  <>
+                    <div className="mt-4">
+                      <span className="mb-2 block text-sm text-white/70">
+                        Data da compra
+                      </span>
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <label className="block">
+                          <span className="mb-2 block text-sm text-white/60">Dia</span>
+                          <input
+                            value={purchaseDayInput}
+                            onChange={(e) => setPurchaseDayInput(e.target.value)}
+                            placeholder="11"
+                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-2 block text-sm text-white/60">Mês</span>
+                          <input
+                            value={purchaseMonthInput}
+                            onChange={(e) => setPurchaseMonthInput(e.target.value)}
+                            placeholder="04"
+                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-2 block text-sm text-white/60">Ano</span>
+                          <CustomSelect
+                            value={purchaseYearInput}
+                            onChange={setPurchaseYearInput}
+                            options={purchaseYearOptions}
+                            placeholder="2026"
+                          />
+                        </label>
+                      </div>
+                      {(item.type === "game" || previewReleaseDateLabel) && (
+                        <p className="mt-3 text-xs text-cyan-100/80">
+                          Referência de lançamento:{" "}
+                          {previewReleaseDateLabel
+                            ? `${previewReleaseDateLabel} ${
+                                item.type === "game" ? "(IGDB)" : "(cadastrada)"
+                              }`
+                            : "não informada"}
+                        </p>
+                      )}
+                      {purchaseVsReleaseInfo && (
+                        <p className="mt-2 text-sm text-cyan-100/85">{purchaseVsReleaseInfo}</p>
+                      )}
+                    </div>
+
+                    <div className="mt-4 grid gap-4">
+                      <label className="block">
+                        <span className="mb-2 block text-sm text-white/70">
+                          Origem da compra
+                        </span>
+                        <CustomSelect
+                          value={purchaseOriginInput}
+                          onChange={handlePurchaseOriginChange}
+                          options={purchaseOriginSelectOptions}
+                          placeholder="Em branco"
+                        />
+                      </label>
+
+                    </div>
+                  </>
+                )}
 
                 <div className="mt-4">
-                  <span className="mb-2 block text-sm text-white/70">
-                    Data da compra (data do lançamento do item, puxado do database)
-                  </span>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/60">Dia</span>
-                      <input
-                        value={purchaseDayInput}
-                        onChange={(e) => setPurchaseDayInput(e.target.value)}
-                        placeholder="11"
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/60">Mês</span>
-                      <input
-                        value={purchaseMonthInput}
-                        onChange={(e) => setPurchaseMonthInput(e.target.value)}
-                        placeholder="04"
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/60">Ano</span>
-                      <CustomSelect
-                        value={purchaseYearInput}
-                        onChange={setPurchaseYearInput}
-                        options={purchaseYearOptions}
-                        placeholder="2026"
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-4">
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">
-                      Origem da compra
-                    </span>
-                    <CustomSelect
-                      value={purchaseOriginInput}
-                      onChange={handlePurchaseOriginChange}
-                      options={purchaseOriginSelectOptions}
-                      placeholder="Em branco"
-                    />
-                  </label>
-
                   <label className="block">
                     <span className="mb-2 block text-sm text-white/70">Notas</span>
                     <textarea
@@ -1039,79 +1172,47 @@ export function ItemDetailsModal({
                     />
                   </label>
                 </div>
-              </section>
 
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <InfoCard label="Tipo" value={getTypeLabel(item.type)} />
-                <InfoCard label="Plataforma" value={item.platform} />
-                <InfoCard label="Franquia" value={item.franchise || "—"} />
-                <InfoCard label="Gênero" value={item.genre || "—"} />
-                <InfoCard
-                  label="Origem da compra"
-                  value={purchaseOriginInput || "—"}
-                />
-                <InfoCard
-                  label="Data da compra"
-                  value={previewPurchaseDateLabel || "—"}
-                />
-                <InfoCard
-                  label="Data de lançamento"
-                  value={previewReleaseDateLabel || "—"}
-                />
-              </div>
-              {purchaseVsReleaseInfo && (
-                <p className="text-sm text-cyan-100/85">{purchaseVsReleaseInfo}</p>
-              )}
-
-              <div className="grid gap-4 md:grid-cols-2">
-                {isGame && (hasPhysicalSelected || hasDigitalSelected) ? (
-                  <>
-                    {hasPhysicalSelected && (
-                      <MoneyCard
-                        label="Preço (Físico)"
-                        value={formatCurrency(
-                          isWishlist
-                            ? undefined
-                            : parseOptionalNumber(pricePhysicalInput),
-                        )}
-                      />
-                    )}
-                    {hasDigitalSelected && (
-                      <MoneyCard
-                        label="Preço (Digital)"
-                        value={formatCurrency(
-                          isWishlist
-                            ? undefined
-                            : parseOptionalNumber(priceDigitalInput),
-                        )}
-                      />
-                    )}
-                  </>
-                ) : (
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  {isGame && (hasPhysicalSelected || hasDigitalSelected) ? (
+                    <>
+                      {hasPhysicalSelected && (
+                        <MoneyCard
+                          label="Preço (Físico)"
+                          value={formatCurrency(
+                            isWishlist
+                              ? undefined
+                              : parseOptionalNumber(pricePhysicalInput),
+                          )}
+                        />
+                      )}
+                      {hasDigitalSelected && (
+                        <MoneyCard
+                          label="Preço (Digital)"
+                          value={formatCurrency(
+                            isWishlist
+                              ? undefined
+                              : parseOptionalNumber(priceDigitalInput),
+                          )}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <MoneyCard
+                      label={isWishlist ? "Valor referência" : "Valor pago"}
+                      value={formatCurrency(
+                        isWishlist
+                          ? undefined
+                          : parseOptionalNumber(amountPaidInput),
+                      )}
+                    />
+                  )}
                   <MoneyCard
-                    label={isWishlist ? "Valor referência" : "Valor pago"}
-                    value={formatCurrency(
-                      isWishlist
-                        ? undefined
-                        : parseOptionalNumber(amountPaidInput),
-                    )}
+                    label="Valor atual"
+                    value={formatCurrency(parseOptionalNumber(currentValueInput))}
                   />
-                )}
-                <MoneyCard
-                  label="Valor atual"
-                  value={formatCurrency(parseOptionalNumber(currentValueInput))}
-                />
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleSaveAll}
-                  className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-white/90"
-                >
-                  Salvar alterações
-                </button>
-              </div>
+                </div>
+              </section>
               {saveFeedback && <p className="text-sm text-rose-200">{saveFeedback}</p>}
 
               <div className="grid gap-6 xl:grid-cols-2">
@@ -1123,6 +1224,20 @@ export function ItemDetailsModal({
                   title="Histórico de valorização"
                   entries={item.collectionValueHistory}
                 />
+              </div>
+            </div>
+            <div className="sticky bottom-0 mt-6 border-t border-white/10 bg-[#0b1020]/95 p-4 backdrop-blur">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveAll}
+                  className="rounded-2xl bg-white px-6 py-2 text-sm font-semibold text-black transition hover:bg-white/90"
+                >
+                  <span className="block">Salvar</span>
+                  <span className="block text-[11px] font-normal text-black/70">
+                    Ctrl/⌘ + Enter
+                  </span>
+                </button>
               </div>
             </div>
           </div>
@@ -1168,9 +1283,12 @@ function IconActionButton({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
       title={label}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-sm transition hover:bg-white/10"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200/35 bg-cyan-500/15 text-sm shadow-[0_0_0_1px_rgba(103,232,249,0.2)] transition hover:bg-cyan-400/25"
       aria-label={label}
     >
       {icon}
@@ -1186,11 +1304,10 @@ function OwnershipStatusButtons({
   onChange: (value: Item["ownershipStatus"]) => void;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {[
         { value: "collection", label: "Na coleção", active: "border-white/25 bg-white text-black" },
         { value: "wishlist", label: "Wishlist", active: "border-amber-300 bg-amber-300 text-black" },
-        { value: "preorder", label: "Pré-venda", active: "border-fuchsia-400 bg-fuchsia-500 text-white" },
       ].map((option) => (
         <button
           key={option.value}
@@ -1199,6 +1316,42 @@ function OwnershipStatusButtons({
           className={`rounded-lg border px-2.5 py-2 text-xs transition ${
             value === option.value
               ? option.active
+              : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function GameStatusChips({
+  value,
+  onChange,
+}: {
+  value: NonNullable<Item["gameProgressStatus"]> | "";
+  onChange: (value: NonNullable<Item["gameProgressStatus"]> | "") => void;
+}) {
+  const options: { value: NonNullable<Item["gameProgressStatus"]> | ""; label: string }[] = [
+    { value: "", label: "—" },
+    { value: "backlog", label: "📚 Backlog" },
+    { value: "playing", label: "🎮 Jogando" },
+    { value: "paused", label: "⏸️ Pausado" },
+    { value: "finished", label: "✅ Terminado" },
+    { value: "platinum", label: "🏆 Platinado" },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => (
+        <button
+          key={option.label}
+          type="button"
+          onClick={() => onChange(option.value)}
+          className={`rounded-full border px-3 py-2 text-sm transition ${
+            value === option.value
+              ? "border-cyan-300/70 bg-cyan-400/20 text-cyan-100"
               : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
           }`}
         >
@@ -1245,9 +1398,11 @@ function PriorityButtons({
 }
 
 function RarityButtons({
+  itemType,
   value,
   onChange,
 }: {
+  itemType: Item["type"];
   value: NonNullable<Item["rarityTags"]>[number] | "";
   onChange: (value: NonNullable<Item["rarityTags"]>[number] | "") => void;
 }) {
@@ -1259,6 +1414,9 @@ function RarityButtons({
     { value: "highlight", label: "Destaque" },
     { value: "repro", label: "Repro" },
   ];
+  if (itemType === "game") {
+    options.push({ value: "steelbook", label: "Steelbook" });
+  }
 
   return (
     <div className="flex flex-wrap gap-2">
@@ -1276,25 +1434,6 @@ function RarityButtons({
           {option.label}
         </button>
       ))}
-    </div>
-  );
-}
-
-function getTypeLabel(type: Item["type"]) {
-  const map = {
-    console: "Console",
-    accessory: "Acessório",
-    game: "Jogo",
-  };
-
-  return map[type];
-}
-
-function InfoCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <p className="text-xs uppercase tracking-[0.22em] text-white/40">{label}</p>
-      <p className="mt-2 text-base font-medium text-white">{value}</p>
     </div>
   );
 }

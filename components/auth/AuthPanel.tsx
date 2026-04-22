@@ -1,10 +1,8 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { getMissingSupabaseEnvKeys } from "@/lib/supabase";
-
-type AuthMode = "login" | "signup" | "magic";
 
 export function AuthPanel() {
   const {
@@ -16,17 +14,11 @@ export function AuthPanel() {
     signInWithOtp,
   } = useAuth();
 
-  const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const actionLabel = useMemo(() => {
-    if (mode === "signup") return "Criar conta";
-    if (mode === "magic") return "Enviar link mágico";
-    return "Entrar";
-  }, [mode]);
+  const [isSignUpMode, setIsSignUpMode] = useState(false);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -37,27 +29,13 @@ export function AuthPanel() {
       return;
     }
 
-    if (mode !== "magic" && password.trim().length < 6) {
+    if (password.trim().length < 6) {
       setStatus("A senha deve ter pelo menos 6 caracteres.");
       return;
     }
 
     setIsSubmitting(true);
-
-    if (mode === "magic") {
-      const result = await signInWithOtp(email.trim());
-      setIsSubmitting(false);
-
-      if (result.error) {
-        setStatus(`Falha ao enviar link: ${result.error}`);
-        return;
-      }
-
-      setStatus("Link de acesso enviado. Verifique seu e-mail.");
-      return;
-    }
-
-    if (mode === "signup") {
+    if (isSignUpMode) {
       const result = await signUpWithPassword(email.trim(), password);
       setIsSubmitting(false);
 
@@ -97,7 +75,7 @@ export function AuthPanel() {
       return;
     }
   }
-
+  
   if (!isEnabled) {
     const missingEnvKeys = getMissingSupabaseEnvKeys();
 
@@ -124,42 +102,6 @@ export function AuthPanel() {
 
   return (
     <div className="space-y-3 rounded-2xl border border-white/10 bg-black/15 p-3">
-      <div className="grid gap-2 sm:grid-cols-3">
-        <button
-          type="button"
-          onClick={() => setMode("login")}
-          className={`rounded-xl px-3 py-2 text-xs font-semibold ${
-            mode === "login"
-              ? "bg-white text-black"
-              : "border border-white/15 text-white/80 hover:bg-white/10"
-          }`}
-        >
-          Entrar
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("signup")}
-          className={`rounded-xl px-3 py-2 text-xs font-semibold ${
-            mode === "signup"
-              ? "bg-white text-black"
-              : "border border-white/15 text-white/80 hover:bg-white/10"
-          }`}
-        >
-          Criar conta
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("magic")}
-          className={`rounded-xl px-3 py-2 text-xs font-semibold ${
-            mode === "magic"
-              ? "bg-white text-black"
-              : "border border-white/15 text-white/80 hover:bg-white/10"
-          }`}
-        >
-          Link mágico
-        </button>
-      </div>
-
       <button
         type="button"
         onClick={() => void handleGoogleLogin()}
@@ -168,6 +110,12 @@ export function AuthPanel() {
       >
         Continuar com Google
       </button>
+
+      <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-white/35">
+        <span className="h-px flex-1 bg-white/10" />
+        <span>-ou-</span>
+        <span className="h-px flex-1 bg-white/10" />
+      </div>
 
       <form onSubmit={(event) => void handleSubmit(event)} className="space-y-2">
         <input
@@ -178,24 +126,56 @@ export function AuthPanel() {
           className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40"
         />
 
-        {mode !== "magic" && (
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="sua senha"
-            className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40"
-          />
-        )}
+        <input
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          placeholder="sua senha"
+          className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40"
+        />
 
         <button
           type="submit"
           disabled={isSubmitting}
           className="w-full rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSubmitting ? "Processando..." : actionLabel}
+          {isSubmitting
+            ? "Processando..."
+            : isSignUpMode
+              ? "Criar conta com e-mail/senha"
+              : "Entrar com e-mail/senha"}
         </button>
       </form>
+
+      <button
+        type="button"
+        onClick={() => {
+          setIsSignUpMode((prev) => !prev);
+          setStatus(null);
+        }}
+        disabled={isSubmitting}
+        className="w-full rounded-xl border border-white/15 bg-transparent px-3 py-2 text-xs font-semibold text-white/85 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isSignUpMode
+          ? "Já tenho conta com e-mail/senha"
+          : "Criar conta com login/senha"}
+      </button>
+
+      <button
+        type="button"
+        onClick={async () => {
+          setStatus(null);
+          const result = await signInWithOtp(email.trim());
+          if (result.error) {
+            setStatus(`Falha ao enviar link: ${result.error}`);
+            return;
+          }
+          setStatus("Link de acesso enviado. Verifique seu e-mail.");
+        }}
+        className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] font-medium text-white/70 transition hover:bg-white/10"
+      >
+        Prefere link mágico? Enviar para este e-mail
+      </button>
 
       {status && <p className="text-xs text-white/65">{status}</p>}
     </div>

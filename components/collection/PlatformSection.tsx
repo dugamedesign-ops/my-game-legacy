@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Item, ItemType } from "@/types/collection";
 import {
   CATEGORY_ORDER,
@@ -15,6 +15,7 @@ type PlatformSectionProps = {
   onItemClick?: (item: Item) => void;
   onItemContextMenu?: (item: Item, x: number, y: number) => void;
   onAddItem?: (type: ItemType, platform: string) => void;
+  defaultOpen?: boolean;
 };
 
 export function PlatformSection({
@@ -23,8 +24,11 @@ export function PlatformSection({
   onItemClick,
   onItemContextMenu,
   onAddItem,
+  defaultOpen = true,
 }: PlatformSectionProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+  const addMenuRef = useRef<HTMLDivElement | null>(null);
   const theme = getPlatformTheme(platform);
 
   const categoryData = useMemo(() => {
@@ -44,6 +48,23 @@ export function PlatformSection({
     };
   }, [items]);
 
+  useEffect(() => {
+    if (!isAddMenuOpen) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        addMenuRef.current &&
+        event.target instanceof Node &&
+        !addMenuRef.current.contains(event.target)
+      ) {
+        setIsAddMenuOpen(false);
+      }
+    }
+
+    window.addEventListener("mousedown", handleClickOutside);
+    return () => window.removeEventListener("mousedown", handleClickOutside);
+  }, [isAddMenuOpen]);
+
   return (
     <section className="overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] shadow-[0_10px_40px_rgb(0,0,0,0.22)]">
       <div
@@ -58,33 +79,56 @@ export function PlatformSection({
           </div>
 
           <div className="flex shrink-0 items-center gap-2 text-sm text-white/70">
+            <div ref={addMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setIsAddMenuOpen((prev) => !prev)}
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/85 transition hover:bg-white/10"
+                title={`Adicionar item em ${platform}`}
+              >
+                ＋ Adicionar
+              </button>
+              {isAddMenuOpen && (
+                <div className="absolute right-0 top-9 z-20 min-w-[180px] rounded-xl border border-white/10 bg-[#0b1220] p-1.5 shadow-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onAddItem?.("game", platform);
+                      setIsAddMenuOpen(false);
+                    }}
+                    className="flex w-full rounded-lg px-3 py-2 text-left text-xs text-white/85 transition hover:bg-white/10"
+                  >
+                    🎮 Adicionar jogo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onAddItem?.("console", platform);
+                      setIsAddMenuOpen(false);
+                    }}
+                    className="flex w-full rounded-lg px-3 py-2 text-left text-xs text-white/85 transition hover:bg-white/10"
+                  >
+                    🖥️ Adicionar console
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onAddItem?.("accessory", platform);
+                      setIsAddMenuOpen(false);
+                    }}
+                    className="flex w-full rounded-lg px-3 py-2 text-left text-xs text-white/85 transition hover:bg-white/10"
+                  >
+                    🎧 Adicionar acessório
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               type="button"
-              onClick={() => onAddItem?.("game", platform)}
-              className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/85 transition hover:bg-white/10"
-              title={`Adicionar jogo em ${platform}`}
-            >
-              🎮 +Jogo
-            </button>
-            <button
-              type="button"
-              onClick={() => onAddItem?.("console", platform)}
-              className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/85 transition hover:bg-white/10"
-              title={`Adicionar console em ${platform}`}
-            >
-              🖥️ +Console
-            </button>
-            <button
-              type="button"
-              onClick={() => onAddItem?.("accessory", platform)}
-              className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/85 transition hover:bg-white/10"
-              title={`Adicionar acessório em ${platform}`}
-            >
-              🎧 +Acessório
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsOpen((prev) => !prev)}
+              onClick={() => {
+                setIsOpen((prev) => !prev);
+                setIsAddMenuOpen(false);
+              }}
               className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-sm transition hover:bg-white/10"
               aria-label={isOpen ? "Recolher plataforma" : "Expandir plataforma"}
             >
@@ -106,7 +150,6 @@ export function PlatformSection({
                 key={category}
                 category={category}
                 items={getItemsByCategory(items, category)}
-                onAddItem={() => onAddItem?.(category, platform)}
                 onItemClick={onItemClick}
                 onItemContextMenu={onItemContextMenu}
               />

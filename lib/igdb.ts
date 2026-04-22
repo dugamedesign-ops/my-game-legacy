@@ -39,18 +39,43 @@ export async function searchIgdbGames(
   query: string,
 ): Promise<IgdbSearchResult[]> {
   const trimmedQuery = query.trim();
-  const fallbackQuery = (() => {
-    const parts = trimmedQuery.split(/\s+/).filter(Boolean);
-    if (parts.length < 2) return null;
-    const lastChunk = parts[parts.length - 1] ?? "";
-    if (lastChunk.length > 3) return null;
-    const base = parts.slice(0, -1).join(" ").trim();
-    return base.length >= 2 ? base : null;
-  })();
+  const tokens = trimmedQuery.split(/\s+/).filter(Boolean);
+  const withoutPlatformHints = tokens
+    .filter((token) => {
+      const normalized = token
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+      return ![
+        "ps1",
+        "ps2",
+        "ps3",
+        "ps4",
+        "ps5",
+        "xbox",
+        "x360",
+        "xone",
+        "pc",
+        "switch",
+        "wii",
+        "wiiu",
+      ].includes(normalized);
+    })
+    .join(" ")
+    .trim();
 
-  const queryList = [trimmedQuery, fallbackQuery].filter(
-    (value): value is string => Boolean(value),
-  );
+  const queryCandidates = [
+    trimmedQuery,
+    withoutPlatformHints,
+    tokens.slice(0, -1).join(" ").trim(),
+  ];
+
+  const seenQueries = new Set<string>();
+  const queryList = queryCandidates.filter((value): value is string => {
+    if (!value || value.length < 2 || seenQueries.has(value)) return false;
+    seenQueries.add(value);
+    return true;
+  });
 
   const responses = await Promise.all(
     queryList.map(async (currentQuery) => {
@@ -82,5 +107,5 @@ export async function searchIgdbGames(
     }
   });
 
-  return Array.from(merged.values());
+  return Array.from(merged.values()).slice(0, 20);
 }

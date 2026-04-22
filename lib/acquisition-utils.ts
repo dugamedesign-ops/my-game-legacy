@@ -1,0 +1,22 @@
+import { Item } from "@/types/collection";
+
+export function isItemReleased(item: Pick<Item, "releaseDate">, now = new Date()) {
+  if (!item.releaseDate) return true;
+
+  const releaseDate = new Date(item.releaseDate);
+  if (Number.isNaN(releaseDate.getTime())) return true;
+  return releaseDate.getTime() <= now.getTime();
+}
+
+export function getNormalizedAcquisitionStatus(
+  item: Pick<Item, "ownershipStatus" | "acquisitionStatus">,
+) {
+  if (item.acquisitionStatus === "purchased") return "purchased";
+  if (item.acquisitionStatus === "preorder") return "preorder";
+  if (item.ownershipStatus === "preorder") return "preorder";
+  return null;
+}
+
+export function getAcquisitionStatusLabel(status: "preorder" | "purchased") {
+  return status === "purchased" ? "Comprado" : "Pré-venda";
+}

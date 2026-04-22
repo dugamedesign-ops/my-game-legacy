@@ -101,11 +101,7 @@ export function getPendingItems(items: Item[]): ItemPendingInfo[] {
     }
   }
 
-  return pendingItems.sort((a, b) => {
-    if (b.missingFields.length !== a.missingFields.length) {
-      return b.missingFields.length - a.missingFields.length;
-    }
-
-    return a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" });
-  });
+  return pendingItems.sort((a, b) =>
+    a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" }),
+  );
 }
