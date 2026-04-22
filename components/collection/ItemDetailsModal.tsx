@@ -289,6 +289,12 @@ export function ItemDetailsModal({
   const previewReleaseDateLabel = formatReleaseDate(item.releaseDate);
   const purchaseYearNumber = purchaseYearInput ? Number(purchaseYearInput) : undefined;
   const releaseDateObj = item.releaseDate ? new Date(item.releaseDate) : null;
+  const isReleasedForRating =
+    !releaseDateObj ||
+    Number.isNaN(releaseDateObj.getTime()) ||
+    releaseDateObj.getTime() <= Date.now();
+  const usesHypeScale = isWishlist && !isReleasedForRating;
+  const ratingLabel = usesHypeScale ? "Hype" : "Nota";
   const releaseYear = releaseDateObj && !Number.isNaN(releaseDateObj.getTime())
     ? releaseDateObj.getFullYear()
     : undefined;
@@ -669,7 +675,7 @@ export function ItemDetailsModal({
             </div>
             <div className="space-y-3 border-t border-white/10 px-3 py-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-white/45">Nota</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-white/45">{ratingLabel}</p>
                 <div className="mt-1 flex items-center gap-1">
                   {Array.from({ length: 5 }, (_, index) => {
                     const star = index + 1;
@@ -679,13 +685,18 @@ export function ItemDetailsModal({
                         type="button"
                         onClick={() => setRatingInput(star === ratingInput ? 0 : star)}
                         className="text-lg"
-                        aria-label={`Definir nota ${star}`}
+                        aria-label={`Definir ${usesHypeScale ? "hype" : "nota"} ${star}`}
                       >
                         {star <= ratingInput ? "★" : "☆"}
                       </button>
                     );
                   })}
                 </div>
+                {usesHypeScale && (
+                  <p className="mt-1 text-[11px] text-white/55">
+                    Escala de hype para item ainda não lançado.
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap gap-2 text-xs text-white/80">
                 {isGame && (
