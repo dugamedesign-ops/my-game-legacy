@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Item } from "@/types/collection";
 import { formatCurrencyBRL, getFinancialSummary } from "@/lib/finance-utils";
 import type { FinancialCollectionViewFilters } from "@/lib/collection-view-filters";
@@ -38,6 +38,7 @@ export function FinancialOverview({
     "collection_paid" | "collection_current" | "wishlist_current" | "purchased_paid" | null
   >(null);
   const [missingDraftValues, setMissingDraftValues] = useState<Record<string, string>>({});
+  const missingInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const platformOptions = Array.from(
     new Set(items.filter((item) => !item.isRemoved).map((item) => item.platform).filter(Boolean)),
@@ -169,6 +170,36 @@ export function FinancialOverview({
     if (rarity === "highlight") return "Destaque";
     if (rarity === "steelbook") return "Steelbook";
     return "Repro";
+  }
+
+  function saveMissingFieldValue(item: Item, field: "amountPaid" | "currentValue", index: number) {
+    if (!activeMissingGroup) return;
+
+    const draft = missingDraftValues[item.id] ?? "";
+    const normalized = draft.replace(",", ".").trim();
+    if (!normalized) return;
+
+    const numeric = Number(normalized);
+    if (!Number.isFinite(numeric)) return;
+
+    const nextItemId = activeMissingGroup.items[index + 1]?.id ?? null;
+
+    onUpdateItem?.({
+      ...item,
+      [field]: numeric,
+      updatedAt: new Date().toISOString(),
+    });
+
+    setMissingDraftValues((current) => ({
+      ...current,
+      [item.id]: "",
+    }));
+
+    if (nextItemId) {
+      window.setTimeout(() => {
+        missingInputRefs.current[nextItemId]?.focus();
+      }, 40);
+    }
   }
 
   return (
@@ -384,7 +415,7 @@ export function FinancialOverview({
 
                 {activeMissingGroup && (
                   <div className="mt-4 space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                    {activeMissingGroup.items.map((item) => {
+                    {activeMissingGroup.items.map((item, index) => {
                       const draft = missingDraftValues[item.id] ?? "";
                       const inputLabel =
                         activeMissingGroup.field === "amountPaid"
@@ -402,6 +433,9 @@ export function FinancialOverview({
                           <p className="mt-0.5 text-[11px] text-white/55">{item.platform}</p>
                           <div className="mt-2 flex flex-wrap items-center gap-2">
                             <input
+                              ref={(element) => {
+                                missingInputRefs.current[item.id] = element;
+                              }}
                               value={draft}
                               onChange={(event) =>
                                 setMissingDraftValues((current) => ({
@@ -409,27 +443,20 @@ export function FinancialOverview({
                                   [item.id]: event.target.value,
                                 }))
                               }
+                              onKeyDown={(event) => {
+                                if (event.key !== "Enter") return;
+                                event.preventDefault();
+                                saveMissingFieldValue(item, activeMissingGroup.field, index);
+                              }}
                               placeholder={`${inputLabel} (R$)`}
                               inputMode="decimal"
                               className="min-w-[170px] flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/35"
                             />
                             <button
                               type="button"
-                              onClick={() => {
-                                const normalized = draft.replace(",", ".").trim();
-                                if (!normalized) return;
-                                const numeric = Number(normalized);
-                                if (!Number.isFinite(numeric)) return;
-                                onUpdateItem?.({
-                                  ...item,
-                                  [activeMissingGroup.field]: numeric,
-                                  updatedAt: new Date().toISOString(),
-                                });
-                                setMissingDraftValues((current) => ({
-                                  ...current,
-                                  [item.id]: "",
-                                }));
-                              }}
+                              onClick={() =>
+                                saveMissingFieldValue(item, activeMissingGroup.field, index)
+                              }
                               className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs text-white transition hover:bg-white/15"
                             >
                               Salvar
