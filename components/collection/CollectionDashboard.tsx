@@ -1054,7 +1054,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                 onTouchStart={() => setIsLatestAddedPaused(true)}
                 onTouchEnd={() => setIsLatestAddedPaused(false)}
                 onTouchCancel={() => setIsLatestAddedPaused(false)}
-                className="styled-scrollbar styled-scrollbar-hover mx-auto max-w-[980px] touch-pan-x overflow-x-auto pb-2"
+                className="styled-scrollbar styled-scrollbar-hover mx-auto max-w-[980px] touch-auto overflow-x-auto pb-2"
               >
                 <div
                   className={`flex w-max gap-3 ${
