@@ -119,7 +119,8 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [isLegacyMenuOpen, setIsLegacyMenuOpen] = useState(false);
   const [isFinancialOpen, setIsFinancialOpen] = useState(false);
   const [isPendingOpen, setIsPendingOpen] = useState(false);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isCollectionFiltersOpen, setIsCollectionFiltersOpen] = useState(false);
+  const [isPlatformOrganizerOpen, setIsPlatformOrganizerOpen] = useState(false);
   const [platformDefaultOpen, setPlatformDefaultOpen] = useState(true);
   const [platformSectionSeed, setPlatformSectionSeed] = useState(0);
   const [platformOrderMode, setPlatformOrderMode] =
@@ -814,19 +815,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                   />
                   <button
                     type="button"
-                    onClick={() => setIsFiltersOpen((open) => !open)}
-                    className="flex w-full items-center justify-between rounded-xl border border-white/15 px-3 py-2 text-sm text-white/85 transition hover:bg-white/10"
-                  >
-                    <span>Filtros inteligentes</span>
-                    <span className="text-xs">{isFiltersOpen ? "▲" : "▼"}</span>
-                  </button>
-                  {isFiltersOpen && (
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-2">
-                      <FiltersBar filters={filters} setFilters={setFilters} compact />
-                    </div>
-                  )}
-                  <button
-                    type="button"
                     disabled
                     aria-disabled="true"
                     className="flex w-full items-center justify-between rounded-xl border border-white/10 px-3 py-2 text-sm text-white/40"
@@ -1093,67 +1081,39 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           ) : groupedPlatforms.length > 0 ? (
             <section ref={collectionSectionRef} className="space-y-6">
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/45">
-                    Ordem das plataformas
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPlatformOrderMode("custom")}
-                      className={`rounded-full border px-3 py-1.5 text-xs transition ${
-                        platformOrderMode === "custom"
-                          ? "border-cyan-300/70 bg-cyan-500/15 text-cyan-100"
-                          : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10"
-                      }`}
-                    >
-                      Minha ordem
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleResetAlphabeticalPlatformOrder}
-                      className={`rounded-full border px-3 py-1.5 text-xs transition ${
-                        platformOrderMode === "alphabetical"
-                          ? "border-cyan-300/70 bg-cyan-500/15 text-cyan-100"
-                          : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10"
-                      }`}
-                    >
-                      Ordem alfabética
-                    </button>
-                  </div>
-                </div>
-
-                {platformOrderMode === "custom" && groupedPlatforms.length > 1 && (
-                  <>
-                    <p className="mt-3 text-xs text-white/50">
-                      Arraste e solte as plataformas para reorganizar.
+                <button
+                  type="button"
+                  onClick={() => setIsPlatformOrganizerOpen(true)}
+                  className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-left transition hover:bg-white/10"
+                >
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/45">
+                      Organize seu legado
                     </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {groupedPlatforms.map((group) => (
-                        <div
-                          key={`order-chip-${group.platform}`}
-                          draggable
-                          onDragStart={() => handleDragStartPlatform(group.platform)}
-                          onDragOver={(event) => {
-                            event.preventDefault();
-                          }}
-                          onDrop={() => handleDropPlatform(group.platform)}
-                          onDragEnd={() => setDraggedPlatform(null)}
-                          className={`inline-flex cursor-grab items-center gap-1 rounded-full border px-2 py-1 text-xs text-white/80 ${
-                            draggedPlatform === group.platform
-                              ? "border-cyan-300/70 bg-cyan-500/20"
-                              : "border-white/15 bg-black/25"
-                          }`}
-                        >
-                          <span className="text-white/50" aria-hidden>
-                            ⋮⋮
-                          </span>
-                          <span>{group.platform}</span>
-                        </div>
-                      ))}
+                    <p className="mt-1 text-sm text-white/85">
+                      Configure a ordem das plataformas do seu jeito.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-white/15 px-3 py-1 text-xs text-white/75">
+                    {platformOrderMode === "alphabetical" ? "Ordem alfabética" : "Minha ordem"}
+                  </span>
+                </button>
+
+                <div className="mt-3 rounded-xl border border-white/10 bg-black/20">
+                  <button
+                    type="button"
+                    onClick={() => setIsCollectionFiltersOpen((open) => !open)}
+                    className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm text-white/85 transition hover:bg-white/10"
+                  >
+                    <span>Filtros inteligentes</span>
+                    <span className="text-xs">{isCollectionFiltersOpen ? "▲" : "▼"}</span>
+                  </button>
+                  {isCollectionFiltersOpen && (
+                    <div className="border-t border-white/10 p-2">
+                      <FiltersBar filters={filters} setFilters={setFilters} compact />
                     </div>
-                  </>
-                )}
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center justify-end gap-2">
@@ -1323,6 +1283,74 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             defaultOpen
             hideToggle
           />
+        </OverlayPanel>
+      )}
+
+      {isPlatformOrganizerOpen && (
+        <OverlayPanel title="Organize seu legado" onClose={() => setIsPlatformOrganizerOpen(false)}>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/45">
+                Ordem das plataformas
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPlatformOrderMode("custom")}
+                  className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                    platformOrderMode === "custom"
+                      ? "border-cyan-300/70 bg-cyan-500/15 text-cyan-100"
+                      : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10"
+                  }`}
+                >
+                  Minha ordem
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetAlphabeticalPlatformOrder}
+                  className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                    platformOrderMode === "alphabetical"
+                      ? "border-cyan-300/70 bg-cyan-500/15 text-cyan-100"
+                      : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10"
+                  }`}
+                >
+                  Ordem alfabética
+                </button>
+              </div>
+            </div>
+
+            {platformOrderMode === "custom" && groupedPlatforms.length > 1 && (
+              <>
+                <p className="mt-3 text-xs text-white/50">
+                  Arraste e solte as plataformas para reorganizar.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {groupedPlatforms.map((group) => (
+                    <div
+                      key={`order-chip-modal-${group.platform}`}
+                      draggable
+                      onDragStart={() => handleDragStartPlatform(group.platform)}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                      }}
+                      onDrop={() => handleDropPlatform(group.platform)}
+                      onDragEnd={() => setDraggedPlatform(null)}
+                      className={`inline-flex cursor-grab items-center gap-1 rounded-full border px-2 py-1 text-xs text-white/80 ${
+                        draggedPlatform === group.platform
+                          ? "border-cyan-300/70 bg-cyan-500/20"
+                          : "border-white/15 bg-black/25"
+                      }`}
+                    >
+                      <span className="text-white/50" aria-hidden>
+                        ⋮⋮
+                      </span>
+                      <span>{group.platform}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </OverlayPanel>
       )}
     </>
