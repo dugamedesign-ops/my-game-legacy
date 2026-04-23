@@ -57,18 +57,20 @@ export function getPendingItems(items: Item[]): ItemPendingInfo[] {
     }
 
     if (item.ownershipStatus === "wishlist") {
-      if (item.currentValue === undefined) {
-        missingFields.push("currentValue");
-      }
+      const isPurchased = getNormalizedAcquisitionStatus(item) === "purchased";
 
-      if (getNormalizedAcquisitionStatus(item) === "purchased") {
+      if (isPurchased) {
         if (item.amountPaid === undefined) {
           missingFields.push("amountPaid");
         }
-      }
+      } else {
+        if (item.currentValue === undefined) {
+          missingFields.push("currentValue");
+        }
 
-      if (!item.purchasePriority) {
-        missingFields.push("purchasePriority");
+        if (!item.purchasePriority) {
+          missingFields.push("purchasePriority");
+        }
       }
     }
 

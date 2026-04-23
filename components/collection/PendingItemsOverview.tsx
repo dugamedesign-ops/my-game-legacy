@@ -8,6 +8,7 @@ import {
   getItemPendingLabel,
   getPendingItems,
 } from "@/lib/completion-utils";
+import { getNormalizedAcquisitionStatus } from "@/lib/acquisition-utils";
 import { useAuth } from "@/providers/AuthProvider";
 
 type PendingItemsOverviewProps = {
@@ -42,7 +43,9 @@ export function PendingItemsOverview({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<Item["type"][]>([]);
-  const [selectedOwnership, setSelectedOwnership] = useState<Item["ownershipStatus"][]>([]);
+  const [selectedOwnership, setSelectedOwnership] = useState<
+    Array<Item["ownershipStatus"] | "purchased">
+  >([]);
   const [selectedMissingFields, setSelectedMissingFields] = useState<ItemPendingField[]>([]);
   const [activeEditors, setActiveEditors] = useState<
     Record<string, PendingEditorState | undefined>
@@ -63,11 +66,13 @@ export function PendingItemsOverview({
     if (selectedTypes.length > 0 && !selectedTypes.includes(originalItem.type)) {
       return false;
     }
-    if (
-      selectedOwnership.length > 0 &&
-      !selectedOwnership.includes(originalItem.ownershipStatus)
-    ) {
-      return false;
+    if (selectedOwnership.length > 0) {
+      const isPurchased = getNormalizedAcquisitionStatus(originalItem) === "purchased";
+      const ownershipMatches = selectedOwnership.some((status) => {
+        if (status === "purchased") return isPurchased;
+        return originalItem.ownershipStatus === status;
+      });
+      if (!ownershipMatches) return false;
     }
     if (
       selectedMissingFields.length > 0 &&
@@ -337,12 +342,13 @@ export function PendingItemsOverview({
                     options={[
                       { value: "collection", label: "Na coleção" },
                       { value: "wishlist", label: "Wishlist" },
+                      { value: "purchased", label: "Comprado" },
                     ]}
                     selected={selectedOwnership}
                     onToggle={(value) =>
                       toggleSelection(
                         selectedOwnership,
-                        value as Item["ownershipStatus"],
+                        value as Item["ownershipStatus"] | "purchased",
                         setSelectedOwnership,
                       )
                     }

@@ -421,6 +421,14 @@ export function FinancialOverview({
                         activeMissingGroup.field === "amountPaid"
                           ? "Valor pago"
                           : "Valor atual";
+                      const oppositeValue =
+                        activeMissingGroup.field === "amountPaid"
+                          ? item.currentValue
+                          : item.amountPaid;
+                      const placeholderText =
+                        typeof oppositeValue === "number"
+                          ? `${inputLabel} (referência: ${oppositeValue.toLocaleString("pt-BR")})`
+                          : `${inputLabel} (R$)`;
                       return (
                         <div
                           key={item.id}
@@ -448,7 +456,7 @@ export function FinancialOverview({
                                 event.preventDefault();
                                 saveMissingFieldValue(item, activeMissingGroup.field, index);
                               }}
-                              placeholder={`${inputLabel} (R$)`}
+                              placeholder={placeholderText}
                               inputMode="decimal"
                               className="min-w-[170px] flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/35"
                             />
