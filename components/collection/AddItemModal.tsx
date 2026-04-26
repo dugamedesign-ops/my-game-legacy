@@ -134,7 +134,7 @@ export function AddItemModal({
   );
   const isGameSearchStep = step === 2 && form.type === "game" && !isGameSelectionDone;
   const gameProgressOptions: CustomSelectOption[] = [
-    { value: "", label: "Não definido" },
+    { value: "undefined", label: "Não definido" },
     { value: "backlog", label: "Backlog" },
     { value: "playing", label: "Jogando" },
     { value: "paused", label: "Pausado" },
@@ -314,7 +314,7 @@ export function AddItemModal({
           : undefined,
       ownershipStatus: form.ownershipStatus,
       gameProgressStatus:
-        form.type === "game" ? form.gameProgressStatus || undefined : undefined,
+        form.type === "game" ? form.gameProgressStatus || "undefined" : undefined,
       mediaFormats: form.type === "game" ? mediaFormats : undefined,
     });
   }, [
@@ -373,7 +373,7 @@ export function AddItemModal({
       subtitle,
       ownershipStatus: effectiveOwnershipStatus,
       gameProgressStatus:
-        form.type === "game" ? form.gameProgressStatus || undefined : undefined,
+        form.type === "game" ? form.gameProgressStatus || "undefined" : undefined,
       mediaFormats: form.type === "game" ? mediaFormats : undefined,
       pricePhysical: form.type === "game" && form.physical ? pricePhysical : undefined,
       priceDigital: form.type === "game" && form.digital ? priceDigital : undefined,
@@ -393,6 +393,7 @@ export function AddItemModal({
         form.type === "game" && form.releaseDate
           ? form.releaseDate
           : undefined,
+      rarityTags: ["undefined"],
       imageUrl: form.imageUrl.trim() || undefined,
       createdAt: now,
       updatedAt: now,

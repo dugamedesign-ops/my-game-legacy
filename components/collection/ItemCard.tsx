@@ -32,11 +32,13 @@ function getOwnershipFrame(item: Item) {
 
 function getCornerSeal(item: Item) {
   if (item.ownershipStatus === "wishlist" && !getNormalizedAcquisitionStatus(item)) return "☆";
+  if (item.review?.trim()) return "📝";
   return null;
 }
 
 function getCornerSealLabel(item: Item) {
   if (item.ownershipStatus === "wishlist" && !getNormalizedAcquisitionStatus(item)) return "Wishlist";
+  if (item.review?.trim()) return "Com review";
   return "";
 }
 

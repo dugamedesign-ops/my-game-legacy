@@ -86,6 +86,7 @@ export function ItemDetailsModal({
   const [genreOptions, setGenreOptions] = useState<string[]>([...GENRE_OPTIONS]);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [notesInput, setNotesInput] = useState("");
+  const [reviewInput, setReviewInput] = useState("");
   const [ratingInput, setRatingInput] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -119,7 +120,7 @@ export function ItemDetailsModal({
     setImageUrlInput(item.imageUrl ?? "");
 
     setOwnershipStatusInput(item.ownershipStatus);
-    setGameProgressStatusInput(item.gameProgressStatus ?? "");
+    setGameProgressStatusInput(item.gameProgressStatus ?? "undefined");
     setMediaFormatsInput(item.mediaFormats ?? []);
 
     setAmountPaidInput(
@@ -156,13 +157,14 @@ export function ItemDetailsModal({
     setPurchasePriorityInput(item.purchasePriority ?? "");
     setAcquisitionStatusInput(getNormalizedAcquisitionStatus(item) ?? "");
     setExpectedArrivalDateInput(item.expectedArrivalDate ?? "");
-    setRarityInput(item.rarityTags?.[0] ?? "");
+    setRarityInput(item.rarityTags?.[0] ?? "undefined");
 
     setPurchaseYearInput(item.purchaseDate?.year ? String(item.purchaseDate.year) : "2026");
     setPurchaseMonthInput(item.purchaseDate?.month ? String(item.purchaseDate.month) : "");
     setPurchaseDayInput(item.purchaseDate?.day ? String(item.purchaseDate.day) : "");
     setPurchaseOriginInput(item.purchaseOrigin ?? "");
     setNotesInput(item.notes ?? "");
+    setReviewInput(item.review ?? "");
     setRatingInput(item.rating ?? 0);
     setSaveFeedback(null);
     const [primary = "", secondary = ""] = (item.genre ?? "")
@@ -513,7 +515,7 @@ export function ItemDetailsModal({
 
       ownershipStatus: ownershipStatusInput,
       gameProgressStatus:
-        isGame ? gameProgressStatusInput || undefined : undefined,
+        isGame ? gameProgressStatusInput || "undefined" : undefined,
       mediaFormats: isGame
         ? mediaFormatsInput && mediaFormatsInput.length > 0
           ? mediaFormatsInput
@@ -548,7 +550,7 @@ export function ItemDetailsModal({
         ownershipStatusInput === "wishlist"
           ? expectedArrivalDateInput.trim() || undefined
           : undefined,
-      rarityTags: rarityInput ? [rarityInput] : undefined,
+      rarityTags: [rarityInput || "undefined"],
       rating: ratingInput > 0 ? ratingInput : undefined,
       ratingMode: usesHypeScale ? "hype" : "note",
 
@@ -562,6 +564,7 @@ export function ItemDetailsModal({
           : undefined,
       purchaseOrigin: purchaseOriginInput.trim() || undefined,
       notes: notesInput.trim() || undefined,
+      review: reviewInput.trim().slice(0, 1000) || undefined,
       genre:
         isGame
           ? [genrePrimaryInput.trim(), genreSecondaryInput.trim()]
@@ -1179,6 +1182,22 @@ export function ItemDetailsModal({
                   </label>
                 </div>
 
+                <div className="mt-4">
+                  <label className="block">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="block text-sm text-white/70">Review do item</span>
+                      <span className="text-xs text-white/50">{reviewInput.length}/1000</span>
+                    </div>
+                    <textarea
+                      value={reviewInput}
+                      onChange={(e) => setReviewInput(e.target.value.slice(0, 1000))}
+                      rows={6}
+                      placeholder="Escreva sua review (até 1000 caracteres)"
+                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                    />
+                  </label>
+                </div>
+
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   {isGame && (hasPhysicalSelected || hasDigitalSelected) ? (
                     <>
@@ -1340,7 +1359,7 @@ function GameStatusChips({
   onChange: (value: NonNullable<Item["gameProgressStatus"]> | "") => void;
 }) {
   const options: { value: NonNullable<Item["gameProgressStatus"]> | ""; label: string }[] = [
-    { value: "", label: "—" },
+    { value: "undefined", label: "❔ Não definido" },
     { value: "backlog", label: "📚 Backlog" },
     { value: "playing", label: "🎮 Jogando" },
     { value: "paused", label: "⏸️ Pausado" },
@@ -1413,7 +1432,7 @@ function RarityButtons({
   onChange: (value: NonNullable<Item["rarityTags"]>[number] | "") => void;
 }) {
   const options: { value: NonNullable<Item["rarityTags"]>[number] | ""; label: string }[] = [
-    { value: "", label: "Não definida" },
+    { value: "undefined", label: "Não definida" },
     { value: "normal", label: "Normal" },
     { value: "rare", label: "Raro" },
     { value: "special_edition", label: "Edição especial" },

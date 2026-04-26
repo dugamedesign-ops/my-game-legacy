@@ -40,6 +40,7 @@ export type PublicCollectionItem = {
   genre?: string;
   imageUrl?: string;
   notes?: string;
+  review?: string;
   purchaseOrigin?: string;
   purchaseDate?: { year?: number; month?: number; day?: number };
   releaseDate?: string;

@@ -81,13 +81,17 @@ export function getPendingItems(items: Item[]): ItemPendingInfo[] {
 
       if (
         item.ownershipStatus === "collection" &&
-        !item.gameProgressStatus
+        (!item.gameProgressStatus || item.gameProgressStatus === "undefined")
       ) {
         missingFields.push("gameProgressStatus");
       }
     }
 
-    if (!item.rarityTags || item.rarityTags.length === 0) {
+    if (
+      !item.rarityTags ||
+      item.rarityTags.length === 0 ||
+      item.rarityTags.includes("undefined")
+    ) {
       missingFields.push("rarity");
     }
 

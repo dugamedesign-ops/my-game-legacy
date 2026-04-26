@@ -14,6 +14,7 @@ export function formatProgressLabel(status?: Item["gameProgressStatus"]) {
   if (!status) return null;
 
   const map = {
+    undefined: "Não definido",
     backlog: "Backlog",
     playing: "Jogando",
     paused: "Pausado",
@@ -25,6 +26,7 @@ export function formatProgressLabel(status?: Item["gameProgressStatus"]) {
 }
 
 export function getProgressIcon(status?: Item["gameProgressStatus"]) {
+  if (status === "undefined") return "❔";
   if (status === "backlog") return "📚";
   if (status === "playing") return "🎮";
   if (status === "paused") return "⏸️";
@@ -48,6 +50,7 @@ export function formatPriorityLabel(priority?: Item["purchasePriority"]) {
 
 export function formatRarityLabel(tag: NonNullable<Item["rarityTags"]>[number]) {
   const map = {
+    undefined: "Não definida",
     normal: "Normal",
     rare: "Raro",
     special_edition: "Edição Especial",

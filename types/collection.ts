@@ -4,6 +4,7 @@ export type OwnershipStatus = "collection" | "wishlist" | "preorder";
 export type AcquisitionStatus = "preorder" | "purchased";
 
 export type GameProgressStatus =
+  | "undefined"
   | "backlog"
   | "playing"
   | "paused"
@@ -13,6 +14,7 @@ export type GameProgressStatus =
 export type PurchasePriority = "low" | "medium" | "high" | "maximum";
 
 export type RarityTag =
+  | "undefined"
   | "normal"
   | "rare"
   | "special_edition"
@@ -72,6 +74,7 @@ export type Item = {
 
   imageUrl?: string;
   notes?: string;
+  review?: string;
   purchaseOrigin?: string;
 
   purchaseDate?: PurchaseDate;
