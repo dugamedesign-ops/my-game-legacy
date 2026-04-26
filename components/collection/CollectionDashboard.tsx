@@ -1389,7 +1389,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                   onClick={() => setIsOrganizerExpanded((current) => !current)}
                   className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-left transition hover:bg-white/10"
                 >
-                  <p className="text-xs uppercase tracking-[0.18em] text-white/45">
+                  <p className="text-xs uppercase tracking-[0.18em] text-white">
                     Organize seu legado
                   </p>
                   <span className="text-xs text-white/70">{isOrganizerExpanded ? "▲" : "▼"}</span>
@@ -1410,9 +1410,14 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
                     <div className="mt-3 grid gap-2 sm:grid-cols-3">
                       {platformOrderSlots.map((slot, index) => (
-                        <div
+                        <button
                           key={`order-slot-${index + 1}`}
-                          className="rounded-xl border border-white/10 bg-black/20 p-2"
+                          type="button"
+                          disabled={!slot}
+                          onClick={() => {
+                            if (slot) applyPlatformOrderSlot(slot);
+                          }}
+                          className="rounded-xl border border-white/10 bg-black/20 p-2 text-left transition enabled:hover:bg-white/10 disabled:cursor-default"
                         >
                           <p className="text-[11px] uppercase tracking-[0.12em] text-white/45">
                             SLOT {index + 1}
@@ -1424,11 +1429,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                                 <button
                                   type="button"
                                   aria-label={`Abrir opções do slot ${index + 1}`}
-                                  onClick={() =>
+                                  onClick={(event) => {
+                                    event.stopPropagation();
                                     setOpenSlotMenu((current) =>
                                       current === index + 1 ? null : ((index + 1) as 1 | 2 | 3),
-                                    )
-                                  }
+                                    );
+                                  }}
                                   className="rounded-md border border-white/15 px-1.5 py-0.5 text-xs text-white/75 transition hover:bg-white/10"
                                 >
                                   ⋯
@@ -1437,7 +1443,8 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                                   <div className="absolute right-0 top-7 z-20 min-w-[150px] rounded-lg border border-white/10 bg-[#141421] p-1 shadow-xl">
                                     <button
                                       type="button"
-                                      onClick={() => {
+                                      onClick={(event) => {
+                                        event.stopPropagation();
                                         void renamePlatformOrderSlot((index + 1) as 1 | 2 | 3);
                                         setOpenSlotMenu(null);
                                       }}
@@ -1447,7 +1454,8 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => {
+                                      onClick={(event) => {
+                                        event.stopPropagation();
                                         void deletePlatformOrderSlot((index + 1) as 1 | 2 | 3);
                                         setOpenSlotMenu(null);
                                       }}
@@ -1461,25 +1469,20 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                             )}
                           </div>
                           <div className="mt-2 flex items-center gap-2">
-                            {slot ? (
+                            {!slot && canSaveCurrentOrder ? (
                               <button
                                 type="button"
-                                onClick={() => applyPlatformOrderSlot(slot)}
-                                className="rounded-full border border-white/15 px-2 py-1 text-[11px] text-white/80 transition hover:bg-white/10"
-                              >
-                                Aplicar
-                              </button>
-                            ) : canSaveCurrentOrder ? (
-                              <button
-                                type="button"
-                                onClick={() => void saveCurrentOrderToSlot((index + 1) as 1 | 2 | 3)}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  void saveCurrentOrderToSlot((index + 1) as 1 | 2 | 3);
+                                }}
                                 className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-500/20"
                               >
                                 Salvar atual
                               </button>
                             ) : null}
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </>
@@ -1491,7 +1494,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     onClick={() => setIsCollectionFiltersOpen((open) => !open)}
                     className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm text-white/85 transition hover:bg-white/10"
                   >
-                    <span>Filtros inteligentes</span>
+                    <span className="text-xs uppercase tracking-[0.18em] text-white">
+                      Filtros inteligentes
+                    </span>
                     <span className="text-xs">{isCollectionFiltersOpen ? "▲" : "▼"}</span>
                   </button>
                   {isCollectionFiltersOpen && (
