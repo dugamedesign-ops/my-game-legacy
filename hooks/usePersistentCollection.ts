@@ -15,13 +15,26 @@ type CloudRow = {
 };
 
 function normalizeLegacyOwnership(item: Item): Item {
-  if (item.ownershipStatus !== "preorder") return item;
+  if (item.ownershipStatus === "preorder") {
+    return {
+      ...item,
+      ownershipStatus: "wishlist",
+      acquisitionStatus: "purchased",
+    };
+  }
 
-  return {
-    ...item,
-    ownershipStatus: "wishlist",
-    acquisitionStatus: "purchased",
-  };
+  if (item.ratingMode === "hype" && item.releaseDate) {
+    const releaseDate = new Date(item.releaseDate);
+    if (!Number.isNaN(releaseDate.getTime()) && releaseDate.getTime() <= Date.now()) {
+      return {
+        ...item,
+        rating: undefined,
+        ratingMode: "note",
+      };
+    }
+  }
+
+  return item;
 }
 
 function readLocalItems() {

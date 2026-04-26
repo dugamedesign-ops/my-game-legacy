@@ -24,6 +24,11 @@ import {
   type FinancialCollectionViewFilters,
 } from "@/lib/collection-view-filters";
 import { getNormalizedAcquisitionStatus } from "@/lib/acquisition-utils";
+import {
+  fetchUserPlatformOrderSlots,
+  saveUserPlatformOrderSlots,
+  type PlatformOrderSlotPreference,
+} from "@/lib/supabase";
 
 type CollectionDashboardProps = {
   items: Item[];
@@ -42,6 +47,8 @@ type HeaderFilterKey =
   | "purchased"
   | "playing"
   | "finished";
+
+type PlatformOrderSlot = PlatformOrderSlotPreference | null;
 
 type PlatformOrderMode = "alphabetical" | "custom";
 
@@ -66,7 +73,7 @@ function getInitialCustomPlatformOrder() {
 }
 
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
-  const { user: authUser, signOut, publicProfile, setProfileVisibility } = useAuth();
+  const { user: authUser, session, signOut, publicProfile, setProfileVisibility } = useAuth();
   const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
   const metadataFullName =
     typeof userMetadata.full_name === "string"
@@ -128,6 +135,11 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [customPlatformOrder, setCustomPlatformOrder] = useState<string[]>(
     getInitialCustomPlatformOrder,
   );
+  const [platformOrderSlots, setPlatformOrderSlots] = useState<PlatformOrderSlot[]>([
+    null,
+    null,
+    null,
+  ]);
   const [draggedPlatform, setDraggedPlatform] = useState<string | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [financialFocusFilters, setFinancialFocusFilters] = useState<FinancialCollectionViewFilters>(
@@ -478,6 +490,31 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     );
   }, [effectiveCustomPlatformOrder, platformOrderMode]);
 
+  useEffect(() => {
+    const token = session?.access_token;
+    if (!token || !authUser?.id) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const slots = await fetchUserPlatformOrderSlots(token, authUser.id);
+        if (cancelled) return;
+        const normalized: PlatformOrderSlot[] = [null, null, null];
+        for (const slot of slots) {
+          const index = slot.slot - 1;
+          if (index >= 0 && index < 3) normalized[index] = slot;
+        }
+        setPlatformOrderSlots(normalized);
+      } catch {
+        if (!cancelled) setPlatformOrderSlots([null, null, null]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser?.id, session?.access_token]);
+
   function applyQuickFilter(next: HeaderFilterKey) {
     setActiveQuickFilter(next);
     setFilters({
@@ -553,6 +590,45 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   function handleResetAlphabeticalPlatformOrder() {
     setPlatformOrderMode("alphabetical");
     setCustomPlatformOrder(allActivePlatforms);
+  }
+
+  async function saveCurrentOrderToSlot(slot: 1 | 2 | 3) {
+    const nextSlot: PlatformOrderSlotPreference = {
+      slot,
+      mode: platformOrderMode,
+      order:
+        platformOrderMode === "custom"
+          ? [...effectiveCustomPlatformOrder]
+          : [],
+      updated_at: new Date().toISOString(),
+    };
+
+    const nextSlots = [...platformOrderSlots] as PlatformOrderSlot[];
+    nextSlots[slot - 1] = nextSlot;
+    setPlatformOrderSlots(nextSlots);
+
+    const token = session?.access_token;
+    if (!token || !authUser?.id) return;
+
+    try {
+      await saveUserPlatformOrderSlots(
+        token,
+        authUser.id,
+        nextSlots.filter(Boolean) as PlatformOrderSlotPreference[],
+      );
+    } catch (error) {
+      console.error("Erro ao salvar slots de ordem:", error);
+    }
+  }
+
+  function applyPlatformOrderSlot(slot: PlatformOrderSlot) {
+    if (!slot) return;
+    if (slot.mode === "alphabetical") {
+      handleResetAlphabeticalPlatformOrder();
+      return;
+    }
+    setPlatformOrderMode("custom");
+    setCustomPlatformOrder(slot.order);
   }
 
   function applyWishlistPurchaseStatus(item: Item) {
@@ -719,7 +795,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     authUser?.email?.split("@")[0] ??
     "username";
   const legacyAvatarSrc = metadataAvatarUrl ?? null;
-  const legacyAvatarLabel = legacyTitle.slice(0, 2).toUpperCase() || "LG";
 
   const isEmpty = collectionItems.length === 0;
 
@@ -892,9 +967,13 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                             className="object-cover"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-cyan-100/90">
-                            {legacyAvatarLabel}
-                          </div>
+                          <Image
+                            src="/lumo-avatar.svg"
+                            alt="Avatar padrão Lumo"
+                            fill
+                            sizes="56px"
+                            className="object-cover"
+                          />
                         )}
                       </div>
                       {publicProfile?.friend_code && (
@@ -1098,6 +1177,43 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     {platformOrderMode === "alphabetical" ? "Ordem alfabética" : "Minha ordem"}
                   </span>
                 </button>
+
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {platformOrderSlots.map((slot, index) => (
+                    <div
+                      key={`order-slot-${index + 1}`}
+                      className="rounded-xl border border-white/10 bg-black/20 p-2"
+                    >
+                      <p className="text-[11px] uppercase tracking-[0.12em] text-white/45">
+                        Slot {index + 1}
+                      </p>
+                      <p className="mt-1 text-xs text-white/80">
+                        {slot
+                          ? slot.mode === "alphabetical"
+                            ? "Ordem alfabética"
+                            : "Minha ordem"
+                          : "Vazio"}
+                      </p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={!slot}
+                          onClick={() => applyPlatformOrderSlot(slot)}
+                          className="rounded-full border border-white/15 px-2 py-1 text-[11px] text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Aplicar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void saveCurrentOrderToSlot((index + 1) as 1 | 2 | 3)}
+                          className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-500/20"
+                        >
+                          Salvar atual
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
                 <div className="mt-3 rounded-xl border border-white/10 bg-black/20">
                   <button

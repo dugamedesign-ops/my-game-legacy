@@ -55,6 +55,13 @@ export type PublicCollectionEntry = {
   item: PublicCollectionItem;
 };
 
+export type PlatformOrderSlotPreference = {
+  slot: 1 | 2 | 3;
+  mode: "alphabetical" | "custom";
+  order: string[];
+  updated_at: string;
+};
+
 type AuthResponse = {
   access_token?: string;
   refresh_token?: string;
@@ -436,6 +443,44 @@ export async function setPublicProfileVisibility(
   }
 
   return (await response.json()) as PublicProfile;
+}
+
+export async function fetchUserPlatformOrderSlots(
+  accessToken: string,
+  userId: string,
+) {
+  const rows = await supabaseRestRequest<
+    Array<{ platform_order_slots: PlatformOrderSlotPreference[] | null }>
+  >(
+    `user_preferences?select=platform_order_slots&user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+    accessToken,
+    { method: "GET" },
+  );
+
+  return rows[0]?.platform_order_slots ?? [];
+}
+
+export async function saveUserPlatformOrderSlots(
+  accessToken: string,
+  userId: string,
+  slots: PlatformOrderSlotPreference[],
+) {
+  await supabaseRestRequest(
+    "user_preferences",
+    accessToken,
+    {
+      method: "POST",
+      headers: {
+        Prefer: "resolution=merge-duplicates,return=representation",
+      },
+      body: JSON.stringify([
+        {
+          user_id: userId,
+          platform_order_slots: slots,
+        },
+      ]),
+    },
+  );
 }
 
 type UploadSupabaseImageParams = {

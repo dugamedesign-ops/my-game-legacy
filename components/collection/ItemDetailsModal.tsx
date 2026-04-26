@@ -45,6 +45,7 @@ export function ItemDetailsModal({
 
   const [nameInput, setNameInput] = useState("");
   const [subtitleInput, setSubtitleInput] = useState("");
+  const [franchiseInput, setFranchiseInput] = useState("");
   const [platformInput, setPlatformInput] = useState("");
   const [imageUrlInput, setImageUrlInput] = useState("");
 
@@ -113,6 +114,7 @@ export function ItemDetailsModal({
 
     setNameInput(item.title ?? "");
     setSubtitleInput(item.subtitle ?? "");
+    setFranchiseInput(item.franchise ?? "");
     setPlatformInput(item.platform ?? "");
     setImageUrlInput(item.imageUrl ?? "");
 
@@ -505,6 +507,7 @@ export function ItemDetailsModal({
       ...item,
       title: nameInput.trim() || item.title,
       subtitle: subtitleInput.trim() || undefined,
+      franchise: isGame ? franchiseInput.trim() || undefined : undefined,
       platform: platformInput.trim() || item.platform,
       imageUrl: imageUrlInput.trim() || undefined,
 
@@ -547,6 +550,7 @@ export function ItemDetailsModal({
           : undefined,
       rarityTags: rarityInput ? [rarityInput] : undefined,
       rating: ratingInput > 0 ? ratingInput : undefined,
+      ratingMode: usesHypeScale ? "hype" : "note",
 
       purchaseDate:
         year || month || day
@@ -692,11 +696,6 @@ export function ItemDetailsModal({
                     );
                   })}
                 </div>
-                {usesHypeScale && (
-                  <p className="mt-1 text-[11px] text-white/55">
-                    Escala de hype para item ainda não lançado.
-                  </p>
-                )}
               </div>
               <div className="flex flex-wrap gap-2 text-xs text-white/80">
                 {isGame && (
@@ -796,6 +795,18 @@ export function ItemDetailsModal({
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
                     />
                   </label>
+
+                  {isGame && (
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/70">Franquia</span>
+                      <input
+                        value={franchiseInput}
+                        onChange={(e) => setFranchiseInput(e.target.value)}
+                        placeholder="Opcional"
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      />
+                    </label>
+                  )}
 
                   <label className="block">
                     <span className="mb-2 block text-sm text-white/70">

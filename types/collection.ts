@@ -21,6 +21,7 @@ export type RarityTag =
   | "steelbook";
 
 export type MediaFormat = "physical" | "digital";
+export type RatingMode = "note" | "hype";
 
 export type PriceHistoryEntry = {
   date: string;
@@ -67,6 +68,7 @@ export type Item = {
   franchise?: string;
   genre?: string;
   rating?: number;
+  ratingMode?: RatingMode;
 
   imageUrl?: string;
   notes?: string;
