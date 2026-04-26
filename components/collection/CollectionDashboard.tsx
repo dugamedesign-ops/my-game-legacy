@@ -72,6 +72,54 @@ function getInitialCustomPlatformOrder() {
   }
 }
 
+const PLATFORM_ORDER_SLOTS_DRAFT_KEY = "my-game-legacy-platform-order-slots-draft";
+
+function normalizePlatformOrderSlots(
+  slots: PlatformOrderSlotPreference[] | PlatformOrderSlot[],
+) {
+  const normalized: PlatformOrderSlot[] = [null, null, null];
+  for (const slot of slots) {
+    if (!slot) continue;
+    const index = slot.slot - 1;
+    if (index >= 0 && index < 3) normalized[index] = slot;
+  }
+  return normalized;
+}
+
+function getDraftPlatformOrderSlots() {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as PlatformOrderSlotPreference[];
+    if (!Array.isArray(parsed)) return null;
+    return normalizePlatformOrderSlots(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function toTimestamp(value?: string) {
+  if (!value) return 0;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function mergePlatformOrderSlots(
+  base: PlatformOrderSlot[],
+  candidate: PlatformOrderSlot[],
+) {
+  return [0, 1, 2].map((index) => {
+    const baseSlot = base[index];
+    const candidateSlot = candidate[index];
+    if (!baseSlot) return candidateSlot ?? null;
+    if (!candidateSlot) return baseSlot;
+    return toTimestamp(candidateSlot.updated_at) >= toTimestamp(baseSlot.updated_at)
+      ? candidateSlot
+      : baseSlot;
+  }) as PlatformOrderSlot[];
+}
+
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const { user: authUser, session, signOut, publicProfile, setProfileVisibility } = useAuth();
   const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
@@ -497,14 +545,25 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     let cancelled = false;
     void (async () => {
       try {
-        const slots = await fetchUserPlatformOrderSlots(token, authUser.id);
+        const slots = normalizePlatformOrderSlots(
+          await fetchUserPlatformOrderSlots(token, authUser.id),
+        );
         if (cancelled) return;
-        const normalized: PlatformOrderSlot[] = [null, null, null];
-        for (const slot of slots) {
-          const index = slot.slot - 1;
-          if (index >= 0 && index < 3) normalized[index] = slot;
+        const draftSlots = getDraftPlatformOrderSlots();
+        const mergedSlots = draftSlots
+          ? mergePlatformOrderSlots(slots, draftSlots)
+          : slots;
+        setPlatformOrderSlots(mergedSlots);
+
+        if (!draftSlots) return;
+        await saveUserPlatformOrderSlots(
+          token,
+          authUser.id,
+          mergedSlots.filter(Boolean) as PlatformOrderSlotPreference[],
+        );
+        if (!cancelled && typeof window !== "undefined") {
+          window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
         }
-        setPlatformOrderSlots(normalized);
       } catch {
         if (!cancelled) setPlatformOrderSlots([null, null, null]);
       }
@@ -607,6 +666,13 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     nextSlots[slot - 1] = nextSlot;
     setPlatformOrderSlots(nextSlots);
 
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        PLATFORM_ORDER_SLOTS_DRAFT_KEY,
+        JSON.stringify(nextSlots.filter(Boolean)),
+      );
+    }
+
     const token = session?.access_token;
     if (!token || !authUser?.id) return;
 
@@ -616,6 +682,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
         authUser.id,
         nextSlots.filter(Boolean) as PlatformOrderSlotPreference[],
       );
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
+      }
     } catch (error) {
       console.error("Erro ao salvar slots de ordem:", error);
     }
