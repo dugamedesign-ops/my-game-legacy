@@ -74,6 +74,7 @@ function getInitialCustomPlatformOrder() {
 }
 
 const PLATFORM_ORDER_SLOTS_DRAFT_KEY = "my-game-legacy-platform-order-slots-draft";
+const PLATFORM_ORDER_SLOTS_CACHE_KEY = "my-game-legacy-platform-order-slots-cache";
 
 function normalizePlatformOrderSlots(
   slots: PlatformOrderSlotPreference[] | PlatformOrderSlot[],
@@ -98,6 +99,24 @@ function getDraftPlatformOrderSlots() {
   } catch {
     return null;
   }
+}
+
+function getCachedPlatformOrderSlots() {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(PLATFORM_ORDER_SLOTS_CACHE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as PlatformOrderSlotPreference[];
+    if (!Array.isArray(parsed)) return null;
+    return normalizePlatformOrderSlots(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function getInitialPlatformOrderSlots() {
+  const cached = getCachedPlatformOrderSlots();
+  return cached ?? [null, null, null];
 }
 
 function toTimestamp(value?: string) {
@@ -194,11 +213,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [customPlatformOrder, setCustomPlatformOrder] = useState<string[]>(
     getInitialCustomPlatformOrder,
   );
-  const [platformOrderSlots, setPlatformOrderSlots] = useState<PlatformOrderSlot[]>([
-    null,
-    null,
-    null,
-  ]);
+  const [platformOrderSlots, setPlatformOrderSlots] = useState<PlatformOrderSlot[]>(
+    getInitialPlatformOrderSlots,
+  );
   const [draggedPlatform, setDraggedPlatform] = useState<string | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [financialFocusFilters, setFinancialFocusFilters] = useState<FinancialCollectionViewFilters>(
@@ -567,6 +584,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           ? mergePlatformOrderSlots(slots, draftSlots)
           : slots;
         setPlatformOrderSlots(mergedSlots);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(
+            PLATFORM_ORDER_SLOTS_CACHE_KEY,
+            JSON.stringify(mergedSlots.filter(Boolean)),
+          );
+        }
 
         if (!draftSlots) return;
         await saveUserPlatformOrderSlots(
@@ -578,7 +601,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
         }
       } catch {
-        if (!cancelled) setPlatformOrderSlots([null, null, null]);
+        if (!cancelled) {
+          const cached = getCachedPlatformOrderSlots();
+          setPlatformOrderSlots(cached ?? [null, null, null]);
+        }
       }
     })();
 
@@ -686,6 +712,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
         PLATFORM_ORDER_SLOTS_DRAFT_KEY,
         JSON.stringify(nextSlots.filter(Boolean)),
       );
+      window.localStorage.setItem(
+        PLATFORM_ORDER_SLOTS_CACHE_KEY,
+        JSON.stringify(nextSlots.filter(Boolean)),
+      );
     }
 
     const token = session?.access_token;
@@ -720,6 +750,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
         PLATFORM_ORDER_SLOTS_DRAFT_KEY,
+        JSON.stringify(nextSlots.filter(Boolean)),
+      );
+      window.localStorage.setItem(
+        PLATFORM_ORDER_SLOTS_CACHE_KEY,
         JSON.stringify(nextSlots.filter(Boolean)),
       );
     }
@@ -773,6 +807,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
         PLATFORM_ORDER_SLOTS_DRAFT_KEY,
         JSON.stringify(nextSlots.filter(Boolean)),
       );
+      window.localStorage.setItem(
+        PLATFORM_ORDER_SLOTS_CACHE_KEY,
+        JSON.stringify(nextSlots.filter(Boolean)),
+      );
     }
 
     const token = session?.access_token;
@@ -791,6 +829,15 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       console.error("Erro ao renomear slot de ordem:", error);
     }
   }
+
+  const canSaveCurrentOrder = useMemo(() => {
+    if (platformOrderMode !== "custom") return false;
+    if (effectiveCustomPlatformOrder.length <= 1) return false;
+    const alphabetical = [...allActivePlatforms].sort((a, b) =>
+      a.localeCompare(b, "pt-BR", { sensitivity: "base" }),
+    );
+    return JSON.stringify(effectiveCustomPlatformOrder) !== JSON.stringify(alphabetical);
+  }, [allActivePlatforms, effectiveCustomPlatformOrder, platformOrderMode]);
 
   function applyPlatformOrderSlot(slot: PlatformOrderSlot) {
     if (!slot) return;
@@ -1372,53 +1419,57 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                           </p>
                           <div className="mt-1 flex items-center justify-between gap-2">
                             <p className="text-sm text-white/90">{getSlotLabel(slot)}</p>
-                            <div className="relative">
-                              <button
-                                type="button"
-                                aria-label={`Abrir opções do slot ${index + 1}`}
-                                onClick={() =>
-                                  setOpenSlotMenu((current) =>
-                                    current === index + 1 ? null : ((index + 1) as 1 | 2 | 3),
-                                  )
-                                }
-                                className="rounded-md border border-white/15 px-1.5 py-0.5 text-xs text-white/75 transition hover:bg-white/10"
-                              >
-                                ⋯
-                              </button>
-                              {openSlotMenu === index + 1 && (
-                                <div className="absolute right-0 top-7 z-20 min-w-[150px] rounded-lg border border-white/10 bg-[#141421] p-1 shadow-xl">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      void renamePlatformOrderSlot((index + 1) as 1 | 2 | 3);
-                                      setOpenSlotMenu(null);
-                                    }}
-                                    className="w-full rounded-md px-2 py-1.5 text-left text-xs text-white/85 transition hover:bg-white/10"
-                                  >
-                                    Renomear filtro
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                            {slot && (
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  aria-label={`Abrir opções do slot ${index + 1}`}
+                                  onClick={() =>
+                                    setOpenSlotMenu((current) =>
+                                      current === index + 1 ? null : ((index + 1) as 1 | 2 | 3),
+                                    )
+                                  }
+                                  className="rounded-md border border-white/15 px-1.5 py-0.5 text-xs text-white/75 transition hover:bg-white/10"
+                                >
+                                  ⋯
+                                </button>
+                                {openSlotMenu === index + 1 && (
+                                  <div className="absolute right-0 top-7 z-20 min-w-[150px] rounded-lg border border-white/10 bg-[#141421] p-1 shadow-xl">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        void renamePlatformOrderSlot((index + 1) as 1 | 2 | 3);
+                                        setOpenSlotMenu(null);
+                                      }}
+                                      className="w-full rounded-md px-2 py-1.5 text-left text-xs text-white/85 transition hover:bg-white/10"
+                                    >
+                                      Renomear filtro
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        void deletePlatformOrderSlot((index + 1) as 1 | 2 | 3);
+                                        setOpenSlotMenu(null);
+                                      }}
+                                      className="mt-1 w-full rounded-md px-2 py-1.5 text-left text-xs text-rose-200 transition hover:bg-rose-500/15"
+                                    >
+                                      Excluir slot
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                           <div className="mt-2 flex items-center gap-2">
-                            <button
-                              type="button"
-                              disabled={!slot}
-                              onClick={() => applyPlatformOrderSlot(slot)}
-                              className="rounded-full border border-white/15 px-2 py-1 text-[11px] text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              Aplicar
-                            </button>
                             {slot ? (
                               <button
                                 type="button"
-                                onClick={() => void deletePlatformOrderSlot((index + 1) as 1 | 2 | 3)}
-                                className="rounded-full border border-rose-300/30 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-100 transition hover:bg-rose-500/20"
+                                onClick={() => applyPlatformOrderSlot(slot)}
+                                className="rounded-full border border-white/15 px-2 py-1 text-[11px] text-white/80 transition hover:bg-white/10"
                               >
-                                Deletar
+                                Aplicar
                               </button>
-                            ) : (
+                            ) : canSaveCurrentOrder ? (
                               <button
                                 type="button"
                                 onClick={() => void saveCurrentOrderToSlot((index + 1) as 1 | 2 | 3)}
@@ -1426,7 +1477,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                               >
                                 Salvar atual
                               </button>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       ))}
