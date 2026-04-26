@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Item,
   ItemType,
@@ -261,14 +261,14 @@ export function AddItemModal({
   const hasDigitalSelected = form.digital;
   const hasBothMediaSelected = hasPhysicalSelected && hasDigitalSelected;
 
-  function parseOptionalNumber(value: string): number | undefined {
+  const parseOptionalNumber = useCallback((value: string): number | undefined => {
     const normalized = value.replace(",", ".").trim();
     if (!normalized) return undefined;
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : undefined;
-  }
+  }, []);
 
-  function getConsolidatedAmountPaid() {
+  const getConsolidatedAmountPaid = useCallback(() => {
     const physicalPrice = parseOptionalNumber(form.pricePhysical);
     const digitalPrice = parseOptionalNumber(form.priceDigital);
 
@@ -280,7 +280,14 @@ export function AddItemModal({
     if (hasPhysicalSelected) return physicalPrice;
     if (hasDigitalSelected) return digitalPrice;
     return undefined;
-  }
+  }, [
+    form.priceDigital,
+    form.pricePhysical,
+    hasBothMediaSelected,
+    hasDigitalSelected,
+    hasPhysicalSelected,
+    parseOptionalNumber,
+  ]);
 
   function isFutureReleaseDate(releaseDate?: string) {
     if (!releaseDate) return false;
@@ -321,13 +328,110 @@ export function AddItemModal({
     mediaFormats,
   ]);
 
-  function resetAndClose() {
+  const resetAndClose = useCallback(() => {
     setStep(1);
     setSearchResults([]);
     setShowResults(false);
     setForm(getInitialForm(null, null));
     onClose();
-  }
+  }, [onClose]);
+
+  const getIsFormValid = useCallback(() => {
+    if (form.type === "console") {
+      return !!form.platform.trim();
+    }
+
+    if (form.type === "accessory") {
+      return !!form.platform.trim() && !!form.title.trim();
+    }
+
+    return !!form.platform.trim() && !!form.title.trim();
+  }, [form.platform, form.title, form.type]);
+
+  const buildItem = useCallback((): Item => {
+    const now = new Date().toISOString();
+
+    const isConsole = form.type === "console";
+    const title = isConsole ? form.platform : form.title.trim();
+    const subtitle = isConsole
+      ? form.subtitle.trim()
+      : form.subtitle.trim() || undefined;
+
+    const pricePhysical = parseOptionalNumber(form.pricePhysical);
+    const priceDigital = parseOptionalNumber(form.priceDigital);
+    const shouldForceWishlist = form.type === "game" && isFutureReleaseDate(form.releaseDate);
+    const effectiveOwnershipStatus: OwnershipStatus = shouldForceWishlist
+      ? "wishlist"
+      : form.ownershipStatus;
+
+    return {
+      id: crypto.randomUUID(),
+      userId: currentUserId ?? "local-user",
+      type: form.type,
+      platform: form.platform.trim(),
+      title,
+      subtitle,
+      ownershipStatus: effectiveOwnershipStatus,
+      gameProgressStatus:
+        form.type === "game" ? form.gameProgressStatus || undefined : undefined,
+      mediaFormats: form.type === "game" ? mediaFormats : undefined,
+      pricePhysical: form.type === "game" && form.physical ? pricePhysical : undefined,
+      priceDigital: form.type === "game" && form.digital ? priceDigital : undefined,
+      amountPaid:
+        form.type === "game" && effectiveOwnershipStatus !== "wishlist"
+          ? getConsolidatedAmountPaid()
+          : undefined,
+      franchise:
+        form.type === "game" ? form.franchise.trim() || undefined : undefined,
+      genre:
+        form.type === "game"
+          ? [form.genrePrimary.trim(), form.genreSecondary.trim()]
+              .filter(Boolean)
+              .join(" / ") || undefined
+          : undefined,
+      releaseDate:
+        form.type === "game" && form.releaseDate
+          ? form.releaseDate
+          : undefined,
+      imageUrl: form.imageUrl.trim() || undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }, [
+    currentUserId,
+    form.digital,
+    form.franchise,
+    form.gameProgressStatus,
+    form.genrePrimary,
+    form.genreSecondary,
+    form.imageUrl,
+    form.ownershipStatus,
+    form.physical,
+    form.platform,
+    form.priceDigital,
+    form.pricePhysical,
+    form.releaseDate,
+    form.subtitle,
+    form.title,
+    form.type,
+    getConsolidatedAmountPaid,
+    mediaFormats,
+    parseOptionalNumber,
+  ]);
+
+  const handleSave = useCallback(() => {
+    if (!getIsFormValid()) return;
+
+    if (duplicateCheck.exactDuplicates.length > 0) {
+      alert(
+        "Esse item já existe com a mesma plataforma, status e variação. Para console/acessório, altere a versão/subtítulo para cadastrar outro.",
+      );
+      return;
+    }
+
+    onSave(buildItem());
+    resetAndClose();
+  }, [buildItem, duplicateCheck.exactDuplicates.length, getIsFormValid, onSave, resetAndClose]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -439,68 +543,6 @@ export function AddItemModal({
     return !!form.type;
   }
 
-  function getIsFormValid() {
-    if (form.type === "console") {
-      return !!form.platform.trim();
-    }
-
-    if (form.type === "accessory") {
-      return !!form.platform.trim() && !!form.title.trim();
-    }
-
-    return !!form.platform.trim() && !!form.title.trim();
-  }
-
-  function buildItem(): Item {
-    const now = new Date().toISOString();
-
-    const isConsole = form.type === "console";
-    const title = isConsole ? form.platform : form.title.trim();
-    const subtitle = isConsole
-      ? form.subtitle.trim()
-      : form.subtitle.trim() || undefined;
-
-    const pricePhysical = parseOptionalNumber(form.pricePhysical);
-    const priceDigital = parseOptionalNumber(form.priceDigital);
-    const shouldForceWishlist = form.type === "game" && isFutureReleaseDate(form.releaseDate);
-    const effectiveOwnershipStatus: OwnershipStatus = shouldForceWishlist
-      ? "wishlist"
-      : form.ownershipStatus;
-
-    return {
-      id: crypto.randomUUID(),
-      userId: currentUserId ?? "local-user",
-      type: form.type,
-      platform: form.platform.trim(),
-      title,
-      subtitle,
-      ownershipStatus: effectiveOwnershipStatus,
-      gameProgressStatus:
-        form.type === "game" ? form.gameProgressStatus || undefined : undefined,
-      mediaFormats: form.type === "game" ? mediaFormats : undefined,
-      pricePhysical: form.type === "game" && form.physical ? pricePhysical : undefined,
-      priceDigital: form.type === "game" && form.digital ? priceDigital : undefined,
-      amountPaid:
-        form.type === "game" && effectiveOwnershipStatus !== "wishlist"
-          ? getConsolidatedAmountPaid()
-          : undefined,
-      franchise:
-        form.type === "game" ? form.franchise.trim() || undefined : undefined,
-      genre:
-        form.type === "game"
-          ? [form.genrePrimary.trim(), form.genreSecondary.trim()]
-              .filter(Boolean)
-              .join(" / ") || undefined
-          : undefined,
-      releaseDate:
-        form.type === "game" && form.releaseDate
-          ? form.releaseDate
-          : undefined,
-      imageUrl: form.imageUrl.trim() || undefined,
-      createdAt: now,
-      updatedAt: now,
-    };
-  }
 
   async function handleSearchCover() {
   if (form.type !== "game") return;
@@ -680,20 +722,6 @@ export function AddItemModal({
     }
 
     updateField("franchise", finalValue);
-  }
-
-  function handleSave() {
-    if (!getIsFormValid()) return;
-
-    if (duplicateCheck.exactDuplicates.length > 0) {
-      alert(
-        "Esse item já existe com a mesma plataforma, status e variação. Para console/acessório, altere a versão/subtítulo para cadastrar outro.",
-      );
-      return;
-    }
-
-    onSave(buildItem());
-    resetAndClose();
   }
 
   const platformSelectOptions: CustomSelectOption[] = [
