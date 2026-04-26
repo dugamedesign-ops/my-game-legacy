@@ -18,6 +18,7 @@ import { FiltersBar } from "./FiltersBar";
 import { applyFilters, type Filters } from "@/lib/filter-utils";
 import { useAuth } from "@/providers/AuthProvider";
 import { ItemCard } from "./ItemCard";
+import { InternalCatalogAdmin } from "./InternalCatalogAdmin";
 import {
   createEmptyFinancialCollectionViewFilters,
   matchesFinancialCollectionViewFilters,
@@ -130,6 +131,9 @@ function getSlotLabel(slot: PlatformOrderSlot, index: number) {
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const { user: authUser, session, signOut, publicProfile, setProfileVisibility } = useAuth();
   const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
+  const adminEmail = process.env.NEXT_PUBLIC_CATALOG_ADMIN_EMAIL?.trim().toLowerCase();
+  const isCatalogAdmin =
+    !!adminEmail && authUser?.email?.trim().toLowerCase() === adminEmail;
   const metadataFullName =
     typeof userMetadata.full_name === "string"
       ? userMetadata.full_name
@@ -1282,6 +1286,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/20"
               />
+            </section>
+          )}
+
+          {isCatalogAdmin && session?.access_token && authUser?.id && (
+            <section className="mb-8">
+              <InternalCatalogAdmin accessToken={session.access_token} userId={authUser.id} />
             </section>
           )}
 

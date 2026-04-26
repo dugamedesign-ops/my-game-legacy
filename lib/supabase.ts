@@ -64,6 +64,19 @@ export type PlatformOrderSlotPreference = {
   updated_at: string;
 };
 
+export type InternalCatalogEntry = {
+  id: string;
+  owner_user_id: string;
+  kind: "platform" | "accessory";
+  name: string;
+  version?: string | null;
+  release_date?: string | null;
+  image_url?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+};
+
 type AuthResponse = {
   access_token?: string;
   refresh_token?: string;
@@ -483,6 +496,63 @@ export async function saveUserPlatformOrderSlots(
       ]),
     },
   );
+}
+
+export async function fetchInternalCatalogEntries(
+  accessToken: string,
+  ownerUserId: string,
+  params?: { kind?: "platform" | "accessory"; query?: string; limit?: number },
+) {
+  const queryParts = [
+    "select=id,owner_user_id,kind,name,version,release_date,image_url,metadata,created_at,updated_at",
+    `owner_user_id=eq.${encodeURIComponent(ownerUserId)}`,
+    "order=updated_at.desc",
+    `limit=${Math.min(Math.max(params?.limit ?? 50, 1), 200)}`,
+  ];
+  if (params?.kind) {
+    queryParts.push(`kind=eq.${params.kind}`);
+  }
+  if (params?.query?.trim()) {
+    const normalized = params.query.trim().replace(/[%_]/g, "");
+    queryParts.push(`or=(name.ilike.*${encodeURIComponent(normalized)}*,version.ilike.*${encodeURIComponent(normalized)}*)`);
+  }
+
+  return await supabaseRestRequest<InternalCatalogEntry[]>(
+    `internal_catalog_entries?${queryParts.join("&")}`,
+    accessToken,
+    { method: "GET" },
+  );
+}
+
+export async function upsertInternalCatalogEntry(
+  accessToken: string,
+  entry: Pick<InternalCatalogEntry, "owner_user_id" | "kind" | "name"> &
+    Partial<Pick<InternalCatalogEntry, "id" | "version" | "release_date" | "image_url" | "metadata">>,
+) {
+  const payload = {
+    id: entry.id ?? crypto.randomUUID(),
+    owner_user_id: entry.owner_user_id,
+    kind: entry.kind,
+    name: entry.name,
+    version: entry.version ?? null,
+    release_date: entry.release_date ?? null,
+    image_url: entry.image_url ?? null,
+    metadata: entry.metadata ?? null,
+  };
+
+  const rows = await supabaseRestRequest<InternalCatalogEntry[]>(
+    "internal_catalog_entries?on_conflict=id",
+    accessToken,
+    {
+      method: "POST",
+      headers: {
+        Prefer: "resolution=merge-duplicates,return=representation",
+      },
+      body: JSON.stringify([payload]),
+    },
+  );
+
+  return rows[0];
 }
 
 type UploadSupabaseImageParams = {
