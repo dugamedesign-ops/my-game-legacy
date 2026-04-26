@@ -481,7 +481,7 @@ export async function saveUserPlatformOrderSlots(
   slots: PlatformOrderSlotPreference[],
 ) {
   await supabaseRestRequest(
-    "user_preferences",
+    "user_preferences?on_conflict=user_id",
     accessToken,
     {
       method: "POST",

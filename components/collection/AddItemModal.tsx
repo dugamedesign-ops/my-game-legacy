@@ -986,6 +986,86 @@ export function AddItemModal({
                 </>
               )}
 
+              {form.platform.trim().toLowerCase() === "pc" && (
+                <div className="rounded-3xl border border-cyan-300/20 bg-cyan-500/5 p-4">
+                  <p className="mb-3 text-sm font-medium text-cyan-100">Estrutura da plataforma PC</p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FieldBlock label="Subpasta PC">
+                      <CustomSelect
+                        value={form.pcFolder}
+                        onChange={(value) =>
+                          updateField(
+                            "pcFolder",
+                            (value as NonNullable<Item["pcFolder"]> | "") ?? "",
+                          )
+                        }
+                        options={[
+                          { value: "", label: "Selecione" },
+                          { value: "machine", label: "Máquina" },
+                          { value: "peripherals", label: "Periféricos" },
+                          { value: "games", label: "Jogos" },
+                        ]}
+                        placeholder="Selecione"
+                      />
+                    </FieldBlock>
+
+                    {form.pcFolder === "machine" && (
+                      <FieldBlock label="Tipo de máquina">
+                        <CustomSelect
+                          value={form.pcMachineMode}
+                          onChange={(value) =>
+                            updateField(
+                              "pcMachineMode",
+                              (value as NonNullable<Item["pcMachineMode"]> | "") ?? "",
+                            )
+                          }
+                          options={[
+                            { value: "", label: "Selecione" },
+                            { value: "prebuilt", label: "Aparelho fechado" },
+                            { value: "desktop_modular", label: "Desktop modular" },
+                          ]}
+                          placeholder="Selecione"
+                        />
+                      </FieldBlock>
+                    )}
+                  </div>
+
+                  {form.pcFolder === "machine" && form.pcMachineMode === "desktop_modular" && (
+                    <FieldBlock label="Componentes do desktop (opcional)">
+                      <input
+                        value={form.pcComponents}
+                        onChange={(e) => updateField("pcComponents", e.target.value)}
+                        placeholder="CPU, GPU, RAM, SSD..."
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      />
+                    </FieldBlock>
+                  )}
+
+                  {form.pcFolder === "games" && (
+                    <FieldBlock label="Loja">
+                      <CustomSelect
+                        value={form.pcStorefront}
+                        onChange={(value) =>
+                          updateField(
+                            "pcStorefront",
+                            (value as NonNullable<Item["pcStorefront"]> | "") ?? "",
+                          )
+                        }
+                        options={[
+                          { value: "", label: "Selecione" },
+                          { value: "steam", label: "Steam" },
+                          { value: "ea", label: "EA App" },
+                          { value: "epic", label: "Epic" },
+                          { value: "gog", label: "GOG" },
+                          { value: "other", label: "Outra" },
+                        ]}
+                        placeholder="Selecione"
+                      />
+                    </FieldBlock>
+                  )}
+                </div>
+              )}
+
               {form.type === "console" ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FieldBlock label="Título do card">
@@ -1156,84 +1236,6 @@ export function AddItemModal({
                           </FieldBlock>
                         )}
 
-                        {form.platform.trim().toLowerCase() === "pc" && (
-                          <>
-                            <FieldBlock label="Subpasta PC">
-                              <CustomSelect
-                                value={form.pcFolder}
-                                onChange={(value) =>
-                                  updateField(
-                                    "pcFolder",
-                                    (value as NonNullable<Item["pcFolder"]> | "") ?? "",
-                                  )
-                                }
-                                options={[
-                                  { value: "", label: "Selecione" },
-                                  { value: "machine", label: "Máquina" },
-                                  { value: "peripherals", label: "Periféricos" },
-                                  { value: "games", label: "Jogos" },
-                                ]}
-                                placeholder="Selecione"
-                              />
-                            </FieldBlock>
-
-                            {form.pcFolder === "machine" && (
-                              <>
-                                <FieldBlock label="Tipo de máquina">
-                                  <CustomSelect
-                                    value={form.pcMachineMode}
-                                    onChange={(value) =>
-                                      updateField(
-                                        "pcMachineMode",
-                                        (value as NonNullable<Item["pcMachineMode"]> | "") ?? "",
-                                      )
-                                    }
-                                    options={[
-                                      { value: "", label: "Selecione" },
-                                      { value: "prebuilt", label: "Aparelho fechado" },
-                                      { value: "desktop_modular", label: "Desktop modular" },
-                                    ]}
-                                    placeholder="Selecione"
-                                  />
-                                </FieldBlock>
-
-                                {form.pcMachineMode === "desktop_modular" && (
-                                  <FieldBlock label="Componentes (separados por vírgula)">
-                                    <input
-                                      value={form.pcComponents}
-                                      onChange={(e) => updateField("pcComponents", e.target.value)}
-                                      placeholder="CPU, GPU, RAM, SSD..."
-                                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                                    />
-                                  </FieldBlock>
-                                )}
-                              </>
-                            )}
-
-                            {form.pcFolder === "games" && (
-                              <FieldBlock label="Loja">
-                                <CustomSelect
-                                  value={form.pcStorefront}
-                                  onChange={(value) =>
-                                    updateField(
-                                      "pcStorefront",
-                                      (value as NonNullable<Item["pcStorefront"]> | "") ?? "",
-                                    )
-                                  }
-                                  options={[
-                                    { value: "", label: "Selecione" },
-                                    { value: "steam", label: "Steam" },
-                                    { value: "ea", label: "EA App" },
-                                    { value: "epic", label: "Epic" },
-                                    { value: "gog", label: "GOG" },
-                                    { value: "other", label: "Outra" },
-                                  ]}
-                                  placeholder="Selecione"
-                                />
-                              </FieldBlock>
-                            )}
-                          </>
-                        )}
                       </>
                     )}
 
