@@ -57,6 +57,7 @@ export type PublicCollectionEntry = {
 
 export type PlatformOrderSlotPreference = {
   slot: 1 | 2 | 3;
+  label?: string;
   mode: "alphabetical" | "custom";
   order: string[];
   updated_at: string;

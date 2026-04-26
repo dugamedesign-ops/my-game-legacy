@@ -120,6 +120,13 @@ function mergePlatformOrderSlots(
   }) as PlatformOrderSlot[];
 }
 
+function getSlotLabel(slot: PlatformOrderSlot, index: number) {
+  const fallback = `Slot ${index + 1}`;
+  if (!slot?.label) return fallback;
+  const sanitized = slot.label.trim();
+  return sanitized.length > 0 ? sanitized : fallback;
+}
+
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const { user: authUser, session, signOut, publicProfile, setProfileVisibility } = useAuth();
   const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
@@ -195,6 +202,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   );
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
+  const [openSlotMenu, setOpenSlotMenu] = useState<1 | 2 | 3 | null>(null);
   const collectionSectionRef = useRef<HTMLElement | null>(null);
   const legacyMenuRef = useRef<HTMLDivElement | null>(null);
   const isModalOpenRef = useRef(false);
@@ -652,8 +660,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   }
 
   async function saveCurrentOrderToSlot(slot: 1 | 2 | 3) {
+    const existingLabel = platformOrderSlots[slot - 1]?.label;
     const nextSlot: PlatformOrderSlotPreference = {
       slot,
+      label: existingLabel,
       mode: platformOrderMode,
       order:
         platformOrderMode === "custom"
@@ -687,6 +697,57 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       }
     } catch (error) {
       console.error("Erro ao salvar slots de ordem:", error);
+    }
+  }
+
+  async function renamePlatformOrderSlot(slotNumber: 1 | 2 | 3) {
+    const current = platformOrderSlots[slotNumber - 1];
+    if (!current) {
+      window.alert("Salve uma ordenação neste slot antes de renomear.");
+      return;
+    }
+
+    const promptValue = window.prompt(
+      "Novo nome do filtro rápido:",
+      current.label?.trim() || `Slot ${slotNumber}`,
+    );
+    if (promptValue === null) return;
+
+    const nextLabel = promptValue.trim();
+    if (nextLabel.length === 0) {
+      window.alert("O nome do filtro não pode ficar vazio.");
+      return;
+    }
+
+    const nextSlots = [...platformOrderSlots] as PlatformOrderSlot[];
+    nextSlots[slotNumber - 1] = {
+      ...current,
+      label: nextLabel.slice(0, 40),
+      updated_at: new Date().toISOString(),
+    };
+    setPlatformOrderSlots(nextSlots);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        PLATFORM_ORDER_SLOTS_DRAFT_KEY,
+        JSON.stringify(nextSlots.filter(Boolean)),
+      );
+    }
+
+    const token = session?.access_token;
+    if (!token || !authUser?.id) return;
+
+    try {
+      await saveUserPlatformOrderSlots(
+        token,
+        authUser.id,
+        nextSlots.filter(Boolean) as PlatformOrderSlotPreference[],
+      );
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
+      }
+    } catch (error) {
+      console.error("Erro ao renomear slot de ordem:", error);
     }
   }
 
@@ -1254,8 +1315,39 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                       className="rounded-xl border border-white/10 bg-black/20 p-2"
                     >
                       <p className="text-[11px] uppercase tracking-[0.12em] text-white/45">
-                        Slot {index + 1}
+                        {getSlotLabel(slot, index)}
                       </p>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <p className="text-[11px] text-white/55">Slot {index + 1}</p>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            aria-label={`Abrir opções do slot ${index + 1}`}
+                            onClick={() =>
+                              setOpenSlotMenu((current) =>
+                                current === index + 1 ? null : ((index + 1) as 1 | 2 | 3),
+                              )
+                            }
+                            className="rounded-md border border-white/15 px-1.5 py-0.5 text-xs text-white/75 transition hover:bg-white/10"
+                          >
+                            ⋯
+                          </button>
+                          {openSlotMenu === index + 1 && (
+                            <div className="absolute right-0 top-7 z-20 min-w-[150px] rounded-lg border border-white/10 bg-[#141421] p-1 shadow-xl">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void renamePlatformOrderSlot((index + 1) as 1 | 2 | 3);
+                                  setOpenSlotMenu(null);
+                                }}
+                                className="w-full rounded-md px-2 py-1.5 text-left text-xs text-white/85 transition hover:bg-white/10"
+                              >
+                                Renomear filtro
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                       <p className="mt-1 text-xs text-white/80">
                         {slot
                           ? slot.mode === "alphabetical"
