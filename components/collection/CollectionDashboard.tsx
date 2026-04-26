@@ -121,8 +121,8 @@ function mergePlatformOrderSlots(
   }) as PlatformOrderSlot[];
 }
 
-function getSlotLabel(slot: PlatformOrderSlot, index: number) {
-  const fallback = `Slot ${index + 1}`;
+function getSlotLabel(slot: PlatformOrderSlot) {
+  const fallback = "Minha ordem";
   if (!slot?.label) return fallback;
   const sanitized = slot.label.trim();
   return sanitized.length > 0 ? sanitized : fallback;
@@ -207,6 +207,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
   const [openSlotMenu, setOpenSlotMenu] = useState<1 | 2 | 3 | null>(null);
+  const [isOrganizerExpanded, setIsOrganizerExpanded] = useState(false);
   const collectionSectionRef = useRef<HTMLElement | null>(null);
   const legacyMenuRef = useRef<HTMLDivElement | null>(null);
   const isModalOpenRef = useRef(false);
@@ -701,6 +702,42 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       }
     } catch (error) {
       console.error("Erro ao salvar slots de ordem:", error);
+    }
+  }
+
+  async function deletePlatformOrderSlot(slotNumber: 1 | 2 | 3) {
+    const slot = platformOrderSlots[slotNumber - 1];
+    if (!slot) return;
+    const confirmed = window.confirm(
+      `Tem certeza que deseja deletar o Slot ${slotNumber}?`,
+    );
+    if (!confirmed) return;
+
+    const nextSlots = [...platformOrderSlots] as PlatformOrderSlot[];
+    nextSlots[slotNumber - 1] = null;
+    setPlatformOrderSlots(nextSlots);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        PLATFORM_ORDER_SLOTS_DRAFT_KEY,
+        JSON.stringify(nextSlots.filter(Boolean)),
+      );
+    }
+
+    const token = session?.access_token;
+    if (!token || !authUser?.id) return;
+
+    try {
+      await saveUserPlatformOrderSlots(
+        token,
+        authUser.id,
+        nextSlots.filter(Boolean) as PlatformOrderSlotPreference[],
+      );
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
+      }
+    } catch (error) {
+      console.error("Erro ao deletar slot de ordem:", error);
     }
   }
 
@@ -1302,89 +1339,100 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
                 <button
                   type="button"
-                  onClick={() => setIsPlatformOrganizerOpen(true)}
+                  onClick={() => setIsOrganizerExpanded((current) => !current)}
                   className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-left transition hover:bg-white/10"
                 >
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-white/45">
-                      Organize seu legado
-                    </p>
-                    <p className="mt-1 text-sm text-white/85">
-                      Configure a ordem das plataformas do seu jeito.
-                    </p>
-                  </div>
-                  <span className="rounded-full border border-white/15 px-3 py-1 text-xs text-white/75">
-                    {platformOrderMode === "alphabetical" ? "Ordem alfabética" : "Minha ordem"}
-                  </span>
+                  <p className="text-xs uppercase tracking-[0.18em] text-white/45">
+                    Organize seu legado
+                  </p>
+                  <span className="text-xs text-white/70">{isOrganizerExpanded ? "▲" : "▼"}</span>
                 </button>
 
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  {platformOrderSlots.map((slot, index) => (
-                    <div
-                      key={`order-slot-${index + 1}`}
-                      className="rounded-xl border border-white/10 bg-black/20 p-2"
-                    >
-                      <p className="text-[11px] uppercase tracking-[0.12em] text-white/45">
-                        {getSlotLabel(slot, index)}
-                      </p>
-                      <div className="mt-1 flex items-center justify-between gap-2">
-                        <p className="text-[11px] text-white/55">Slot {index + 1}</p>
-                        <div className="relative">
-                          <button
-                            type="button"
-                            aria-label={`Abrir opções do slot ${index + 1}`}
-                            onClick={() =>
-                              setOpenSlotMenu((current) =>
-                                current === index + 1 ? null : ((index + 1) as 1 | 2 | 3),
-                              )
-                            }
-                            className="rounded-md border border-white/15 px-1.5 py-0.5 text-xs text-white/75 transition hover:bg-white/10"
-                          >
-                            ⋯
-                          </button>
-                          {openSlotMenu === index + 1 && (
-                            <div className="absolute right-0 top-7 z-20 min-w-[150px] rounded-lg border border-white/10 bg-[#141421] p-1 shadow-xl">
+                {isOrganizerExpanded && (
+                  <>
+                    <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                      <p className="text-sm text-white/85">Configure a ordem das plataformas do seu jeito.</p>
+                      <button
+                        type="button"
+                        onClick={() => setIsPlatformOrganizerOpen(true)}
+                        className="rounded-full border border-white/15 px-3 py-1 text-xs text-white/75 transition hover:bg-white/10"
+                      >
+                        {platformOrderMode === "alphabetical" ? "Ordem alfabética" : "Minha ordem"}
+                      </button>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      {platformOrderSlots.map((slot, index) => (
+                        <div
+                          key={`order-slot-${index + 1}`}
+                          className="rounded-xl border border-white/10 bg-black/20 p-2"
+                        >
+                          <p className="text-[11px] uppercase tracking-[0.12em] text-white/45">
+                            SLOT {index + 1}
+                          </p>
+                          <div className="mt-1 flex items-center justify-between gap-2">
+                            <p className="text-sm text-white/90">{getSlotLabel(slot)}</p>
+                            <div className="relative">
                               <button
                                 type="button"
-                                onClick={() => {
-                                  void renamePlatformOrderSlot((index + 1) as 1 | 2 | 3);
-                                  setOpenSlotMenu(null);
-                                }}
-                                className="w-full rounded-md px-2 py-1.5 text-left text-xs text-white/85 transition hover:bg-white/10"
+                                aria-label={`Abrir opções do slot ${index + 1}`}
+                                onClick={() =>
+                                  setOpenSlotMenu((current) =>
+                                    current === index + 1 ? null : ((index + 1) as 1 | 2 | 3),
+                                  )
+                                }
+                                className="rounded-md border border-white/15 px-1.5 py-0.5 text-xs text-white/75 transition hover:bg-white/10"
                               >
-                                Renomear filtro
+                                ⋯
                               </button>
+                              {openSlotMenu === index + 1 && (
+                                <div className="absolute right-0 top-7 z-20 min-w-[150px] rounded-lg border border-white/10 bg-[#141421] p-1 shadow-xl">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      void renamePlatformOrderSlot((index + 1) as 1 | 2 | 3);
+                                      setOpenSlotMenu(null);
+                                    }}
+                                    className="w-full rounded-md px-2 py-1.5 text-left text-xs text-white/85 transition hover:bg-white/10"
+                                  >
+                                    Renomear filtro
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </div>
+                          <div className="mt-2 flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={!slot}
+                              onClick={() => applyPlatformOrderSlot(slot)}
+                              className="rounded-full border border-white/15 px-2 py-1 text-[11px] text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              Aplicar
+                            </button>
+                            {slot ? (
+                              <button
+                                type="button"
+                                onClick={() => void deletePlatformOrderSlot((index + 1) as 1 | 2 | 3)}
+                                className="rounded-full border border-rose-300/30 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-100 transition hover:bg-rose-500/20"
+                              >
+                                Deletar
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => void saveCurrentOrderToSlot((index + 1) as 1 | 2 | 3)}
+                                className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-500/20"
+                              >
+                                Salvar atual
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <p className="mt-1 text-xs text-white/80">
-                        {slot
-                          ? slot.mode === "alphabetical"
-                            ? "Ordem alfabética"
-                            : "Minha ordem"
-                          : "Vazio"}
-                      </p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <button
-                          type="button"
-                          disabled={!slot}
-                          onClick={() => applyPlatformOrderSlot(slot)}
-                          className="rounded-full border border-white/15 px-2 py-1 text-[11px] text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          Aplicar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void saveCurrentOrderToSlot((index + 1) as 1 | 2 | 3)}
-                          className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-500/20"
-                        >
-                          Salvar atual
-                        </button>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
 
                 <div className="mt-3 rounded-xl border border-white/10 bg-black/20">
                   <button
