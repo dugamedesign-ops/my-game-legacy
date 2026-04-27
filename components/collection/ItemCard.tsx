@@ -46,6 +46,11 @@ function hasMedia(item: Item, media: "physical" | "digital") {
   return !!item.mediaFormats?.includes(media);
 }
 
+function isPs5StyledItem(item: Item) {
+  const platformValue = `${item.platform ?? ""} ${item.title ?? ""}`.toLowerCase();
+  return platformValue.includes("ps5") || platformValue.includes("playstation 5");
+}
+
 function getGameStatusSeal(item: Item) {
   if (item.type !== "game") return null;
   if (item.gameProgressStatus === "backlog") return { icon: "📚", label: "Backlog" };
@@ -88,6 +93,19 @@ export function ItemCard({
   const showDigitalSeal = showMediaSeals && hasMedia(item, "digital");
   const shouldRenderMediaSeals = showPhysicalSeal || showDigitalSeal;
   const showInlineSealsInCover = false;
+  const isPs5Styled = isPs5StyledItem(item);
+  const cardFrameClass = isPs5Styled
+    ? "rounded-[18px] border-2 border-[#1d4ed8]/90 bg-[#031a44]/95 p-1.5"
+    : `rounded-[26px] bg-white/[0.03] p-1 ${getOwnershipFrame(item)}`;
+  const coverContainerClass = isPs5Styled
+    ? "rounded-[12px] border border-[#2563eb]/50"
+    : "rounded-[20px]";
+  const coverImageClass = isPs5Styled
+    ? "h-full w-full bg-black/35 object-contain px-1 pb-1 pt-7 transition duration-500 group-hover:scale-[1.02]"
+    : "h-full w-full bg-black/30 object-contain p-1 transition duration-500 group-hover:scale-[1.02]";
+  const infoPanelClass = isPs5Styled
+    ? "mx-0.5 mt-1 flex h-[68px] flex-col justify-between rounded-[10px] border border-[#2563eb]/45 bg-[#0b2b70] px-2.5 py-2"
+    : "mx-1 mt-1 flex h-[78px] flex-col justify-between rounded-lg border border-white/10 bg-[#0b1020]/95 px-2.5 py-2";
 
   return (
     <button
@@ -97,26 +115,31 @@ export function ItemCard({
         event.preventDefault();
         onContextMenu?.(item, event.clientX, event.clientY);
       }}
-      className={`group w-full rounded-[26px] bg-white/[0.03] p-1 text-left transition duration-300 hover:-translate-y-1 hover:bg-white/[0.06] ${getOwnershipFrame(item)}`}
+      className={`group w-full text-left transition duration-300 hover:-translate-y-1 ${cardFrameClass}`}
     >
-      <div className={`relative overflow-hidden rounded-[20px] ${sizeConfig[size]}`}>
+      <div className={`relative overflow-hidden ${coverContainerClass} ${sizeConfig[size]}`}>
         {preorderRibbonLabel && (
           <span className="absolute left-0 top-3 z-10 rounded-r-lg bg-red-600/95 px-2.5 py-1 text-[10px] font-bold tracking-[0.08em] text-white shadow-lg">
             {preorderRibbonLabel}
           </span>
         )}
+        {isPs5Styled && (
+          <div className="absolute inset-x-0 top-0 z-[5] flex h-7 items-center justify-center border-b border-[#1d4ed8]/35 bg-white text-[11px] font-black tracking-[0.26em] text-[#0b2b70]">
+            PS5
+          </div>
+        )}
         {item.imageUrl ? (
           <img
             src={item.imageUrl}
             alt={item.title}
-            className="h-full w-full bg-black/30 object-contain p-1 transition duration-500 group-hover:scale-[1.02]"
+            className={coverImageClass}
           />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-slate-700/70 to-slate-900/90" />
         )}
       </div>
 
-      <div className="mx-1 mt-1 flex h-[78px] flex-col justify-between rounded-lg border border-white/10 bg-[#0b1020]/95 px-2.5 py-2">
+      <div className={infoPanelClass}>
         <h3
           className={`line-clamp-1 font-semibold leading-snug text-white ${
             isSmall ? "text-sm" : "text-[15px]"
