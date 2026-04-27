@@ -90,7 +90,8 @@ export function ItemCard({
   const isPs5Game =
     item.type === "game" &&
     /playstation 5|ps5/i.test(item.platform);
-  const showInlineSealsInCover = isPs5Game;
+  const shouldRenderPs5Frame = isPs5Game && size !== "small";
+  const showInlineSealsInCover = shouldRenderPs5Frame;
 
   return (
     <button
@@ -113,19 +114,20 @@ export function ItemCard({
             src={item.imageUrl}
             alt={item.title}
             className={`h-full w-full bg-black/30 ${
-              isPs5Game ? "object-cover" : "object-contain p-1"
+              shouldRenderPs5Frame ? "object-cover" : "object-contain p-1"
             } transition duration-500 group-hover:scale-[1.02]`}
           />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-slate-700/70 to-slate-900/90" />
         )}
 
-        {isPs5Game && (
-          <img
-            src="/framre-ps5.png"
-            alt=""
+        {shouldRenderPs5Frame && (
+          <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-20 h-full w-full object-cover"
+            className="pointer-events-none absolute inset-0 z-20 bg-cover bg-center"
+            style={{
+              backgroundImage: "url('/framre-ps5.png'), url('/frame-ps5.png')",
+            }}
           />
         )}
 
