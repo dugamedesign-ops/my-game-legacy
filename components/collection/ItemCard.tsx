@@ -12,9 +12,9 @@ type ItemCardProps = {
 };
 
 const sizeConfig: Record<CardSize, string> = {
-  large: "aspect-[3/4]",
-  medium: "aspect-[5/6]",
-  small: "aspect-[4/5]",
+  large: "aspect-[2/3]",
+  medium: "aspect-[11/16]",
+  small: "aspect-[5/7]",
 };
 
 function getOwnershipFrame(item: Item) {
@@ -108,7 +108,7 @@ export function ItemCard({
           <img
             src={item.imageUrl}
             alt={item.title}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+            className="h-full w-full bg-black/30 object-contain p-1 transition duration-500 group-hover:scale-[1.02]"
           />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-slate-700/70 to-slate-900/90" />
