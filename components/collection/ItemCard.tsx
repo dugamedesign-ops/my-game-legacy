@@ -124,8 +124,14 @@ export function ItemCard({
       {shouldRenderPs5Frame && !activePs5FrameSrc && (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-0 rounded-[26px] border-2 border-blue-400/80"
-        />
+          className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[26px] border-2 border-blue-400/80 bg-gradient-to-b from-blue-500/25 to-blue-900/25"
+        >
+          <div className="absolute inset-x-0 top-0 flex h-[11.8%] items-center border-b-2 border-blue-400/80 bg-white/95 px-[8%]">
+            <span className="text-[clamp(10px,2vw,20px)] font-semibold tracking-wide text-black">
+              PS5
+            </span>
+          </div>
+        </div>
       )}
       <div className={`relative overflow-hidden rounded-[20px] ${sizeConfig[size]}`}>
         {preorderRibbonLabel && (
