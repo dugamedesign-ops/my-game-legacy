@@ -87,6 +87,10 @@ export function ItemCard({
   const showPhysicalSeal = showMediaSeals && hasMedia(item, "physical");
   const showDigitalSeal = showMediaSeals && hasMedia(item, "digital");
   const shouldRenderMediaSeals = showPhysicalSeal || showDigitalSeal;
+  const isPs5Game =
+    item.type === "game" &&
+    /playstation 5|ps5/i.test(item.platform);
+  const showInlineSealsInCover = isPs5Game;
 
   return (
     <button
@@ -108,10 +112,45 @@ export function ItemCard({
           <img
             src={item.imageUrl}
             alt={item.title}
-            className="h-full w-full bg-black/30 object-contain p-1 transition duration-500 group-hover:scale-[1.02]"
+            className={`h-full w-full bg-black/30 ${
+              isPs5Game ? "object-cover" : "object-contain p-1"
+            } transition duration-500 group-hover:scale-[1.02]`}
           />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-slate-700/70 to-slate-900/90" />
+        )}
+
+        {isPs5Game && (
+          <img
+            src="/framre-ps5.png"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-20 h-full w-full object-cover"
+          />
+        )}
+
+        {showInlineSealsInCover && (
+          <div className="absolute inset-x-0 bottom-3 z-30 flex justify-center">
+            <div className="flex items-center gap-1.5 rounded-full border border-white/20 bg-black/55 px-2 py-1 backdrop-blur-sm">
+              {shouldRenderMediaSeals && (
+                <>
+                  {showPhysicalSeal && <MediaSeal icon="💿" label="Mídia física" />}
+                  {showDigitalSeal && <MediaSeal icon="☁️" label="Mídia digital" />}
+                </>
+              )}
+              {gameStatusSeal && (
+                <MediaSeal icon={gameStatusSeal.icon} label={gameStatusSeal.label} />
+              )}
+              {cornerSeal && (
+                <span
+                  title={getCornerSealLabel(item)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/25 bg-black/45 text-sm text-white/95"
+                >
+                  {cornerSeal}
+                </span>
+              )}
+            </div>
+          </div>
         )}
       </div>
 
@@ -134,16 +173,16 @@ export function ItemCard({
           </p>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            {shouldRenderMediaSeals && (
+            {!showInlineSealsInCover && shouldRenderMediaSeals && (
               <>
                 {showPhysicalSeal && <MediaSeal icon="💿" label="Mídia física" />}
                 {showDigitalSeal && <MediaSeal icon="☁️" label="Mídia digital" />}
               </>
             )}
-            {gameStatusSeal && (
+            {!showInlineSealsInCover && gameStatusSeal && (
               <MediaSeal icon={gameStatusSeal.icon} label={gameStatusSeal.label} />
             )}
-            {cornerSeal && (
+            {!showInlineSealsInCover && cornerSeal && (
               <span
                 title={getCornerSealLabel(item)}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/25 bg-black/45 text-sm text-white/95"
