@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Item } from "@/types/collection";
 import { getAcquisitionStatusLabel, getNormalizedAcquisitionStatus } from "@/lib/acquisition-utils";
 
@@ -77,8 +76,6 @@ export function ItemCard({
   size = "medium",
   showMediaSeals = true,
 }: ItemCardProps) {
-  const [ps5FrameIndex, setPs5FrameIndex] = useState(0);
-  const ps5FrameSources = ["/framre-ps5.png", "/frame-ps5.png"] as const;
   const isSmall = size === "small";
   const cornerSeal = getCornerSeal(item);
   const gameStatusSeal = getGameStatusSeal(item);
@@ -90,13 +87,7 @@ export function ItemCard({
   const showPhysicalSeal = showMediaSeals && hasMedia(item, "physical");
   const showDigitalSeal = showMediaSeals && hasMedia(item, "digital");
   const shouldRenderMediaSeals = showPhysicalSeal || showDigitalSeal;
-  const isPs5Game =
-    item.type === "game" &&
-    /(playstation\s*5|ps\s*5|ps5)/i.test(item.platform);
-  const shouldRenderPs5Frame = isPs5Game && size !== "small";
   const showInlineSealsInCover = false;
-  const activePs5FrameSrc =
-    ps5FrameIndex < ps5FrameSources.length ? ps5FrameSources[ps5FrameIndex] : null;
 
   return (
     <button
@@ -106,33 +97,8 @@ export function ItemCard({
         event.preventDefault();
         onContextMenu?.(item, event.clientX, event.clientY);
       }}
-      className={`group w-full rounded-[26px] text-left transition duration-300 hover:-translate-y-1 ${
-        shouldRenderPs5Frame
-          ? "relative overflow-hidden p-[2.8%] pt-[12%]"
-          : `bg-white/[0.03] p-1 hover:bg-white/[0.06] ${getOwnershipFrame(item)}`
-      }`}
+      className={`group w-full rounded-[26px] bg-white/[0.03] p-1 text-left transition duration-300 hover:-translate-y-1 hover:bg-white/[0.06] ${getOwnershipFrame(item)}`}
     >
-      {shouldRenderPs5Frame && activePs5FrameSrc && (
-        <img
-          src={activePs5FrameSrc}
-          alt=""
-          aria-hidden="true"
-          onError={() => setPs5FrameIndex((current) => current + 1)}
-          className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover"
-        />
-      )}
-      {shouldRenderPs5Frame && !activePs5FrameSrc && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[26px] border-2 border-blue-400/80 bg-gradient-to-b from-blue-500/25 to-blue-900/25"
-        >
-          <div className="absolute inset-x-0 top-0 flex h-[11.8%] items-center border-b-2 border-blue-400/80 bg-white/95 px-[8%]">
-            <span className="text-[clamp(10px,2vw,20px)] font-semibold tracking-wide text-black">
-              PS5
-            </span>
-          </div>
-        </div>
-      )}
       <div className={`relative overflow-hidden rounded-[20px] ${sizeConfig[size]}`}>
         {preorderRibbonLabel && (
           <span className="absolute left-0 top-3 z-10 rounded-r-lg bg-red-600/95 px-2.5 py-1 text-[10px] font-bold tracking-[0.08em] text-white shadow-lg">
@@ -143,16 +109,14 @@ export function ItemCard({
           <img
             src={item.imageUrl}
             alt={item.title}
-            className={`h-full w-full bg-black/30 ${
-              shouldRenderPs5Frame ? "object-cover" : "object-contain p-1"
-            } transition duration-500 group-hover:scale-[1.02]`}
+            className="h-full w-full bg-black/30 object-contain p-1 transition duration-500 group-hover:scale-[1.02]"
           />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-slate-700/70 to-slate-900/90" />
         )}
       </div>
 
-      <div className="relative z-10 mx-1 mt-1 flex h-[78px] flex-col justify-between rounded-lg border border-white/10 bg-[#0b1020]/95 px-2.5 py-2">
+      <div className="mx-1 mt-1 flex h-[78px] flex-col justify-between rounded-lg border border-white/10 bg-[#0b1020]/95 px-2.5 py-2">
         <h3
           className={`line-clamp-1 font-semibold leading-snug text-white ${
             isSmall ? "text-sm" : "text-[15px]"
