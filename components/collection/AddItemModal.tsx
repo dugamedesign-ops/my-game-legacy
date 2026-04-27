@@ -45,6 +45,11 @@ type FormState = {
   genrePrimary: string;
   genreSecondary: string;
   releaseDate: string;
+  pcFolder: NonNullable<Item["pcFolder"]> | "";
+  pcMachineMode: NonNullable<Item["pcMachineMode"]> | "";
+  pcStorefront: NonNullable<Item["pcStorefront"]> | "";
+  pcComponents: string;
+  accessoryCategory: string;
 };
 
 const PLATFORM_OPTIONS = [
@@ -126,6 +131,11 @@ export function AddItemModal({
       genrePrimary: "",
       genreSecondary: "",
       releaseDate: "",
+      pcFolder: "",
+      pcMachineMode: "",
+      pcStorefront: "",
+      pcComponents: "",
+      accessoryCategory: "",
     };
   }
 
@@ -134,7 +144,7 @@ export function AddItemModal({
   );
   const isGameSearchStep = step === 2 && form.type === "game" && !isGameSelectionDone;
   const gameProgressOptions: CustomSelectOption[] = [
-    { value: "", label: "Não definido" },
+    { value: "undefined", label: "Não definido" },
     { value: "backlog", label: "Backlog" },
     { value: "playing", label: "Jogando" },
     { value: "paused", label: "Pausado" },
@@ -314,7 +324,7 @@ export function AddItemModal({
           : undefined,
       ownershipStatus: form.ownershipStatus,
       gameProgressStatus:
-        form.type === "game" ? form.gameProgressStatus || undefined : undefined,
+        form.type === "game" ? form.gameProgressStatus || "undefined" : undefined,
       mediaFormats: form.type === "game" ? mediaFormats : undefined,
     });
   }, [
@@ -373,7 +383,7 @@ export function AddItemModal({
       subtitle,
       ownershipStatus: effectiveOwnershipStatus,
       gameProgressStatus:
-        form.type === "game" ? form.gameProgressStatus || undefined : undefined,
+        form.type === "game" ? form.gameProgressStatus || "undefined" : undefined,
       mediaFormats: form.type === "game" ? mediaFormats : undefined,
       pricePhysical: form.type === "game" && form.physical ? pricePhysical : undefined,
       priceDigital: form.type === "game" && form.digital ? priceDigital : undefined,
@@ -393,6 +403,29 @@ export function AddItemModal({
         form.type === "game" && form.releaseDate
           ? form.releaseDate
           : undefined,
+      pcFolder:
+        form.platform.trim().toLowerCase() === "pc"
+          ? form.pcFolder || undefined
+          : undefined,
+      pcMachineMode:
+        form.platform.trim().toLowerCase() === "pc" && form.pcFolder === "machine"
+          ? form.pcMachineMode || undefined
+          : undefined,
+      pcStorefront:
+        form.platform.trim().toLowerCase() === "pc" && form.pcFolder === "games"
+          ? form.pcStorefront || undefined
+          : undefined,
+      pcComponents:
+        form.platform.trim().toLowerCase() === "pc" &&
+        form.pcFolder === "machine" &&
+        form.pcMachineMode === "desktop_modular"
+          ? form.pcComponents
+              .split(",")
+              .map((value) => value.trim())
+              .filter(Boolean)
+          : undefined,
+      accessoryCategory: form.type === "accessory" ? form.accessoryCategory.trim() || undefined : undefined,
+      rarityTags: ["undefined"],
       imageUrl: form.imageUrl.trim() || undefined,
       createdAt: now,
       updatedAt: now,
@@ -400,6 +433,7 @@ export function AddItemModal({
   }, [
     currentUserId,
     form.digital,
+    form.accessoryCategory,
     form.franchise,
     form.gameProgressStatus,
     form.genrePrimary,
@@ -407,6 +441,10 @@ export function AddItemModal({
     form.imageUrl,
     form.ownershipStatus,
     form.physical,
+    form.pcComponents,
+    form.pcFolder,
+    form.pcMachineMode,
+    form.pcStorefront,
     form.platform,
     form.priceDigital,
     form.pricePhysical,
@@ -948,6 +986,86 @@ export function AddItemModal({
                 </>
               )}
 
+              {form.platform.trim().toLowerCase() === "pc" && (
+                <div className="rounded-3xl border border-cyan-300/20 bg-cyan-500/5 p-4">
+                  <p className="mb-3 text-sm font-medium text-cyan-100">Estrutura da plataforma PC</p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FieldBlock label="Subpasta PC">
+                      <CustomSelect
+                        value={form.pcFolder}
+                        onChange={(value) =>
+                          updateField(
+                            "pcFolder",
+                            (value as NonNullable<Item["pcFolder"]> | "") ?? "",
+                          )
+                        }
+                        options={[
+                          { value: "", label: "Selecione" },
+                          { value: "machine", label: "Máquina" },
+                          { value: "peripherals", label: "Periféricos" },
+                          { value: "games", label: "Jogos" },
+                        ]}
+                        placeholder="Selecione"
+                      />
+                    </FieldBlock>
+
+                    {form.pcFolder === "machine" && (
+                      <FieldBlock label="Tipo de máquina">
+                        <CustomSelect
+                          value={form.pcMachineMode}
+                          onChange={(value) =>
+                            updateField(
+                              "pcMachineMode",
+                              (value as NonNullable<Item["pcMachineMode"]> | "") ?? "",
+                            )
+                          }
+                          options={[
+                            { value: "", label: "Selecione" },
+                            { value: "prebuilt", label: "Aparelho fechado" },
+                            { value: "desktop_modular", label: "Desktop modular" },
+                          ]}
+                          placeholder="Selecione"
+                        />
+                      </FieldBlock>
+                    )}
+                  </div>
+
+                  {form.pcFolder === "machine" && form.pcMachineMode === "desktop_modular" && (
+                    <FieldBlock label="Componentes do desktop (opcional)">
+                      <input
+                        value={form.pcComponents}
+                        onChange={(e) => updateField("pcComponents", e.target.value)}
+                        placeholder="CPU, GPU, RAM, SSD..."
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      />
+                    </FieldBlock>
+                  )}
+
+                  {form.pcFolder === "games" && (
+                    <FieldBlock label="Loja">
+                      <CustomSelect
+                        value={form.pcStorefront}
+                        onChange={(value) =>
+                          updateField(
+                            "pcStorefront",
+                            (value as NonNullable<Item["pcStorefront"]> | "") ?? "",
+                          )
+                        }
+                        options={[
+                          { value: "", label: "Selecione" },
+                          { value: "steam", label: "Steam" },
+                          { value: "ea", label: "EA App" },
+                          { value: "epic", label: "Epic" },
+                          { value: "gog", label: "GOG" },
+                          { value: "other", label: "Outra" },
+                        ]}
+                        placeholder="Selecione"
+                      />
+                    </FieldBlock>
+                  )}
+                </div>
+              )}
+
               {form.type === "console" ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FieldBlock label="Título do card">
@@ -1117,7 +1235,19 @@ export function AddItemModal({
                             />
                           </FieldBlock>
                         )}
+
                       </>
+                    )}
+
+                    {form.type === "accessory" && (
+                      <FieldBlock label="Categoria do acessório">
+                        <input
+                          value={form.accessoryCategory}
+                          onChange={(e) => updateField("accessoryCategory", e.target.value)}
+                          placeholder="Ex: controlador mobile, teclado, headset..."
+                          className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                        />
+                      </FieldBlock>
                     )}
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end">

@@ -12,9 +12,9 @@ type ItemCardProps = {
 };
 
 const sizeConfig: Record<CardSize, string> = {
-  large: "aspect-[3/4]",
-  medium: "aspect-[5/6]",
-  small: "aspect-[4/5]",
+  large: "aspect-[2/3]",
+  medium: "aspect-[11/16]",
+  small: "aspect-[5/7]",
 };
 
 function getOwnershipFrame(item: Item) {
@@ -32,11 +32,13 @@ function getOwnershipFrame(item: Item) {
 
 function getCornerSeal(item: Item) {
   if (item.ownershipStatus === "wishlist" && !getNormalizedAcquisitionStatus(item)) return "☆";
+  if (item.review?.trim()) return "📝";
   return null;
 }
 
 function getCornerSealLabel(item: Item) {
   if (item.ownershipStatus === "wishlist" && !getNormalizedAcquisitionStatus(item)) return "Wishlist";
+  if (item.review?.trim()) return "Com review";
   return "";
 }
 
@@ -85,6 +87,11 @@ export function ItemCard({
   const showPhysicalSeal = showMediaSeals && hasMedia(item, "physical");
   const showDigitalSeal = showMediaSeals && hasMedia(item, "digital");
   const shouldRenderMediaSeals = showPhysicalSeal || showDigitalSeal;
+  const isPs5Game =
+    item.type === "game" &&
+    /playstation 5|ps5/i.test(item.platform);
+  const shouldRenderPs5Frame = isPs5Game && size !== "small";
+  const showInlineSealsInCover = false;
 
   return (
     <button
@@ -94,7 +101,18 @@ export function ItemCard({
         event.preventDefault();
         onContextMenu?.(item, event.clientX, event.clientY);
       }}
-      className={`group w-full rounded-[26px] bg-white/[0.03] p-1 text-left transition duration-300 hover:-translate-y-1 hover:bg-white/[0.06] ${getOwnershipFrame(item)}`}
+      className={`group w-full rounded-[26px] text-left transition duration-300 hover:-translate-y-1 ${
+        shouldRenderPs5Frame
+          ? "bg-cover bg-center bg-no-repeat p-[2.8%] pt-[12%]"
+          : `bg-white/[0.03] p-1 hover:bg-white/[0.06] ${getOwnershipFrame(item)}`
+      }`}
+      style={
+        shouldRenderPs5Frame
+          ? {
+              backgroundImage: "url('/framre-ps5.png'), url('/frame-ps5.png')",
+            }
+          : undefined
+      }
     >
       <div className={`relative overflow-hidden rounded-[20px] ${sizeConfig[size]}`}>
         {preorderRibbonLabel && (
@@ -106,7 +124,9 @@ export function ItemCard({
           <img
             src={item.imageUrl}
             alt={item.title}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+            className={`h-full w-full bg-black/30 ${
+              shouldRenderPs5Frame ? "object-cover" : "object-contain p-1"
+            } transition duration-500 group-hover:scale-[1.02]`}
           />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-slate-700/70 to-slate-900/90" />
@@ -132,16 +152,16 @@ export function ItemCard({
           </p>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            {shouldRenderMediaSeals && (
+            {!showInlineSealsInCover && shouldRenderMediaSeals && (
               <>
                 {showPhysicalSeal && <MediaSeal icon="💿" label="Mídia física" />}
                 {showDigitalSeal && <MediaSeal icon="☁️" label="Mídia digital" />}
               </>
             )}
-            {gameStatusSeal && (
+            {!showInlineSealsInCover && gameStatusSeal && (
               <MediaSeal icon={gameStatusSeal.icon} label={gameStatusSeal.label} />
             )}
-            {cornerSeal && (
+            {!showInlineSealsInCover && cornerSeal && (
               <span
                 title={getCornerSealLabel(item)}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/25 bg-black/45 text-sm text-white/95"

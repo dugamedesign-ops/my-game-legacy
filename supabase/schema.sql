@@ -202,3 +202,37 @@ create policy "Users can update own preferences"
   for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+create table if not exists public.internal_catalog_entries (
+  id uuid primary key default gen_random_uuid(),
+  owner_user_id uuid not null references auth.users(id) on delete cascade,
+  kind text not null check (kind in ('platform', 'accessory')),
+  name text not null,
+  version text,
+  release_date date,
+  image_url text,
+  metadata jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists internal_catalog_entries_owner_kind_idx
+  on public.internal_catalog_entries (owner_user_id, kind, updated_at desc);
+
+alter table public.internal_catalog_entries enable row level security;
+
+create policy "Catalog owner can read own entries"
+  on public.internal_catalog_entries
+  for select
+  using (auth.uid() = owner_user_id);
+
+create policy "Catalog owner can insert own entries"
+  on public.internal_catalog_entries
+  for insert
+  with check (auth.uid() = owner_user_id);
+
+create policy "Catalog owner can update own entries"
+  on public.internal_catalog_entries
+  for update
+  using (auth.uid() = owner_user_id)
+  with check (auth.uid() = owner_user_id);

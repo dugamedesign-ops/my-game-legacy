@@ -1,9 +1,13 @@
 export type ItemType = "console" | "accessory" | "game";
+export type PcFolder = "machine" | "peripherals" | "games";
+export type PcMachineMode = "prebuilt" | "desktop_modular";
+export type PcStorefront = "steam" | "ea" | "epic" | "gog" | "other";
 
 export type OwnershipStatus = "collection" | "wishlist" | "preorder";
 export type AcquisitionStatus = "preorder" | "purchased";
 
 export type GameProgressStatus =
+  | "undefined"
   | "backlog"
   | "playing"
   | "paused"
@@ -13,6 +17,7 @@ export type GameProgressStatus =
 export type PurchasePriority = "low" | "medium" | "high" | "maximum";
 
 export type RarityTag =
+  | "undefined"
   | "normal"
   | "rare"
   | "special_edition"
@@ -67,11 +72,18 @@ export type Item = {
 
   franchise?: string;
   genre?: string;
+  pcFolder?: PcFolder;
+  pcMachineMode?: PcMachineMode;
+  pcStorefront?: PcStorefront;
+  pcComponents?: string[];
+  accessoryCategory?: string;
+  customPlatformGroup?: string;
   rating?: number;
   ratingMode?: RatingMode;
 
   imageUrl?: string;
   notes?: string;
+  review?: string;
   purchaseOrigin?: string;
 
   purchaseDate?: PurchaseDate;
