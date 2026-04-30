@@ -593,7 +593,7 @@ export function ItemDetailsModal({
           : undefined,
       purchaseOrigin: purchaseOriginInput.trim() || undefined,
       notes: notesWithSubtitleForGame.slice(0, 100) || undefined,
-      review: reviewInput.trim().slice(0, 1000) || undefined,
+      review: reviewInput.trim().slice(0, 5000) || undefined,
       genre:
         isGame
           ? [genrePrimaryInput.trim(), genreSecondaryInput.trim()]
@@ -1296,13 +1296,13 @@ export function ItemDetailsModal({
                   <label className="block">
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <span className="block text-sm text-white/70">Review do item</span>
-                      <span className="text-xs text-white/50">{reviewInput.length}/1000</span>
+                      <span className="text-xs text-white/50">{reviewInput.length}/5000</span>
                     </div>
                     <textarea
                       value={reviewInput}
-                      onChange={(e) => setReviewInput(e.target.value.slice(0, 1000))}
+                      onChange={(e) => setReviewInput(e.target.value.slice(0, 5000))}
                       rows={6}
-                      placeholder="Escreva sua review (até 1000 caracteres)"
+                      placeholder="Escreva sua review (até 5000 caracteres)"
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                     />
                   </label>

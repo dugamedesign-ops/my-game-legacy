@@ -23,7 +23,7 @@ function normalizeLegacyOwnership(item: Item): Item {
         : ["undefined"],
     gameProgressStatus:
       item.type === "game" ? item.gameProgressStatus ?? "undefined" : undefined,
-    review: item.review?.slice(0, 1000),
+    review: item.review?.slice(0, 5000),
   };
 
   if (item.ownershipStatus === "preorder") {
