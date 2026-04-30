@@ -18,6 +18,7 @@ import { FiltersBar } from "./FiltersBar";
 import { applyFilters, type Filters } from "@/lib/filter-utils";
 import { useAuth } from "@/providers/AuthProvider";
 import { ItemCard } from "./ItemCard";
+import { InternalCatalogAdmin } from "./InternalCatalogAdmin";
 import {
   createEmptyFinancialCollectionViewFilters,
   matchesFinancialCollectionViewFilters,
@@ -72,9 +73,86 @@ function getInitialCustomPlatformOrder() {
   }
 }
 
+const PLATFORM_ORDER_SLOTS_DRAFT_KEY = "my-game-legacy-platform-order-slots-draft";
+const PLATFORM_ORDER_SLOTS_CACHE_KEY = "my-game-legacy-platform-order-slots-cache";
+
+function normalizePlatformOrderSlots(
+  slots: PlatformOrderSlotPreference[] | PlatformOrderSlot[],
+) {
+  const normalized: PlatformOrderSlot[] = [null, null, null];
+  for (const slot of slots) {
+    if (!slot) continue;
+    const index = slot.slot - 1;
+    if (index >= 0 && index < 3) normalized[index] = slot;
+  }
+  return normalized;
+}
+
+function getDraftPlatformOrderSlots() {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as PlatformOrderSlotPreference[];
+    if (!Array.isArray(parsed)) return null;
+    return normalizePlatformOrderSlots(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function getCachedPlatformOrderSlots() {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(PLATFORM_ORDER_SLOTS_CACHE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as PlatformOrderSlotPreference[];
+    if (!Array.isArray(parsed)) return null;
+    return normalizePlatformOrderSlots(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function getInitialPlatformOrderSlots() {
+  const cached = getCachedPlatformOrderSlots();
+  return cached ?? [null, null, null];
+}
+
+function toTimestamp(value?: string) {
+  if (!value) return 0;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function mergePlatformOrderSlots(
+  base: PlatformOrderSlot[],
+  candidate: PlatformOrderSlot[],
+) {
+  return [0, 1, 2].map((index) => {
+    const baseSlot = base[index];
+    const candidateSlot = candidate[index];
+    if (!baseSlot) return candidateSlot ?? null;
+    if (!candidateSlot) return baseSlot;
+    return toTimestamp(candidateSlot.updated_at) >= toTimestamp(baseSlot.updated_at)
+      ? candidateSlot
+      : baseSlot;
+  }) as PlatformOrderSlot[];
+}
+
+function getSlotLabel(slot: PlatformOrderSlot) {
+  const fallback = "Minha ordem";
+  if (!slot?.label) return fallback;
+  const sanitized = slot.label.trim();
+  return sanitized.length > 0 ? sanitized : fallback;
+}
+
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const { user: authUser, session, signOut, publicProfile, setProfileVisibility } = useAuth();
   const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
+  const adminEmail = process.env.NEXT_PUBLIC_CATALOG_ADMIN_EMAIL?.trim().toLowerCase();
+  const isCatalogAdmin =
+    !!adminEmail && authUser?.email?.trim().toLowerCase() === adminEmail;
   const metadataFullName =
     typeof userMetadata.full_name === "string"
       ? userMetadata.full_name
@@ -135,11 +213,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [customPlatformOrder, setCustomPlatformOrder] = useState<string[]>(
     getInitialCustomPlatformOrder,
   );
-  const [platformOrderSlots, setPlatformOrderSlots] = useState<PlatformOrderSlot[]>([
-    null,
-    null,
-    null,
-  ]);
+  const [platformOrderSlots, setPlatformOrderSlots] = useState<PlatformOrderSlot[]>(
+    getInitialPlatformOrderSlots,
+  );
   const [draggedPlatform, setDraggedPlatform] = useState<string | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [financialFocusFilters, setFinancialFocusFilters] = useState<FinancialCollectionViewFilters>(
@@ -147,6 +223,8 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   );
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
+  const [openSlotMenu, setOpenSlotMenu] = useState<1 | 2 | 3 | null>(null);
+  const [isOrganizerExpanded, setIsOrganizerExpanded] = useState(false);
   const collectionSectionRef = useRef<HTMLElement | null>(null);
   const legacyMenuRef = useRef<HTMLDivElement | null>(null);
   const isModalOpenRef = useRef(false);
@@ -171,6 +249,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     ownership: [],
     priorities: [],
     gameStatus: [],
+    franchises: [],
     media: [],
     missing: [],
   });
@@ -497,16 +576,36 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     let cancelled = false;
     void (async () => {
       try {
-        const slots = await fetchUserPlatformOrderSlots(token, authUser.id);
+        const slots = normalizePlatformOrderSlots(
+          await fetchUserPlatformOrderSlots(token, authUser.id),
+        );
         if (cancelled) return;
-        const normalized: PlatformOrderSlot[] = [null, null, null];
-        for (const slot of slots) {
-          const index = slot.slot - 1;
-          if (index >= 0 && index < 3) normalized[index] = slot;
+        const draftSlots = getDraftPlatformOrderSlots();
+        const mergedSlots = draftSlots
+          ? mergePlatformOrderSlots(slots, draftSlots)
+          : slots;
+        setPlatformOrderSlots(mergedSlots);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(
+            PLATFORM_ORDER_SLOTS_CACHE_KEY,
+            JSON.stringify(mergedSlots.filter(Boolean)),
+          );
         }
-        setPlatformOrderSlots(normalized);
+
+        if (!draftSlots) return;
+        await saveUserPlatformOrderSlots(
+          token,
+          authUser.id,
+          mergedSlots.filter(Boolean) as PlatformOrderSlotPreference[],
+        );
+        if (!cancelled && typeof window !== "undefined") {
+          window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
+        }
       } catch {
-        if (!cancelled) setPlatformOrderSlots([null, null, null]);
+        if (!cancelled) {
+          const cached = getCachedPlatformOrderSlots();
+          setPlatformOrderSlots(cached ?? [null, null, null]);
+        }
       }
     })();
 
@@ -531,6 +630,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             ? ["finished", "platinum"]
             : [],
       media: [],
+      franchises: [],
       missing: [],
     });
     setFinancialFocusFilters(
@@ -593,8 +693,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   }
 
   async function saveCurrentOrderToSlot(slot: 1 | 2 | 3) {
+    const existingLabel = platformOrderSlots[slot - 1]?.label;
     const nextSlot: PlatformOrderSlotPreference = {
       slot,
+      label: existingLabel,
       mode: platformOrderMode,
       order:
         platformOrderMode === "custom"
@@ -607,6 +709,17 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     nextSlots[slot - 1] = nextSlot;
     setPlatformOrderSlots(nextSlots);
 
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        PLATFORM_ORDER_SLOTS_DRAFT_KEY,
+        JSON.stringify(nextSlots.filter(Boolean)),
+      );
+      window.localStorage.setItem(
+        PLATFORM_ORDER_SLOTS_CACHE_KEY,
+        JSON.stringify(nextSlots.filter(Boolean)),
+      );
+    }
+
     const token = session?.access_token;
     if (!token || !authUser?.id) return;
 
@@ -616,10 +729,117 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
         authUser.id,
         nextSlots.filter(Boolean) as PlatformOrderSlotPreference[],
       );
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
+      }
     } catch (error) {
       console.error("Erro ao salvar slots de ordem:", error);
     }
   }
+
+  async function deletePlatformOrderSlot(slotNumber: 1 | 2 | 3) {
+    const slot = platformOrderSlots[slotNumber - 1];
+    if (!slot) return;
+    const confirmed = window.confirm(
+      `Tem certeza que deseja deletar o Slot ${slotNumber}?`,
+    );
+    if (!confirmed) return;
+
+    const nextSlots = [...platformOrderSlots] as PlatformOrderSlot[];
+    nextSlots[slotNumber - 1] = null;
+    setPlatformOrderSlots(nextSlots);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        PLATFORM_ORDER_SLOTS_DRAFT_KEY,
+        JSON.stringify(nextSlots.filter(Boolean)),
+      );
+      window.localStorage.setItem(
+        PLATFORM_ORDER_SLOTS_CACHE_KEY,
+        JSON.stringify(nextSlots.filter(Boolean)),
+      );
+    }
+
+    const token = session?.access_token;
+    if (!token || !authUser?.id) return;
+
+    try {
+      await saveUserPlatformOrderSlots(
+        token,
+        authUser.id,
+        nextSlots.filter(Boolean) as PlatformOrderSlotPreference[],
+      );
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
+      }
+    } catch (error) {
+      console.error("Erro ao deletar slot de ordem:", error);
+    }
+  }
+
+  async function renamePlatformOrderSlot(slotNumber: 1 | 2 | 3) {
+    const current = platformOrderSlots[slotNumber - 1];
+    if (!current) {
+      window.alert("Salve uma ordenação neste slot antes de renomear.");
+      return;
+    }
+
+    const promptValue = window.prompt(
+      "Novo nome do filtro rápido:",
+      current.label?.trim() || `Slot ${slotNumber}`,
+    );
+    if (promptValue === null) return;
+
+    const nextLabel = promptValue.trim();
+    if (nextLabel.length === 0) {
+      window.alert("O nome do filtro não pode ficar vazio.");
+      return;
+    }
+
+    const nextSlots = [...platformOrderSlots] as PlatformOrderSlot[];
+    nextSlots[slotNumber - 1] = {
+      ...current,
+      label: nextLabel.slice(0, 40),
+      updated_at: new Date().toISOString(),
+    };
+    setPlatformOrderSlots(nextSlots);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        PLATFORM_ORDER_SLOTS_DRAFT_KEY,
+        JSON.stringify(nextSlots.filter(Boolean)),
+      );
+      window.localStorage.setItem(
+        PLATFORM_ORDER_SLOTS_CACHE_KEY,
+        JSON.stringify(nextSlots.filter(Boolean)),
+      );
+    }
+
+    const token = session?.access_token;
+    if (!token || !authUser?.id) return;
+
+    try {
+      await saveUserPlatformOrderSlots(
+        token,
+        authUser.id,
+        nextSlots.filter(Boolean) as PlatformOrderSlotPreference[],
+      );
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
+      }
+    } catch (error) {
+      console.error("Erro ao renomear slot de ordem:", error);
+    }
+  }
+
+  const canSaveCurrentOrder = useMemo(() => {
+    if (platformOrderMode !== "custom") return false;
+    if (effectiveCustomPlatformOrder.length <= 1) return false;
+    const alphabetical = [...allActivePlatforms].sort((a, b) =>
+      a.localeCompare(b, "pt-BR", { sensitivity: "base" }),
+    );
+    return JSON.stringify(effectiveCustomPlatformOrder) !== JSON.stringify(alphabetical);
+  }, [allActivePlatforms, effectiveCustomPlatformOrder, platformOrderMode]);
 
   function applyPlatformOrderSlot(slot: PlatformOrderSlot) {
     if (!slot) return;
@@ -716,6 +936,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       priorities: next.priorities,
       gameStatus: [],
       media: [],
+      franchises: [],
       missing: [],
     }));
     setFinancialFocusFilters(next);
@@ -1155,6 +1376,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             </section>
           )}
 
+          {isCatalogAdmin && session?.access_token && authUser?.id && (
+            <section className="mb-8">
+              <InternalCatalogAdmin accessToken={session.access_token} userId={authUser.id} />
+            </section>
+          )}
+
           {isEmpty ? (
             <EmptyCollectionState onAddClick={handleOpenDefaultAdd} />
           ) : groupedPlatforms.length > 0 ? (
@@ -1162,58 +1389,107 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
                 <button
                   type="button"
-                  onClick={() => setIsPlatformOrganizerOpen(true)}
+                  onClick={() => setIsOrganizerExpanded((current) => !current)}
                   className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-left transition hover:bg-white/10"
                 >
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-white/45">
-                      Organize seu legado
-                    </p>
-                    <p className="mt-1 text-sm text-white/85">
-                      Configure a ordem das plataformas do seu jeito.
-                    </p>
-                  </div>
-                  <span className="rounded-full border border-white/15 px-3 py-1 text-xs text-white/75">
-                    {platformOrderMode === "alphabetical" ? "Ordem alfabética" : "Minha ordem"}
-                  </span>
+                  <p className="text-xs uppercase tracking-[0.18em] text-white">
+                    Organize seu legado
+                  </p>
+                  <span className="text-xs text-white/70">{isOrganizerExpanded ? "▲" : "▼"}</span>
                 </button>
 
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  {platformOrderSlots.map((slot, index) => (
-                    <div
-                      key={`order-slot-${index + 1}`}
-                      className="rounded-xl border border-white/10 bg-black/20 p-2"
-                    >
-                      <p className="text-[11px] uppercase tracking-[0.12em] text-white/45">
-                        Slot {index + 1}
-                      </p>
-                      <p className="mt-1 text-xs text-white/80">
-                        {slot
-                          ? slot.mode === "alphabetical"
-                            ? "Ordem alfabética"
-                            : "Minha ordem"
-                          : "Vazio"}
-                      </p>
-                      <div className="mt-2 flex items-center gap-2">
+                {isOrganizerExpanded && (
+                  <>
+                    <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                      <p className="text-sm text-white/85">Configure a ordem das plataformas do seu jeito.</p>
+                      <button
+                        type="button"
+                        onClick={() => setIsPlatformOrganizerOpen(true)}
+                        className="rounded-full border border-white/15 px-3 py-1 text-xs text-white/75 transition hover:bg-white/10"
+                      >
+                        {platformOrderMode === "alphabetical" ? "Ordem alfabética" : "Minha ordem"}
+                      </button>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      {platformOrderSlots.map((slot, index) => (
                         <button
+                          key={`order-slot-${index + 1}`}
                           type="button"
                           disabled={!slot}
-                          onClick={() => applyPlatformOrderSlot(slot)}
-                          className="rounded-full border border-white/15 px-2 py-1 text-[11px] text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                          onClick={() => {
+                            if (slot) applyPlatformOrderSlot(slot);
+                          }}
+                          className="rounded-xl border border-white/10 bg-black/20 p-2 text-left transition enabled:hover:bg-white/10 disabled:cursor-default"
                         >
-                          Aplicar
+                          <p className="text-[11px] uppercase tracking-[0.12em] text-white/45">
+                            SLOT {index + 1}
+                          </p>
+                          <div className="mt-1 flex items-center justify-between gap-2">
+                            <p className="text-sm text-white/90">{getSlotLabel(slot)}</p>
+                            {slot && (
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  aria-label={`Abrir opções do slot ${index + 1}`}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setOpenSlotMenu((current) =>
+                                      current === index + 1 ? null : ((index + 1) as 1 | 2 | 3),
+                                    );
+                                  }}
+                                  className="rounded-md border border-white/15 px-1.5 py-0.5 text-xs text-white/75 transition hover:bg-white/10"
+                                >
+                                  ⋯
+                                </button>
+                                {openSlotMenu === index + 1 && (
+                                  <div className="absolute right-0 top-7 z-20 min-w-[150px] rounded-lg border border-white/10 bg-[#141421] p-1 shadow-xl">
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        void renamePlatformOrderSlot((index + 1) as 1 | 2 | 3);
+                                        setOpenSlotMenu(null);
+                                      }}
+                                      className="w-full rounded-md px-2 py-1.5 text-left text-xs text-white/85 transition hover:bg-white/10"
+                                    >
+                                      Renomear filtro
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        void deletePlatformOrderSlot((index + 1) as 1 | 2 | 3);
+                                        setOpenSlotMenu(null);
+                                      }}
+                                      className="mt-1 w-full rounded-md px-2 py-1.5 text-left text-xs text-rose-200 transition hover:bg-rose-500/15"
+                                    >
+                                      Excluir slot
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div className="mt-2 flex items-center gap-2">
+                            {!slot && canSaveCurrentOrder ? (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  void saveCurrentOrderToSlot((index + 1) as 1 | 2 | 3);
+                                }}
+                                className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-500/20"
+                              >
+                                Salvar atual
+                              </button>
+                            ) : null}
+                          </div>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => void saveCurrentOrderToSlot((index + 1) as 1 | 2 | 3)}
-                          className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-500/20"
-                        >
-                          Salvar atual
-                        </button>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
 
                 <div className="mt-3 rounded-xl border border-white/10 bg-black/20">
                   <button
@@ -1221,12 +1497,19 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     onClick={() => setIsCollectionFiltersOpen((open) => !open)}
                     className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm text-white/85 transition hover:bg-white/10"
                   >
-                    <span>Filtros inteligentes</span>
+                    <span className="text-xs uppercase tracking-[0.18em] text-white">
+                      Filtros inteligentes
+                    </span>
                     <span className="text-xs">{isCollectionFiltersOpen ? "▲" : "▼"}</span>
                   </button>
                   {isCollectionFiltersOpen && (
                     <div className="border-t border-white/10 p-2">
-                      <FiltersBar filters={filters} setFilters={setFilters} compact />
+                      <FiltersBar
+                        filters={filters}
+                        setFilters={setFilters}
+                        items={collectionItems}
+                        compact
+                      />
                     </div>
                   )}
                 </div>

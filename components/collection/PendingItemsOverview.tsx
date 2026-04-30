@@ -649,6 +649,7 @@ function PendingInlineEditor({
       { value: "playing", label: "Jogando" },
       { value: "paused", label: "Pausado" },
       { value: "finished", label: "Finalizado" },
+      { value: "seeking_platinum", label: "Buscando a Platina" },
       { value: "platinum", label: "Platina" },
     ];
     return (

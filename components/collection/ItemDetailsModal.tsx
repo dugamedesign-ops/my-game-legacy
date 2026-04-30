@@ -46,6 +46,7 @@ export function ItemDetailsModal({
   const [nameInput, setNameInput] = useState("");
   const [subtitleInput, setSubtitleInput] = useState("");
   const [franchiseInput, setFranchiseInput] = useState("");
+  const [companyInput, setCompanyInput] = useState("");
   const [platformInput, setPlatformInput] = useState("");
   const [imageUrlInput, setImageUrlInput] = useState("");
 
@@ -86,7 +87,9 @@ export function ItemDetailsModal({
   const [genreOptions, setGenreOptions] = useState<string[]>([...GENRE_OPTIONS]);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [notesInput, setNotesInput] = useState("");
+  const [reviewInput, setReviewInput] = useState("");
   const [ratingInput, setRatingInput] = useState(0);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imagePanelRef = useRef<HTMLDivElement | null>(null);
@@ -115,11 +118,12 @@ export function ItemDetailsModal({
     setNameInput(item.title ?? "");
     setSubtitleInput(item.subtitle ?? "");
     setFranchiseInput(item.franchise ?? "");
+    setCompanyInput(item.company ?? "");
     setPlatformInput(item.platform ?? "");
     setImageUrlInput(item.imageUrl ?? "");
 
     setOwnershipStatusInput(item.ownershipStatus);
-    setGameProgressStatusInput(item.gameProgressStatus ?? "");
+    setGameProgressStatusInput(item.gameProgressStatus ?? "undefined");
     setMediaFormatsInput(item.mediaFormats ?? []);
 
     setAmountPaidInput(
@@ -156,15 +160,17 @@ export function ItemDetailsModal({
     setPurchasePriorityInput(item.purchasePriority ?? "");
     setAcquisitionStatusInput(getNormalizedAcquisitionStatus(item) ?? "");
     setExpectedArrivalDateInput(item.expectedArrivalDate ?? "");
-    setRarityInput(item.rarityTags?.[0] ?? "");
+    setRarityInput(item.rarityTags?.[0] ?? "undefined");
 
     setPurchaseYearInput(item.purchaseDate?.year ? String(item.purchaseDate.year) : "2026");
     setPurchaseMonthInput(item.purchaseDate?.month ? String(item.purchaseDate.month) : "");
     setPurchaseDayInput(item.purchaseDate?.day ? String(item.purchaseDate.day) : "");
     setPurchaseOriginInput(item.purchaseOrigin ?? "");
     setNotesInput(item.notes ?? "");
+    setReviewInput(item.review ?? "");
     setRatingInput(item.rating ?? 0);
     setSaveFeedback(null);
+    setIsEditMode(false);
     const [primary = "", secondary = ""] = (item.genre ?? "")
       .split("/")
       .map((part) => part.trim())
@@ -296,6 +302,10 @@ export function ItemDetailsModal({
     Number.isNaN(releaseDateObj.getTime()) ||
     releaseDateObj.getTime() <= Date.now();
   const usesHypeScale = isWishlist && !isReleasedForRating;
+  const hasValidReleaseDate = Boolean(
+    releaseDateObj && !Number.isNaN(releaseDateObj.getTime()),
+  );
+  const shouldShowGameStatus = isGame && hasValidReleaseDate && isReleasedForRating;
   const ratingLabel = usesHypeScale ? "Hype" : "Nota";
   const releaseYear = releaseDateObj && !Number.isNaN(releaseDateObj.getTime())
     ? releaseDateObj.getFullYear()
@@ -310,6 +320,12 @@ export function ItemDetailsModal({
       : null;
   const progressIcon = getProgressIcon(gameProgressStatusInput || undefined);
   const previewGenre = [genrePrimaryInput, genreSecondaryInput].filter(Boolean).join(" / ");
+  const relatedGameEntries = existingItems.filter(
+    (entry) =>
+      entry.type === "game" &&
+      !entry.isRemoved &&
+      entry.title.trim().toLowerCase() === (nameInput || item.title).trim().toLowerCase(),
+  );
 
   function parseOptionalNumber(value: string): number | undefined {
     const normalized = value.replace(",", ".").trim();
@@ -340,6 +356,13 @@ export function ItemDetailsModal({
       : [...current, format];
 
     setMediaFormatsInput(next);
+  }
+
+  function copyReleaseDateToPurchaseDate() {
+    if (!releaseDateObj || Number.isNaN(releaseDateObj.getTime())) return;
+    setPurchaseDayInput(String(releaseDateObj.getDate()).padStart(2, "0"));
+    setPurchaseMonthInput(String(releaseDateObj.getMonth() + 1).padStart(2, "0"));
+    setPurchaseYearInput(String(releaseDateObj.getFullYear()));
   }
 
   async function handleSearchCoverAgain() {
@@ -503,17 +526,25 @@ export function ItemDetailsModal({
       ownershipStatusInput === "wishlist" &&
       acquisitionStatusInput === "purchased";
 
+    const subtitleText = subtitleInput.trim();
+    const notesBaseText = notesInput.trim();
+    const notesWithSubtitleForGame =
+      isGame && subtitleText
+        ? `Subtítulo legado: ${subtitleText}${notesBaseText ? `\n${notesBaseText}` : ""}`
+        : notesBaseText;
+
     const updatedItem: Item = {
       ...item,
       title: nameInput.trim() || item.title,
-      subtitle: subtitleInput.trim() || undefined,
+      subtitle: isGame ? undefined : subtitleText || undefined,
       franchise: isGame ? franchiseInput.trim() || undefined : undefined,
+      company: companyInput.trim() || undefined,
       platform: platformInput.trim() || item.platform,
       imageUrl: imageUrlInput.trim() || undefined,
 
       ownershipStatus: ownershipStatusInput,
       gameProgressStatus:
-        isGame ? gameProgressStatusInput || undefined : undefined,
+        isGame ? gameProgressStatusInput || "undefined" : undefined,
       mediaFormats: isGame
         ? mediaFormatsInput && mediaFormatsInput.length > 0
           ? mediaFormatsInput
@@ -548,7 +579,7 @@ export function ItemDetailsModal({
         ownershipStatusInput === "wishlist"
           ? expectedArrivalDateInput.trim() || undefined
           : undefined,
-      rarityTags: rarityInput ? [rarityInput] : undefined,
+      rarityTags: [rarityInput || "undefined"],
       rating: ratingInput > 0 ? ratingInput : undefined,
       ratingMode: usesHypeScale ? "hype" : "note",
 
@@ -561,7 +592,8 @@ export function ItemDetailsModal({
             }
           : undefined,
       purchaseOrigin: purchaseOriginInput.trim() || undefined,
-      notes: notesInput.trim() || undefined,
+      notes: notesWithSubtitleForGame.slice(0, 100) || undefined,
+      review: reviewInput.trim().slice(0, 1000) || undefined,
       genre:
         isGame
           ? [genrePrimaryInput.trim(), genreSecondaryInput.trim()]
@@ -587,7 +619,7 @@ export function ItemDetailsModal({
 
     if (hasDuplicateOnTargetPlatform) {
       setSaveFeedback(
-        "Já existe um item com o mesmo nome, subtítulo e plataforma. Altere os dados para continuar.",
+        "Já existe um item com o mesmo nome, versão/subtítulo e plataforma. Altere os dados para continuar.",
       );
       return;
     }
@@ -636,7 +668,7 @@ export function ItemDetailsModal({
                     <h2 className="mt-2 text-3xl font-semibold text-white">
                       {nameInput || item.title}
                     </h2>
-                    {subtitleInput && (
+                    {!isGame && subtitleInput && (
                       <p className="mt-2 text-base text-white/70">
                         {subtitleInput}
                       </p>
@@ -739,15 +771,60 @@ export function ItemDetailsModal({
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
                   {nameInput || item.title}
                 </h2>
-                {subtitleInput && (
-                  <p className="mt-2 text-lg text-white/65">{subtitleInput}</p>
+                {isGame && (
+                  <>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {previewGenre
+                        .split("/")
+                        .map((genre) => genre.trim())
+                        .filter(Boolean)
+                        .map((genre) => (
+                          <span key={genre} className="rounded-full border border-white/20 bg-black/20 px-3 py-1 text-xs">
+                            {genre}
+                          </span>
+                        ))}
+                    </div>
+                    <p className="mt-3 text-sm text-white/70">
+                      {previewReleaseDateLabel || "Sem data de lançamento"} | {companyInput || "Empresa não informada"}
+                    </p>
+                    <div className="mt-2 flex items-center gap-3">
+                      <span className="text-lg text-cyan-200">{Array.from({ length: 5 }, (_, i) => (i + 1 <= ratingInput ? "★" : "☆")).join("")}</span>
+                      {previewProgressLabel && <StatusBadge label={previewProgressLabel} variant="progress" />}
+                    </div>
+                    <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <p className="text-xs uppercase tracking-[0.2em] text-white/50">Visão Geral</p>
+                      <p className="mt-2 text-sm text-white/70">Plataformas</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {(relatedGameEntries.length > 0 ? relatedGameEntries : [item]).map((entry) => (
+                          <span
+                            key={entry.id}
+                            className={`rounded-full border px-3 py-1 text-xs ${
+                              entry.ownershipStatus === "wishlist"
+                                ? "border-amber-300/80 bg-amber-500/10"
+                                : "border-white/20 bg-white/5"
+                            }`}
+                          >
+                            {entry.platform}
+                            {entry.mediaFormats?.includes("physical") ? " 💿" : ""}
+                            {entry.mediaFormats?.includes("digital") ? " ☁️" : ""}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
-                <p className="mt-2 text-sm text-white/55">
-                  Data de lançamento: {previewReleaseDateLabel || "—"}
-                </p>
+                {!isGame && subtitleInput && <p className="mt-2 text-lg text-white/65">{subtitleInput}</p>}
+                {!isGame && <p className="mt-2 text-sm text-white/55">Data de lançamento: {previewReleaseDateLabel || "—"}</p>}
+                <button
+                  type="button"
+                  onClick={() => setIsEditMode((prev) => !prev)}
+                  className="mt-4 rounded-xl border border-white/20 px-4 py-2 text-sm"
+                >
+                  {isEditMode ? "Fechar edição" : "Editar"}
+                </button>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              {isEditMode && <div className="flex flex-wrap gap-2">
                 <StatusBadge
                   label={formatOwnershipLabel(ownershipStatusInput)}
                   variant={
@@ -779,9 +856,9 @@ export function ItemDetailsModal({
                     variant="rarity"
                   />
                 )}
-              </div>
+              </div>}
 
-              <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+              {isEditMode && <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
                 <h3 className="text-lg font-semibold text-white">
                   Informações principais
                 </h3>
@@ -796,7 +873,7 @@ export function ItemDetailsModal({
                     />
                   </label>
 
-                  {isGame && (
+                  {shouldShowGameStatus && (
                     <label className="block">
                       <span className="mb-2 block text-sm text-white/70">Franquia</span>
                       <input
@@ -809,16 +886,34 @@ export function ItemDetailsModal({
                   )}
 
                   <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">
-                      Subtítulo
-                    </span>
+                    <span className="mb-2 block text-sm text-white/70">Empresa</span>
                     <input
-                      value={subtitleInput}
-                      onChange={(e) => setSubtitleInput(e.target.value)}
-                      placeholder="Opcional"
+                      value={companyInput}
+                      onChange={(e) => setCompanyInput(e.target.value)}
+                      placeholder="Ex: Sony, Nintendo, Capcom"
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                     />
                   </label>
+
+                  {!isGame && (
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/70">
+                        Versão
+                      </span>
+                      <input
+                        value={subtitleInput}
+                        onChange={(e) => setSubtitleInput(e.target.value)}
+                        placeholder="Opcional"
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      />
+                    </label>
+                  )}
+
+                  {isGame && subtitleInput.trim() && (
+                    <p className="text-xs text-amber-200/90 md:col-span-2">
+                      Este jogo tinha subtítulo preenchido. O valor será movido para Notas ao salvar.
+                    </p>
+                  )}
 
                   <label className="block md:col-span-2">
                     <span className="mb-2 block text-sm text-white/70">
@@ -842,7 +937,7 @@ export function ItemDetailsModal({
                     </select>
                   </label>
                 </div>
-              </section>
+              </section>}
 
               {isEditingImage && (
                 <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
@@ -903,14 +998,14 @@ export function ItemDetailsModal({
                     )}
                   </div>
 
-                  {isGame && (
+                  {shouldShowGameStatus && (
                     <label className="block">
                       <span className="mb-2 block text-sm text-white/70">
                         Status do jogo
                       </span>
-                      <GameStatusChips
-                        value={gameProgressStatusInput}
-                        onChange={setGameProgressStatusInput}
+                    <GameStatusChips
+                      value={gameProgressStatusInput}
+                      onChange={setGameProgressStatusInput}
                       />
                     </label>
                   )}
@@ -1135,13 +1230,30 @@ export function ItemDetailsModal({
                         </label>
                       </div>
                       {(item.type === "game" || previewReleaseDateLabel) && (
-                        <p className="mt-3 text-xs text-cyan-100/80">
+                        <p className="mt-3 flex items-center gap-2 text-xs text-cyan-100/80">
                           Referência de lançamento:{" "}
                           {previewReleaseDateLabel
                             ? `${previewReleaseDateLabel} ${
                                 item.type === "game" ? "(IGDB)" : "(cadastrada)"
                               }`
                             : "não informada"}
+                          {hasValidReleaseDate && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={copyReleaseDateToPurchaseDate}
+                                className="rounded border border-cyan-200/30 px-1.5 py-0.5 text-[11px] text-cyan-100 hover:bg-cyan-300/15"
+                              >
+                                ↘ usar na compra
+                              </button>
+                              <span
+                                title="Usa a data de lançamento para preencher dia, mês e ano da data da compra."
+                                className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-cyan-100/40 text-[10px]"
+                              >
+                                ?
+                              </span>
+                            </>
+                          )}
                         </p>
                       )}
                       {purchaseVsReleaseInfo && (
@@ -1171,9 +1283,26 @@ export function ItemDetailsModal({
                     <span className="mb-2 block text-sm text-white/70">Notas</span>
                     <textarea
                       value={notesInput}
-                      onChange={(e) => setNotesInput(e.target.value)}
+                      onChange={(e) => setNotesInput(e.target.value.slice(0, 100))}
                       rows={4}
-                      placeholder="Observações sobre o item"
+                      placeholder="Observações sobre o item (até 100 caracteres)"
+                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                    />
+                    <span className="mt-1 block text-right text-xs text-white/50">{notesInput.length}/100</span>
+                  </label>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="block text-sm text-white/70">Review do item</span>
+                      <span className="text-xs text-white/50">{reviewInput.length}/1000</span>
+                    </div>
+                    <textarea
+                      value={reviewInput}
+                      onChange={(e) => setReviewInput(e.target.value.slice(0, 1000))}
+                      rows={6}
+                      placeholder="Escreva sua review (até 1000 caracteres)"
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                     />
                   </label>
@@ -1340,11 +1469,12 @@ function GameStatusChips({
   onChange: (value: NonNullable<Item["gameProgressStatus"]> | "") => void;
 }) {
   const options: { value: NonNullable<Item["gameProgressStatus"]> | ""; label: string }[] = [
-    { value: "", label: "—" },
+    { value: "undefined", label: "❔ Não definido" },
     { value: "backlog", label: "📚 Backlog" },
     { value: "playing", label: "🎮 Jogando" },
     { value: "paused", label: "⏸️ Pausado" },
     { value: "finished", label: "✅ Terminado" },
+    { value: "seeking_platinum", label: "🥇 Buscando a Platina" },
     { value: "platinum", label: "🏆 Platinado" },
   ];
 
@@ -1413,7 +1543,7 @@ function RarityButtons({
   onChange: (value: NonNullable<Item["rarityTags"]>[number] | "") => void;
 }) {
   const options: { value: NonNullable<Item["rarityTags"]>[number] | ""; label: string }[] = [
-    { value: "", label: "Não definida" },
+    { value: "undefined", label: "Não definida" },
     { value: "normal", label: "Normal" },
     { value: "rare", label: "Raro" },
     { value: "special_edition", label: "Edição especial" },

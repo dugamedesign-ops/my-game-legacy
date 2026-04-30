@@ -15,26 +15,37 @@ type CloudRow = {
 };
 
 function normalizeLegacyOwnership(item: Item): Item {
+  const normalizedBase: Item = {
+    ...item,
+    rarityTags:
+      item.rarityTags && item.rarityTags.length > 0
+        ? item.rarityTags
+        : ["undefined"],
+    gameProgressStatus:
+      item.type === "game" ? item.gameProgressStatus ?? "undefined" : undefined,
+    review: item.review?.slice(0, 1000),
+  };
+
   if (item.ownershipStatus === "preorder") {
     return {
-      ...item,
+      ...normalizedBase,
       ownershipStatus: "wishlist",
       acquisitionStatus: "purchased",
     };
   }
 
-  if (item.ratingMode === "hype" && item.releaseDate) {
-    const releaseDate = new Date(item.releaseDate);
+  if (normalizedBase.ratingMode === "hype" && normalizedBase.releaseDate) {
+    const releaseDate = new Date(normalizedBase.releaseDate);
     if (!Number.isNaN(releaseDate.getTime()) && releaseDate.getTime() <= Date.now()) {
       return {
-        ...item,
+        ...normalizedBase,
         rating: undefined,
         ratingMode: "note",
       };
     }
   }
 
-  return item;
+  return normalizedBase;
 }
 
 function readLocalItems() {
