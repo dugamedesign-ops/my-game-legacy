@@ -1362,7 +1362,14 @@ export function ItemDetailsModal({
               </div>
             </div>
             <div className="sticky bottom-0 mt-6 border-t border-white/10 bg-[#0b1020]/95 p-4 backdrop-blur">
-              <div className="flex justify-end">
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white/80 transition hover:bg-white/10"
+                >
+                  Fechar
+                </button>
                 <button
                   type="button"
                   onClick={handleSaveAll}
@@ -1469,7 +1476,6 @@ function GameStatusChips({
   onChange: (value: NonNullable<Item["gameProgressStatus"]> | "") => void;
 }) {
   const options: { value: NonNullable<Item["gameProgressStatus"]> | ""; label: string }[] = [
-    { value: "undefined", label: "❔ Não definido" },
     { value: "backlog", label: "📚 Backlog" },
     { value: "playing", label: "🎮 Jogando" },
     { value: "paused", label: "⏸️ Pausado" },
