@@ -628,7 +628,7 @@ export function AddItemModal({
           ? "wishlist"
           : prev.ownershipStatus,
       franchise: result.franchise || prev.franchise,
-      company: result.company || prev.company,
+      company: result.publisher || result.company || prev.company,
       genrePrimary: prev.genrePrimary || result.genre || prev.genrePrimary,
       platform:
         prev.platform ||
@@ -939,17 +939,6 @@ export function AddItemModal({
                     </FieldBlock>
                   )}
 
-                  {form.type === "game" && (
-                    <FieldBlock label="Subtítulo / versão">
-                      <input
-                        value={form.subtitle}
-                        onChange={(e) => updateField("subtitle", e.target.value)}
-                        placeholder="Opcional"
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                      />
-                    </FieldBlock>
-                  )}
-
               {form.type === "game" ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FieldBlock label="Plataforma *">
@@ -1160,7 +1149,7 @@ export function AddItemModal({
                   onClick={() => setIsAdvancedOpen((prev) => !prev)}
                   className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left text-sm text-white/90 transition hover:bg-white/10"
                 >
-                  <span>Mais opções (editar depois também)</span>
+                  <span>Mais opções</span>
                   <span className="text-xs">{isAdvancedOpen ? "▲" : "▼"}</span>
                 </button>
 

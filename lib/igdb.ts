@@ -5,6 +5,7 @@ export type IgdbSearchResult = {
   releaseDate: string | null;
   franchise: string;
   company: string;
+  publisher: string;
   genre: string;
   platforms: string[];
 };

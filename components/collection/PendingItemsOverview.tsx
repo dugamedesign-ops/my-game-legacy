@@ -650,6 +650,7 @@ function PendingInlineEditor({
       { value: "paused", label: "Pausado" },
       { value: "finished", label: "Finalizado" },
       { value: "platinum", label: "Platina" },
+      { value: "seeking_platinum", label: "Buscando a Platina" },
     ];
     return (
       <div className="flex flex-wrap gap-2">
