@@ -90,6 +90,7 @@ export function ItemDetailsModal({
   const [reviewInput, setReviewInput] = useState("");
   const [ratingInput, setRatingInput] = useState(0);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isDetailsExpanded, setIsDetailsExpanded] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imagePanelRef = useRef<HTMLDivElement | null>(null);
@@ -171,6 +172,7 @@ export function ItemDetailsModal({
     setRatingInput(item.rating ?? 0);
     setSaveFeedback(null);
     setIsEditMode(false);
+    setIsDetailsExpanded(true);
     const [primary = "", secondary = ""] = (item.genre ?? "")
       .split("/")
       .map((part) => part.trim())
@@ -858,7 +860,17 @@ export function ItemDetailsModal({
                 )}
               </div>}
 
-              {isEditMode && <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+              {isEditMode && (
+                <button
+                  type="button"
+                  onClick={() => setIsDetailsExpanded((prev) => !prev)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs tracking-[0.15em] text-white/75"
+                >
+                  DETALHES <span>{isDetailsExpanded ? "▲" : "▼"}</span>
+                </button>
+              )}
+
+              {isEditMode && <section className={`${isDetailsExpanded ? "block" : "hidden"} rounded-3xl border border-white/10 bg-white/[0.04] p-5`}>
                 <h3 className="text-lg font-semibold text-white">
                   Informações principais
                 </h3>
@@ -964,7 +976,7 @@ export function ItemDetailsModal({
                 className="hidden"
               />
 
-              <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+              <section className={`${isDetailsExpanded ? "block" : "hidden"} rounded-3xl border border-white/10 bg-white/[0.04] p-5`}>
                 <h3 className="text-lg font-semibold text-white">
                   Edição rápida
                 </h3>
@@ -1035,7 +1047,7 @@ export function ItemDetailsModal({
                 )}
               </section>
 
-              <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+              <section className={`${isDetailsExpanded ? "block" : "hidden"} rounded-3xl border border-white/10 bg-white/[0.04] p-5`}>
                 <h3 className="text-lg font-semibold text-white">
                   Financeiro e Metadados
                 </h3>
@@ -1350,7 +1362,7 @@ export function ItemDetailsModal({
               </section>
               {saveFeedback && <p className="text-sm text-rose-200">{saveFeedback}</p>}
 
-              <div className="grid gap-6 xl:grid-cols-2">
+              <div className={`${isDetailsExpanded ? "grid" : "hidden"} gap-6 xl:grid-cols-2`}>
                 <HistorySection
                   title="Histórico de preço monitorado"
                   entries={item.trackedPriceHistory}
@@ -1363,13 +1375,30 @@ export function ItemDetailsModal({
             </div>
             <div className="sticky bottom-0 mt-6 border-t border-white/10 bg-[#0b1020]/95 p-4 backdrop-blur">
               <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white/80 transition hover:bg-white/10"
-                >
-                  Fechar
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white/80 transition hover:bg-white/10"
+                  >
+                    Fechar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onUpdateItem({
+                        ...item,
+                        isRemoved: true,
+                        removedReason: "removed",
+                        updatedAt: new Date().toISOString(),
+                      });
+                      onClose();
+                    }}
+                    className="rounded-2xl border border-rose-300/35 px-4 py-2 text-sm text-rose-300 transition hover:bg-rose-500/10"
+                  >
+                    Excluir
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={handleSaveAll}
