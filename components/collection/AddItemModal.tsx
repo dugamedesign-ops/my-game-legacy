@@ -151,8 +151,8 @@ export function AddItemModal({
     { value: "playing", label: "Jogando" },
     { value: "paused", label: "Pausado" },
     { value: "finished", label: "Terminado" },
-    { value: "platinum", label: "Platinado" },
     { value: "seeking_platinum", label: "Buscando a Platina" },
+    { value: "platinum", label: "Platinado" },
   ];
 
   const modalTitle = useMemo(() => {

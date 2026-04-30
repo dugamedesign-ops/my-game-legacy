@@ -189,14 +189,14 @@ export function FiltersBar({ filters, setFilters, compact = false }: Props) {
             onClick={() => toggleGameStatus("finished")}
           />
           <FilterChip
-            label="Platinado"
-            active={filters.gameStatus.includes("platinum")}
-            onClick={() => toggleGameStatus("platinum")}
-          />
-          <FilterChip
             label="Buscando a Platina"
             active={filters.gameStatus.includes("seeking_platinum")}
             onClick={() => toggleGameStatus("seeking_platinum")}
+          />
+          <FilterChip
+            label="Platinado"
+            active={filters.gameStatus.includes("platinum")}
+            onClick={() => toggleGameStatus("platinum")}
           />
         </FilterGroup>
 

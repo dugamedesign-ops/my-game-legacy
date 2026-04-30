@@ -8,7 +8,8 @@ export type ItemPendingField =
   | "mediaFormats"
   | "gameProgressStatus"
   | "purchasePriority"
-  | "rarity";
+  | "rarity"
+  | "company";
 
 export type ItemPendingInfo = {
   itemId: string;
@@ -29,6 +30,7 @@ export function getItemPendingLabel(field: ItemPendingField) {
     gameProgressStatus: "Status do jogo pendente",
     purchasePriority: "Prioridade pendente",
     rarity: "Raridade pendente",
+    company: "Empresa pendente",
   };
 
   return map[field];
@@ -85,6 +87,10 @@ export function getPendingItems(items: Item[]): ItemPendingInfo[] {
       ) {
         missingFields.push("gameProgressStatus");
       }
+    }
+
+    if (!item.company?.trim()) {
+      missingFields.push("company");
     }
 
     if (
