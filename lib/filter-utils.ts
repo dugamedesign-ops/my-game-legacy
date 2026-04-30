@@ -5,6 +5,7 @@ export type Filters = {
   ownership: Item["ownershipStatus"][];
   priorities: Item["purchasePriority"][];
   gameStatus: Item["gameProgressStatus"][];
+  franchises: string[];
   media: ("physical" | "digital")[];
   missing: ("noImage" | "noPaid" | "noCurrent")[];
 };
@@ -47,6 +48,12 @@ export function applyFilters(items: Item[], filters: Filters) {
       if (!filters.gameStatus.includes(item.gameProgressStatus)) {
         return false;
       }
+    }
+
+    // Franquia
+    if (filters.franchises.length > 0) {
+      if (!item.franchise) return false;
+      if (!filters.franchises.includes(item.franchise)) return false;
     }
 
     // Mídia

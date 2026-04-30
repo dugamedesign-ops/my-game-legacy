@@ -300,6 +300,10 @@ export function ItemDetailsModal({
     Number.isNaN(releaseDateObj.getTime()) ||
     releaseDateObj.getTime() <= Date.now();
   const usesHypeScale = isWishlist && !isReleasedForRating;
+  const hasValidReleaseDate = Boolean(
+    releaseDateObj && !Number.isNaN(releaseDateObj.getTime()),
+  );
+  const shouldShowGameStatus = isGame && hasValidReleaseDate && isReleasedForRating;
   const ratingLabel = usesHypeScale ? "Hype" : "Nota";
   const releaseYear = releaseDateObj && !Number.isNaN(releaseDateObj.getTime())
     ? releaseDateObj.getFullYear()
@@ -344,6 +348,13 @@ export function ItemDetailsModal({
       : [...current, format];
 
     setMediaFormatsInput(next);
+  }
+
+  function copyReleaseDateToPurchaseDate() {
+    if (!releaseDateObj || Number.isNaN(releaseDateObj.getTime())) return;
+    setPurchaseDayInput(String(releaseDateObj.getDate()).padStart(2, "0"));
+    setPurchaseMonthInput(String(releaseDateObj.getMonth() + 1).padStart(2, "0"));
+    setPurchaseYearInput(String(releaseDateObj.getFullYear()));
   }
 
   async function handleSearchCoverAgain() {
@@ -809,7 +820,7 @@ export function ItemDetailsModal({
                     />
                   </label>
 
-                  {isGame && (
+                  {shouldShowGameStatus && (
                     <label className="block">
                       <span className="mb-2 block text-sm text-white/70">Franquia</span>
                       <input
@@ -934,7 +945,7 @@ export function ItemDetailsModal({
                     )}
                   </div>
 
-                  {isGame && (
+                  {shouldShowGameStatus && (
                     <label className="block">
                       <span className="mb-2 block text-sm text-white/70">
                         Status do jogo
@@ -1166,13 +1177,30 @@ export function ItemDetailsModal({
                         </label>
                       </div>
                       {(item.type === "game" || previewReleaseDateLabel) && (
-                        <p className="mt-3 text-xs text-cyan-100/80">
+                        <p className="mt-3 flex items-center gap-2 text-xs text-cyan-100/80">
                           Referência de lançamento:{" "}
                           {previewReleaseDateLabel
                             ? `${previewReleaseDateLabel} ${
                                 item.type === "game" ? "(IGDB)" : "(cadastrada)"
                               }`
                             : "não informada"}
+                          {hasValidReleaseDate && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={copyReleaseDateToPurchaseDate}
+                                className="rounded border border-cyan-200/30 px-1.5 py-0.5 text-[11px] text-cyan-100 hover:bg-cyan-300/15"
+                              >
+                                ↘ usar na compra
+                              </button>
+                              <span
+                                title="Usa a data de lançamento para preencher dia, mês e ano da data da compra."
+                                className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-cyan-100/40 text-[10px]"
+                              >
+                                ?
+                              </span>
+                            </>
+                          )}
                         </p>
                       )}
                       {purchaseVsReleaseInfo && (

@@ -3,6 +3,7 @@
 import type { Filters } from "@/lib/filter-utils";
 import type {
   GameProgressStatus,
+  Item,
   ItemType,
   OwnershipStatus,
   PurchasePriority,
@@ -11,10 +12,11 @@ import type {
 type Props = {
   filters: Filters;
   setFilters: (filters: Filters) => void;
+  items: Item[];
   compact?: boolean;
 };
 
-export function FiltersBar({ filters, setFilters, compact = false }: Props) {
+export function FiltersBar({ filters, setFilters, items, compact = false }: Props) {
   function toggleValue<T>(array: T[], value: T): T[] {
     return array.includes(value)
       ? array.filter((v) => v !== value)
@@ -66,6 +68,12 @@ export function FiltersBar({ filters, setFilters, compact = false }: Props) {
       missing: toggleValue(filters.missing, value),
     });
   }
+  function handleFranchiseChange(value: string) {
+    setFilters({
+      ...filters,
+      franchises: value ? [value] : [],
+    });
+  }
 
   function clearAllFilters() {
     setFilters({
@@ -73,6 +81,7 @@ export function FiltersBar({ filters, setFilters, compact = false }: Props) {
       ownership: [],
       priorities: [],
       gameStatus: [],
+      franchises: [],
       media: [],
       missing: [],
     });
@@ -83,8 +92,12 @@ export function FiltersBar({ filters, setFilters, compact = false }: Props) {
     filters.ownership.length > 0 ||
     filters.priorities.length > 0 ||
     filters.gameStatus.length > 0 ||
+    filters.franchises.length > 0 ||
     filters.media.length > 0 ||
     filters.missing.length > 0;
+  const franchiseOptions = Array.from(
+    new Set(items.map((item) => item.franchise?.trim()).filter(Boolean)),
+  ).sort((a, b) => a!.localeCompare(b!, "pt-BR", { sensitivity: "base" })) as string[];
 
   return (
     <section className={compact ? "" : "mb-6 rounded-3xl border border-white/10 bg-white/[0.04] p-4 shadow-[0_8px_40px_rgb(0,0,0,0.18)]"}>
@@ -198,6 +211,20 @@ export function FiltersBar({ filters, setFilters, compact = false }: Props) {
             active={filters.gameStatus.includes("platinum")}
             onClick={() => toggleGameStatus("platinum")}
           />
+        </FilterGroup>
+        <FilterGroup label="Franquia">
+          <select
+            value={filters.franchises[0] ?? ""}
+            onChange={(event) => handleFranchiseChange(event.target.value)}
+            className="w-full max-w-sm rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-sm text-white"
+          >
+            <option value="">Todas</option>
+            {franchiseOptions.map((franchise) => (
+              <option key={franchise} value={franchise}>
+                {franchise}
+              </option>
+            ))}
+          </select>
         </FilterGroup>
 
         <FilterGroup label="Mídia">

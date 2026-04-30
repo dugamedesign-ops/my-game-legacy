@@ -249,6 +249,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     ownership: [],
     priorities: [],
     gameStatus: [],
+    franchises: [],
     media: [],
     missing: [],
   });
@@ -629,6 +630,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             ? ["finished", "platinum"]
             : [],
       media: [],
+      franchises: [],
       missing: [],
     });
     setFinancialFocusFilters(
@@ -934,6 +936,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       priorities: next.priorities,
       gameStatus: [],
       media: [],
+      franchises: [],
       missing: [],
     }));
     setFinancialFocusFilters(next);
@@ -1501,7 +1504,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                   </button>
                   {isCollectionFiltersOpen && (
                     <div className="border-t border-white/10 p-2">
-                      <FiltersBar filters={filters} setFilters={setFilters} compact />
+                      <FiltersBar
+                        filters={filters}
+                        setFilters={setFilters}
+                        items={collectionItems}
+                        compact
+                      />
                     </div>
                   )}
                 </div>
