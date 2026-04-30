@@ -89,6 +89,7 @@ export function ItemDetailsModal({
   const [notesInput, setNotesInput] = useState("");
   const [reviewInput, setReviewInput] = useState("");
   const [ratingInput, setRatingInput] = useState(0);
+  const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imagePanelRef = useRef<HTMLDivElement | null>(null);
@@ -168,6 +169,7 @@ export function ItemDetailsModal({
     setNotesInput(item.notes ?? "");
     setReviewInput(item.review ?? "");
     setRatingInput(item.rating ?? 0);
+    setIsDetailsExpanded(false);
     setSaveFeedback(null);
     const [primary = "", secondary = ""] = (item.genre ?? "")
       .split("/")
@@ -585,7 +587,7 @@ export function ItemDetailsModal({
           : undefined,
       purchaseOrigin: purchaseOriginInput.trim() || undefined,
       notes: notesWithSubtitleForGame.slice(0, 100) || undefined,
-      review: reviewInput.trim().slice(0, 1000) || undefined,
+      review: reviewInput.trim().slice(0, 5000) || undefined,
       genre:
         isGame
           ? [genrePrimaryInput.trim(), genreSecondaryInput.trim()]
@@ -757,9 +759,6 @@ export function ItemDetailsModal({
           <div className="p-6 sm:p-8">
             <div className="space-y-6">
               <div>
-                <p className="text-sm uppercase tracking-[0.28em] text-white/40">
-                  Detalhes do item
-                </p>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
                   {nameInput || item.title}
                 </h2>
@@ -767,7 +766,7 @@ export function ItemDetailsModal({
                   <p className="mt-2 text-lg text-white/65">{subtitleInput}</p>
                 )}
                 <p className="mt-2 text-sm text-white/55">
-                  Data de lançamento: {previewReleaseDateLabel || "—"}
+                  {previewReleaseDateLabel || "—"} {companyInput ? `| ${companyInput}` : ""}
                 </p>
               </div>
 
@@ -805,6 +804,15 @@ export function ItemDetailsModal({
                 )}
               </div>
 
+              <button
+                type="button"
+                onClick={() => setIsDetailsExpanded((prev) => !prev)}
+                className="inline-flex items-center gap-2 text-sm uppercase tracking-[0.2em] text-white/55"
+              >
+                Detalhes {isDetailsExpanded ? "▲" : "▼"}
+              </button>
+
+              {isDetailsExpanded && (
               <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
                 <h3 className="text-lg font-semibold text-white">
                   Informações principais
@@ -885,6 +893,7 @@ export function ItemDetailsModal({
                   </label>
                 </div>
               </section>
+              )}
 
               {isEditingImage && (
                 <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
@@ -1243,13 +1252,13 @@ export function ItemDetailsModal({
                   <label className="block">
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <span className="block text-sm text-white/70">Review do item</span>
-                      <span className="text-xs text-white/50">{reviewInput.length}/1000</span>
+                      <span className="text-xs text-white/50">{reviewInput.length}/5000</span>
                     </div>
                     <textarea
                       value={reviewInput}
-                      onChange={(e) => setReviewInput(e.target.value.slice(0, 1000))}
+                      onChange={(e) => setReviewInput(e.target.value.slice(0, 5000))}
                       rows={6}
-                      placeholder="Escreva sua review (até 1000 caracteres)"
+                      placeholder="Escreva sua review (até 5000 caracteres)"
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                     />
                   </label>
@@ -1309,7 +1318,15 @@ export function ItemDetailsModal({
               </div>
             </div>
             <div className="sticky bottom-0 mt-6 border-t border-white/10 bg-[#0b1020]/95 p-4 backdrop-blur">
-              <div className="flex justify-end">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4 text-sm">
+                  <button type="button" onClick={onClose} className="text-white/70 hover:text-white">
+                    Fechar
+                  </button>
+                  <button type="button" className="text-rose-400 hover:text-rose-300">
+                    Excluir
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={handleSaveAll}
@@ -1416,7 +1433,6 @@ function GameStatusChips({
   onChange: (value: NonNullable<Item["gameProgressStatus"]> | "") => void;
 }) {
   const options: { value: NonNullable<Item["gameProgressStatus"]> | ""; label: string }[] = [
-    { value: "undefined", label: "❔ Não definido" },
     { value: "backlog", label: "📚 Backlog" },
     { value: "playing", label: "🎮 Jogando" },
     { value: "paused", label: "⏸️ Pausado" },
