@@ -42,6 +42,7 @@ type FormState = {
   priceDigital: string;
   imageUrl: string;
   franchise: string;
+  company: string;
   genrePrimary: string;
   genreSecondary: string;
   releaseDate: string;
@@ -128,6 +129,7 @@ export function AddItemModal({
       priceDigital: "",
       imageUrl: "",
       franchise: "",
+      company: "",
       genrePrimary: "",
       genreSecondary: "",
       releaseDate: "",
@@ -150,6 +152,7 @@ export function AddItemModal({
     { value: "paused", label: "Pausado" },
     { value: "finished", label: "Terminado" },
     { value: "platinum", label: "Platinado" },
+    { value: "seeking_platinum", label: "Buscando a Platina" },
   ];
 
   const modalTitle = useMemo(() => {
@@ -393,6 +396,7 @@ export function AddItemModal({
           : undefined,
       franchise:
         form.type === "game" ? form.franchise.trim() || undefined : undefined,
+      company: form.company.trim() || undefined,
       genre:
         form.type === "game"
           ? [form.genrePrimary.trim(), form.genreSecondary.trim()]
@@ -434,6 +438,7 @@ export function AddItemModal({
     currentUserId,
     form.digital,
     form.accessoryCategory,
+    form.company,
     form.franchise,
     form.gameProgressStatus,
     form.genrePrimary,
@@ -623,6 +628,7 @@ export function AddItemModal({
           ? "wishlist"
           : prev.ownershipStatus,
       franchise: result.franchise || prev.franchise,
+      company: result.company || prev.company,
       genrePrimary: prev.genrePrimary || result.genre || prev.genrePrimary,
       platform:
         prev.platform ||
@@ -1207,6 +1213,15 @@ export function AddItemModal({
                         )}
 
                         <div className="grid gap-4 sm:grid-cols-2">
+                          <FieldBlock label="Empresa">
+                            <input
+                              value={form.company}
+                              onChange={(e) => updateField("company", e.target.value)}
+                              placeholder="Ex: Sony, Nintendo, Capcom"
+                              className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                            />
+                          </FieldBlock>
+
                           <FieldBlock label="Franquia">
                             <CustomSelect
                               value={form.franchise}

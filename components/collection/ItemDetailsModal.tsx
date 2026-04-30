@@ -46,6 +46,7 @@ export function ItemDetailsModal({
   const [nameInput, setNameInput] = useState("");
   const [subtitleInput, setSubtitleInput] = useState("");
   const [franchiseInput, setFranchiseInput] = useState("");
+  const [companyInput, setCompanyInput] = useState("");
   const [platformInput, setPlatformInput] = useState("");
   const [imageUrlInput, setImageUrlInput] = useState("");
 
@@ -116,6 +117,7 @@ export function ItemDetailsModal({
     setNameInput(item.title ?? "");
     setSubtitleInput(item.subtitle ?? "");
     setFranchiseInput(item.franchise ?? "");
+    setCompanyInput(item.company ?? "");
     setPlatformInput(item.platform ?? "");
     setImageUrlInput(item.imageUrl ?? "");
 
@@ -505,11 +507,19 @@ export function ItemDetailsModal({
       ownershipStatusInput === "wishlist" &&
       acquisitionStatusInput === "purchased";
 
+    const subtitleText = subtitleInput.trim();
+    const notesBaseText = notesInput.trim();
+    const notesWithSubtitleForGame =
+      isGame && subtitleText
+        ? `Subtítulo legado: ${subtitleText}${notesBaseText ? `\n${notesBaseText}` : ""}`
+        : notesBaseText;
+
     const updatedItem: Item = {
       ...item,
       title: nameInput.trim() || item.title,
-      subtitle: subtitleInput.trim() || undefined,
+      subtitle: isGame ? undefined : subtitleText || undefined,
       franchise: isGame ? franchiseInput.trim() || undefined : undefined,
+      company: companyInput.trim() || undefined,
       platform: platformInput.trim() || item.platform,
       imageUrl: imageUrlInput.trim() || undefined,
 
@@ -563,7 +573,7 @@ export function ItemDetailsModal({
             }
           : undefined,
       purchaseOrigin: purchaseOriginInput.trim() || undefined,
-      notes: notesInput.trim() || undefined,
+      notes: notesWithSubtitleForGame.slice(0, 100) || undefined,
       review: reviewInput.trim().slice(0, 1000) || undefined,
       genre:
         isGame
@@ -590,7 +600,7 @@ export function ItemDetailsModal({
 
     if (hasDuplicateOnTargetPlatform) {
       setSaveFeedback(
-        "Já existe um item com o mesmo nome, subtítulo e plataforma. Altere os dados para continuar.",
+        "Já existe um item com o mesmo nome, versão/subtítulo e plataforma. Altere os dados para continuar.",
       );
       return;
     }
@@ -639,7 +649,7 @@ export function ItemDetailsModal({
                     <h2 className="mt-2 text-3xl font-semibold text-white">
                       {nameInput || item.title}
                     </h2>
-                    {subtitleInput && (
+                    {!isGame && subtitleInput && (
                       <p className="mt-2 text-base text-white/70">
                         {subtitleInput}
                       </p>
@@ -742,7 +752,7 @@ export function ItemDetailsModal({
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
                   {nameInput || item.title}
                 </h2>
-                {subtitleInput && (
+                {!isGame && subtitleInput && (
                   <p className="mt-2 text-lg text-white/65">{subtitleInput}</p>
                 )}
                 <p className="mt-2 text-sm text-white/55">
@@ -812,16 +822,34 @@ export function ItemDetailsModal({
                   )}
 
                   <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">
-                      Subtítulo
-                    </span>
+                    <span className="mb-2 block text-sm text-white/70">Empresa</span>
                     <input
-                      value={subtitleInput}
-                      onChange={(e) => setSubtitleInput(e.target.value)}
-                      placeholder="Opcional"
+                      value={companyInput}
+                      onChange={(e) => setCompanyInput(e.target.value)}
+                      placeholder="Ex: Sony, Nintendo, Capcom"
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                     />
                   </label>
+
+                  {!isGame && (
+                    <label className="block">
+                      <span className="mb-2 block text-sm text-white/70">
+                        Versão
+                      </span>
+                      <input
+                        value={subtitleInput}
+                        onChange={(e) => setSubtitleInput(e.target.value)}
+                        placeholder="Opcional"
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      />
+                    </label>
+                  )}
+
+                  {isGame && subtitleInput.trim() && (
+                    <p className="text-xs text-amber-200/90 md:col-span-2">
+                      Este jogo tinha subtítulo preenchido. O valor será movido para Notas ao salvar.
+                    </p>
+                  )}
 
                   <label className="block md:col-span-2">
                     <span className="mb-2 block text-sm text-white/70">
@@ -911,9 +939,9 @@ export function ItemDetailsModal({
                       <span className="mb-2 block text-sm text-white/70">
                         Status do jogo
                       </span>
-                      <GameStatusChips
-                        value={gameProgressStatusInput}
-                        onChange={setGameProgressStatusInput}
+                    <GameStatusChips
+                      value={gameProgressStatusInput}
+                      onChange={setGameProgressStatusInput}
                       />
                     </label>
                   )}
@@ -1174,11 +1202,12 @@ export function ItemDetailsModal({
                     <span className="mb-2 block text-sm text-white/70">Notas</span>
                     <textarea
                       value={notesInput}
-                      onChange={(e) => setNotesInput(e.target.value)}
+                      onChange={(e) => setNotesInput(e.target.value.slice(0, 100))}
                       rows={4}
-                      placeholder="Observações sobre o item"
+                      placeholder="Observações sobre o item (até 100 caracteres)"
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                     />
+                    <span className="mt-1 block text-right text-xs text-white/50">{notesInput.length}/100</span>
                   </label>
                 </div>
 

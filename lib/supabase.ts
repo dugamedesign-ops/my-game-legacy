@@ -37,6 +37,7 @@ export type PublicCollectionItem = {
   purchasePriority?: string;
   rarityTags?: string[];
   franchise?: string;
+  company?: string;
   genre?: string;
   imageUrl?: string;
   notes?: string;

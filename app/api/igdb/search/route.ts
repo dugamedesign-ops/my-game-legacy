@@ -66,6 +66,7 @@ function buildSearchBody(query: string) {
       genres.name,
       collections.name,
       franchises.name,
+      involved_companies.company.name,
       platforms.name;
     search "${safeQuery}";
     limit 25;
@@ -83,6 +84,7 @@ function buildPartialNameSearchBody(query: string) {
       genres.name,
       collections.name,
       franchises.name,
+      involved_companies.company.name,
       platforms.name;
     where name ~ *"${safeQuery}"*;
     limit 25;
@@ -99,6 +101,7 @@ type IgdbGame = {
   genres?: { name?: string }[];
   collections?: { name?: string }[];
   franchises?: { name?: string }[];
+  involved_companies?: { company?: { name?: string } }[];
   platforms?: { name?: string }[];
 };
 
@@ -169,6 +172,7 @@ export async function POST(request: NextRequest) {
         game.franchises?.[0]?.name ||
         game.collections?.[0]?.name ||
         "",
+      company: game.involved_companies?.[0]?.company?.name || "",
       genre: game.genres?.[0]?.name || "",
       platforms:
         game.platforms?.map((platform) => platform.name).filter(Boolean) ?? [],

@@ -20,6 +20,7 @@ export function formatProgressLabel(status?: Item["gameProgressStatus"]) {
     paused: "Pausado",
     finished: "Terminado",
     platinum: "Platinado",
+    seeking_platinum: "Buscando a Platina",
   };
 
   return map[status];
@@ -32,6 +33,7 @@ export function getProgressIcon(status?: Item["gameProgressStatus"]) {
   if (status === "paused") return "⏸️";
   if (status === "finished") return "✅";
   if (status === "platinum") return "🏆";
+  if (status === "seeking_platinum") return "🥇";
   return "—";
 }
 

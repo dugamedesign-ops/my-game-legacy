@@ -12,7 +12,8 @@ export type GameProgressStatus =
   | "playing"
   | "paused"
   | "finished"
-  | "platinum";
+  | "platinum"
+  | "seeking_platinum";
 
 export type PurchasePriority = "low" | "medium" | "high" | "maximum";
 
@@ -71,6 +72,7 @@ export type Item = {
   rarityTags?: RarityTag[];
 
   franchise?: string;
+  company?: string;
   genre?: string;
   pcFolder?: PcFolder;
   pcMachineMode?: PcMachineMode;

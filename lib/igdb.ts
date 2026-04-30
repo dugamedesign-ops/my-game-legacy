@@ -4,6 +4,7 @@ export type IgdbSearchResult = {
   coverUrl: string | null;
   releaseDate: string | null;
   franchise: string;
+  company: string;
   genre: string;
   platforms: string[];
 };

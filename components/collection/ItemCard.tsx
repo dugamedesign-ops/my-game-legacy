@@ -53,6 +53,7 @@ function getGameStatusSeal(item: Item) {
   if (item.gameProgressStatus === "paused") return { icon: "⏸️", label: "Pausado" };
   if (item.gameProgressStatus === "finished") return { icon: "✅", label: "Finalizado" };
   if (item.gameProgressStatus === "platinum") return { icon: "🏆", label: "Platina" };
+  if (item.gameProgressStatus === "seeking_platinum") return { icon: "🥇", label: "Buscando a Platina" };
   return null;
 }
 
