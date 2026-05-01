@@ -35,7 +35,7 @@ export function ItemDetailsModal({
   onClose,
   onUpdateItem,
 }: ItemDetailsModalProps) {
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const [isEditingImage, setIsEditingImage] = useState(false);
   const [isSearchingCover, setIsSearchingCover] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -565,9 +565,9 @@ export function ItemDetailsModal({
     }
   }
 
-  const userName = session?.user?.user_metadata?.name ?? "Usuário";
-  const userHandle = session?.user?.email ?? "@usuario";
-  const userAvatar = session?.user?.user_metadata?.avatar_url as string | undefined;
+  const userName = user?.user_metadata?.name ?? "Usuário";
+  const userHandle = user?.email ?? "@usuario";
+  const userAvatar = user?.user_metadata?.avatar_url as string | undefined;
   const gamePlatforms = Array.from(
     new Set(
       existingItems
