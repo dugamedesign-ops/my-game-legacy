@@ -664,9 +664,9 @@ export function ItemDetailsModal({
               </div>
             </div>
 
-            <div className="rounded-full border border-white/10 bg-black/20 px-4 py-3">
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-white/50">Nota</span>
+            <div className="rounded-2xl border border-white/10 bg-gradient-to-r from-white/[0.03] to-white/[0.01] px-4 py-3.5">
+              <div className="flex items-center gap-3">
+                <span className="w-4 text-sm font-medium text-white/55">0</span>
                 <input
                   type="range"
                   min={0}
@@ -674,11 +674,9 @@ export function ItemDetailsModal({
                   step={1}
                   value={ratingInput}
                   onChange={(e) => setRatingInput(Number(e.target.value))}
-                  className="w-full accent-cyan-400"
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/15 accent-cyan-400"
                 />
-                <span className="text-xl tracking-wide text-cyan-300">
-                  {Array.from({ length: 5 }, (_, index) => (index < ratingInput ? "★" : "☆")).join("")}
-                </span>
+                <span className="w-4 text-right text-sm font-medium text-white/55">5</span>
               </div>
             </div>
 
@@ -707,8 +705,8 @@ export function ItemDetailsModal({
             </div>
 
             <div>
-              <p className="inline-flex items-center rounded-full border border-white/40 px-4 py-2 text-lg tracking-[0.18em] text-white/70">
-                DETALHES
+              <p className="inline-flex items-center gap-2 text-lg font-semibold tracking-[0.12em] text-white/70">
+                DETALHES <span className="text-sm text-white/55">▾</span>
               </p>
             </div>
 
