@@ -92,6 +92,7 @@ export function ItemDetailsModal({
   const [isDetailsOpen, setIsDetailsOpen] = useState(true);
   const [selectedPlatformsInput, setSelectedPlatformsInput] = useState<string[]>([]);
   const [igdbPlatformOptions, setIgdbPlatformOptions] = useState<string[]>([]);
+  const [platformStatusInput, setPlatformStatusInput] = useState<Record<string, NonNullable<Item["gameProgressStatus"]> | "">>({});
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imagePanelRef = useRef<HTMLDivElement | null>(null);
@@ -124,7 +125,22 @@ export function ItemDetailsModal({
     setFranchiseInput(item.franchise ?? "");
     setCompanyInput(item.company ?? "");
     setPlatformInput(item.platform ?? "");
-    setSelectedPlatformsInput(item.platform ? [item.platform] : []);
+    const titlePlatforms = existingItems
+      .filter((entry) => !entry.isRemoved && entry.title.trim().toLowerCase() === item.title.trim().toLowerCase())
+      .map((entry) => entry.platform)
+      .filter(Boolean);
+    const uniquePlatforms = Array.from(new Set([item.platform, ...titlePlatforms].filter(Boolean)));
+    setSelectedPlatformsInput(uniquePlatforms);
+    const statusMap: Record<string, NonNullable<Item["gameProgressStatus"]> | ""> = {};
+    existingItems
+      .filter((entry) => !entry.isRemoved && entry.title.trim().toLowerCase() === item.title.trim().toLowerCase())
+      .forEach((entry) => {
+        if (entry.platform) statusMap[entry.platform] = entry.gameProgressStatus ?? "";
+      });
+    if (item.platform && !statusMap[item.platform]) {
+      statusMap[item.platform] = item.gameProgressStatus ?? "";
+    }
+    setPlatformStatusInput(statusMap);
     setIgdbPlatformOptions([]);
     setImageUrlInput(item.imageUrl ?? "");
 
@@ -192,7 +208,7 @@ export function ItemDetailsModal({
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
     setGenreOptions(mergedGenres);
-  }, [item, isOpen]);
+  }, [item, isOpen, existingItems]);
 
   useEffect(() => {
     if (!isOpen || !item || item.type !== "game") return;
@@ -593,24 +609,41 @@ export function ItemDetailsModal({
         ? selectedPlatformsInput
         : [updatedItem.platform];
       const [primaryPlatform, ...extraPlatforms] = selectedPlatforms;
-      const baseUpdatedItem = { ...updatedItem, platform: primaryPlatform };
+      const baseUpdatedItem = {
+        ...updatedItem,
+        platform: primaryPlatform,
+        gameProgressStatus: platformStatusInput[primaryPlatform] || updatedItem.gameProgressStatus,
+      };
       onUpdateItem(baseUpdatedItem);
 
       extraPlatforms.forEach((platform) => {
-        const hasDuplicate = existingItems.some(
+        const existingPlatformItem = existingItems.find(
           (existing) =>
             !existing.isRemoved &&
             existing.id !== updatedItem.id &&
             existing.title.trim().toLowerCase() === updatedItem.title.trim().toLowerCase() &&
-            existing.platform.trim().toLowerCase() === platform.trim().toLowerCase() &&
-            (existing.subtitle ?? "").trim().toLowerCase() === (updatedItem.subtitle ?? "").trim().toLowerCase(),
+            existing.platform.trim().toLowerCase() === platform.trim().toLowerCase(),
         );
-        if (hasDuplicate) return;
+        if (existingPlatformItem) {
+          onUpdateItem({
+            ...existingPlatformItem,
+            title: baseUpdatedItem.title,
+            franchise: baseUpdatedItem.franchise,
+            company: baseUpdatedItem.company,
+            genre: baseUpdatedItem.genre,
+            imageUrl: baseUpdatedItem.imageUrl,
+            review: baseUpdatedItem.review,
+            gameProgressStatus: platformStatusInput[platform] || existingPlatformItem.gameProgressStatus,
+            updatedAt: new Date().toISOString(),
+          });
+          return;
+        }
 
         onAddItem({
           ...baseUpdatedItem,
           id: `item-${crypto.randomUUID()}`,
           platform,
+          gameProgressStatus: platformStatusInput[platform] || baseUpdatedItem.gameProgressStatus,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
@@ -771,30 +804,6 @@ export function ItemDetailsModal({
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: "backlog", label: "📚 Backlog" },
-                { value: "playing", label: "🎮 Jogando" },
-                { value: "paused", label: "⏸️ Pausado" },
-                { value: "finished", label: "✅ Terminado" },
-                { value: "seeking_platinum", label: "🥇 Buscando a Platina" },
-                { value: "platinum", label: "🏆 Platinado" },
-              ].map((status) => (
-                <button
-                  key={status.value}
-                  type="button"
-                  onClick={() => setGameProgressStatusInput(status.value as NonNullable<Item["gameProgressStatus"]>)}
-                  className={`rounded-full border px-5 py-2.5 text-sm transition ${
-                    gameProgressStatusInput === status.value
-                      ? "border-cyan-300/40 bg-cyan-400 text-black"
-                      : "border-white/15 bg-transparent text-white/80"
-                  }`}
-                >
-                  {status.label}
-                </button>
-              ))}
-            </div>
-
             <button
               type="button"
               onClick={() => setIsDetailsOpen((prev) => !prev)}
@@ -867,8 +876,36 @@ export function ItemDetailsModal({
 
               <div className="mt-4 space-y-2">
                 {selectedPlatformsInput.map((platform) => (
-                  <div key={`folder-${platform}`} className="rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white/75">
+                  <div key={`folder-${platform}`} className="space-y-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white/75">
                     {platform}
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: "backlog", label: "📚 Backlog" },
+                        { value: "playing", label: "🎮 Jogando" },
+                        { value: "paused", label: "⏸️ Pausado" },
+                        { value: "finished", label: "✅ Terminado" },
+                        { value: "seeking_platinum", label: "🥇 Buscando a Platina" },
+                        { value: "platinum", label: "🏆 Platinado" },
+                      ].map((status) => (
+                        <button
+                          key={`${platform}-${status.value}`}
+                          type="button"
+                          onClick={() =>
+                            setPlatformStatusInput((current) => ({
+                              ...current,
+                              [platform]: status.value as NonNullable<Item["gameProgressStatus"]>,
+                            }))
+                          }
+                          className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                            platformStatusInput[platform] === status.value
+                              ? "border-cyan-300/40 bg-cyan-400 text-black"
+                              : "border-white/15 bg-transparent text-white/80"
+                          }`}
+                        >
+                          {status.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
