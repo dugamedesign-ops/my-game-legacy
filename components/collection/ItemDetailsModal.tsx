@@ -27,6 +27,7 @@ type ItemDetailsModalProps = {
   onClose: () => void;
   onUpdateItem: (updatedItem: Item) => void;
   onDeleteItem: (itemId: string) => void;
+  onAddItem: (newItem: Item) => void;
 };
 
 export function ItemDetailsModal({
@@ -36,6 +37,7 @@ export function ItemDetailsModal({
   onClose,
   onUpdateItem,
   onDeleteItem,
+  onAddItem,
 }: ItemDetailsModalProps) {
   const { session, user } = useAuth();
   const [isEditingImage, setIsEditingImage] = useState(false);
@@ -587,7 +589,32 @@ export function ItemDetailsModal({
     }
 
     try {
-      onUpdateItem(updatedItem);
+      const selectedPlatforms = selectedPlatformsInput.length > 0
+        ? selectedPlatformsInput
+        : [updatedItem.platform];
+      const [primaryPlatform, ...extraPlatforms] = selectedPlatforms;
+      const baseUpdatedItem = { ...updatedItem, platform: primaryPlatform };
+      onUpdateItem(baseUpdatedItem);
+
+      extraPlatforms.forEach((platform) => {
+        const hasDuplicate = existingItems.some(
+          (existing) =>
+            !existing.isRemoved &&
+            existing.id !== updatedItem.id &&
+            existing.title.trim().toLowerCase() === updatedItem.title.trim().toLowerCase() &&
+            existing.platform.trim().toLowerCase() === platform.trim().toLowerCase() &&
+            (existing.subtitle ?? "").trim().toLowerCase() === (updatedItem.subtitle ?? "").trim().toLowerCase(),
+        );
+        if (hasDuplicate) return;
+
+        onAddItem({
+          ...baseUpdatedItem,
+          id: `item-${crypto.randomUUID()}`,
+          platform,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      });
       onClose();
     } catch (error) {
       console.error(error);
@@ -841,7 +868,7 @@ export function ItemDetailsModal({
               <div className="mt-4 space-y-2">
                 {selectedPlatformsInput.map((platform) => (
                   <div key={`folder-${platform}`} className="rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white/75">
-                    📁 {platform}
+                    {platform}
                   </div>
                 ))}
               </div>

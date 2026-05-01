@@ -1588,6 +1588,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           removeItem(itemId);
           setSelectedItem(null);
         }}
+        onAddItem={addItem}
       />
 
             <AddItemModal
