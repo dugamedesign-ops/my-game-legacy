@@ -1355,9 +1355,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                         item={item}
                         size="small"
                         onClick={setSelectedItem}
-                        onContextMenu={(selectedItem, x, y) => {
-                          setContextMenu({ item: selectedItem, x, y });
-                        }}
                         showMediaSeals={false}
                       />
                     </div>

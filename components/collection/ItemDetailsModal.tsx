@@ -1208,20 +1208,6 @@ export function ItemDetailsModal({
                       )}
                     </div>
 
-                    <div className="mt-4 grid gap-4">
-                      <label className="block">
-                        <span className="mb-2 block text-sm text-white/70">
-                          Origem da compra
-                        </span>
-                        <CustomSelect
-                          value={purchaseOriginInput}
-                          onChange={handlePurchaseOriginChange}
-                          options={purchaseOriginSelectOptions}
-                          placeholder="Em branco"
-                        />
-                      </label>
-
-                    </div>
                   </>
                 )}
 
@@ -1255,58 +1241,8 @@ export function ItemDetailsModal({
                   </label>
                 </div>
 
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {isGame && (hasPhysicalSelected || hasDigitalSelected) ? (
-                    <>
-                      {hasPhysicalSelected && (
-                        <MoneyCard
-                          label="Preço (Físico)"
-                          value={formatCurrency(
-                            isWishlist
-                              ? undefined
-                              : parseOptionalNumber(pricePhysicalInput),
-                          )}
-                        />
-                      )}
-                      {hasDigitalSelected && (
-                        <MoneyCard
-                          label="Preço (Digital)"
-                          value={formatCurrency(
-                            isWishlist
-                              ? undefined
-                              : parseOptionalNumber(priceDigitalInput),
-                          )}
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <MoneyCard
-                      label={isWishlist ? "Valor referência" : "Valor pago"}
-                      value={formatCurrency(
-                        isWishlist
-                          ? undefined
-                          : parseOptionalNumber(amountPaidInput),
-                      )}
-                    />
-                  )}
-                  <MoneyCard
-                    label="Valor atual"
-                    value={formatCurrency(parseOptionalNumber(currentValueInput))}
-                  />
-                </div>
               </section>
               {saveFeedback && <p className="text-sm text-rose-200">{saveFeedback}</p>}
-
-              <div className="grid gap-6 xl:grid-cols-2">
-                <HistorySection
-                  title="Histórico de preço monitorado"
-                  entries={item.trackedPriceHistory}
-                />
-                <HistorySection
-                  title="Histórico de valorização"
-                  entries={item.collectionValueHistory}
-                />
-              </div>
             </div>
             <div className="sticky bottom-0 mt-6 border-t border-white/10 bg-[#0b1020]/95 p-4 backdrop-blur">
               <div className="flex justify-end">
