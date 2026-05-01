@@ -588,19 +588,21 @@ export function ItemDetailsModal({
         >
           ✕
         </button>
-        <div className="mb-5 flex items-center gap-2.5">
-          {userAvatar ? (
-            <img src={userAvatar} alt={userName} className="h-9 w-9 rounded-full object-cover" />
-          ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-[11px] font-medium">
-              {userName.slice(0, 2).toUpperCase()}
+        {!isEditingMode && (
+          <div className="mb-5 flex items-center gap-2.5">
+            {userAvatar ? (
+              <img src={userAvatar} alt={userName} className="h-9 w-9 rounded-full object-cover" />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-[11px] font-medium">
+                {userName.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <p className="text-base font-medium leading-none text-white/90">{userName}</p>
+              <p className="text-sm text-white/55">@{userHandle.replace("@", "").split("@")[0]}</p>
             </div>
-          )}
-          <div>
-            <p className="text-base font-medium leading-none text-white/90">{userName}</p>
-            <p className="text-sm text-white/55">@{userHandle.replace("@", "").split("@")[0]}</p>
           </div>
-        </div>
+        )}
         {!isEditingMode ? (
         <div className="grid gap-6 md:grid-cols-[320px_1fr]">
           <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20">
@@ -654,9 +656,8 @@ export function ItemDetailsModal({
               </div>
               <div>
                 <div className="flex items-center gap-3">
-                  <p className="text-6xl font-bold text-cyan-300">{ratingInput || 0}</p>
-                  <p className="rounded-full border border-cyan-300/30 bg-cyan-400/15 px-3 py-1 text-sm text-cyan-100">
-                    {progressIcon} {previewProgressLabel || "Sem status"}
+                  <p className="text-5xl tracking-wide text-cyan-300">
+                    {Array.from({ length: 5 }, (_, index) => (index < ratingInput ? "★" : "☆")).join("")}
                   </p>
                 </div>
                 <p className="mt-1 text-4xl font-semibold">{nameInput || item.title}</p>
@@ -665,26 +666,30 @@ export function ItemDetailsModal({
 
             <div className="rounded-full border border-white/10 bg-black/20 px-4 py-3">
               <div className="flex items-center gap-4">
-                <span className="text-sm text-white/50">NS</span>
+                <span className="text-sm text-white/50">Nota</span>
                 <input
                   type="range"
                   min={0}
-                  max={10}
+                  max={5}
+                  step={1}
                   value={ratingInput}
                   onChange={(e) => setRatingInput(Number(e.target.value))}
                   className="w-full accent-cyan-400"
                 />
-                <span className="rounded-full border border-cyan-300/40 px-2 py-1 text-sm">{ratingInput}</span>
+                <span className="text-xl tracking-wide text-cyan-300">
+                  {Array.from({ length: 5 }, (_, index) => (index < ratingInput ? "★" : "☆")).join("")}
+                </span>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
               {[
-                { value: "finished", label: "Concluído" },
-                { value: "playing", label: "Jogando" },
-                { value: "paused", label: "Abandonado" },
-                { value: "backlog", label: "Quero" },
-                { value: "undefined", label: "Em espera" },
+                { value: "backlog", label: "📚 Backlog" },
+                { value: "playing", label: "🎮 Jogando" },
+                { value: "paused", label: "⏸️ Pausado" },
+                { value: "finished", label: "✅ Terminado" },
+                { value: "seeking_platinum", label: "🥇 Buscando a Platina" },
+                { value: "platinum", label: "🏆 Platinado" },
               ].map((status) => (
                 <button
                   key={status.value}
