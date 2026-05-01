@@ -26,7 +26,7 @@ type ItemDetailsModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onUpdateItem: (updatedItem: Item) => void;
-  onDeleteItem: (itemId: string) => void;
+  onDeleteItem: (item: Item) => void;
 };
 
 export function ItemDetailsModal({
@@ -884,7 +884,7 @@ export function ItemDetailsModal({
                 <button
                   type="button"
                   onClick={() => {
-                    onDeleteItem(item.id);
+                    onDeleteItem(item);
                     onClose();
                   }}
                   className="text-rose-400 hover:text-rose-300"

@@ -1584,8 +1584,14 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           updateItem(updatedItem);
           setSelectedItem(updatedItem);
         }}
-        onDeleteItem={(itemId) => {
-          removeItem(itemId);
+        onDeleteItem={(itemToDelete) => {
+          updateItem({
+            ...itemToDelete,
+            isRemoved: true,
+            removedReason: "removed",
+            updatedAt: new Date().toISOString(),
+          });
+          removeItem(itemToDelete.id);
           setSelectedItem(null);
         }}
       />
