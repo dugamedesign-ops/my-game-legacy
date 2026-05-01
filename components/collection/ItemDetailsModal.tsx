@@ -27,7 +27,6 @@ type ItemDetailsModalProps = {
   onClose: () => void;
   onUpdateItem: (updatedItem: Item) => void;
   onDeleteItem: (itemId: string) => void;
-  onAddItem: (newItem: Item) => void;
 };
 
 export function ItemDetailsModal({
@@ -37,7 +36,6 @@ export function ItemDetailsModal({
   onClose,
   onUpdateItem,
   onDeleteItem,
-  onAddItem,
 }: ItemDetailsModalProps) {
   const { session, user } = useAuth();
   const [isEditingImage, setIsEditingImage] = useState(false);
@@ -125,12 +123,7 @@ export function ItemDetailsModal({
     setFranchiseInput(item.franchise ?? "");
     setCompanyInput(item.company ?? "");
     setPlatformInput(item.platform ?? "");
-    const titlePlatforms = existingItems
-      .filter((entry) => !entry.isRemoved && entry.title.trim().toLowerCase() === item.title.trim().toLowerCase())
-      .map((entry) => entry.platform)
-      .filter(Boolean);
-    const uniquePlatforms = Array.from(new Set([item.platform, ...titlePlatforms].filter(Boolean)));
-    setSelectedPlatformsInput(uniquePlatforms);
+    setSelectedPlatformsInput(item.platform ? [item.platform] : []);
     const statusMap: Record<string, NonNullable<Item["gameProgressStatus"]> | ""> = {};
     existingItems
       .filter((entry) => !entry.isRemoved && entry.title.trim().toLowerCase() === item.title.trim().toLowerCase())
@@ -605,60 +598,13 @@ export function ItemDetailsModal({
     }
 
     try {
-      const selectedPlatforms = selectedPlatformsInput.length > 0
-        ? selectedPlatformsInput
-        : [updatedItem.platform];
-      const [primaryPlatform, ...extraPlatforms] = selectedPlatforms;
-      const selectedPlatformsSet = new Set(selectedPlatforms.map((platform) => platform.trim().toLowerCase()));
-      existingItems
-        .filter(
-          (existing) =>
-            !existing.isRemoved &&
-            existing.id !== updatedItem.id &&
-            existing.title.trim().toLowerCase() === updatedItem.title.trim().toLowerCase() &&
-            !selectedPlatformsSet.has(existing.platform.trim().toLowerCase()),
-        )
-        .forEach((existing) => onDeleteItem(existing.id));
-
+      const primaryPlatform = selectedPlatformsInput[0] || updatedItem.platform;
       const baseUpdatedItem = {
         ...updatedItem,
         platform: primaryPlatform,
         gameProgressStatus: platformStatusInput[primaryPlatform] || updatedItem.gameProgressStatus,
       };
       onUpdateItem(baseUpdatedItem);
-
-      extraPlatforms.forEach((platform) => {
-        const existingPlatformItem = existingItems.find(
-          (existing) =>
-            !existing.isRemoved &&
-            existing.id !== updatedItem.id &&
-            existing.title.trim().toLowerCase() === updatedItem.title.trim().toLowerCase() &&
-            existing.platform.trim().toLowerCase() === platform.trim().toLowerCase(),
-        );
-        if (existingPlatformItem) {
-          onUpdateItem({
-            ...existingPlatformItem,
-            title: baseUpdatedItem.title,
-            franchise: baseUpdatedItem.franchise,
-            company: baseUpdatedItem.company,
-            genre: baseUpdatedItem.genre,
-            imageUrl: baseUpdatedItem.imageUrl,
-            review: baseUpdatedItem.review,
-            gameProgressStatus: platformStatusInput[platform] || existingPlatformItem.gameProgressStatus,
-            updatedAt: new Date().toISOString(),
-          });
-          return;
-        }
-
-        onAddItem({
-          ...baseUpdatedItem,
-          id: `item-${crypto.randomUUID()}`,
-          platform,
-          gameProgressStatus: platformStatusInput[platform] || baseUpdatedItem.gameProgressStatus,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-      });
       onClose();
     } catch (error) {
       console.error(error);
@@ -864,17 +810,12 @@ export function ItemDetailsModal({
                     <button
                       key={platform}
                       type="button"
-                      onClick={() =>
-                        setSelectedPlatformsInput((current) => {
-                          const next = current.includes(platform)
-                            ? current.filter((entry) => entry !== platform)
-                            : [...current, platform];
-                          setPlatformInput(next[0] ?? platformInput);
-                          return next;
-                        })
-                      }
+                      onClick={() => {
+                        setSelectedPlatformsInput([platform]);
+                        setPlatformInput(platform);
+                      }}
                       className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                        selectedPlatformsInput.includes(platform)
+                        selectedPlatformsInput[0] === platform
                           ? "border-cyan-300/40 bg-cyan-400/20 text-cyan-100"
                           : "border-white/15 bg-black/20 text-white/75"
                       }`}
