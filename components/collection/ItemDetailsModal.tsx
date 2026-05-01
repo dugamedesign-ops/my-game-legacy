@@ -565,760 +565,83 @@ export function ItemDetailsModal({
     }
   }
 
+  const userName = session?.user?.user_metadata?.name ?? "Usuário";
+  const userHandle = session?.user?.email ?? "@usuario";
+  const userAvatar = session?.user?.user_metadata?.avatar_url as string | undefined;
+  const gamePlatforms = Array.from(
+    new Set(
+      existingItems
+        .filter((entry) => !entry.isRemoved && entry.title.trim().toLowerCase() === item.title.trim().toLowerCase())
+        .map((entry) => entry.platform)
+        .filter(Boolean),
+    ),
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6 backdrop-blur-sm">
-      <div className="relative max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-[32px] border border-white/10 bg-[#0b1020] text-white shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
+      <div className="relative w-full max-w-5xl rounded-[32px] border border-white/10 bg-gradient-to-br from-[#1f2535] via-[#161b28] to-[#131722] p-6 text-white shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-sm text-white/80 transition hover:bg-white/15 hover:text-white"
+          className="absolute right-4 top-4 z-10 rounded-2xl border border-white/20 bg-white/5 p-3 text-white/70 hover:bg-white/10"
         >
-          X
+          ✕
         </button>
-
-        <div className="grid max-h-[90vh] grid-cols-1 overflow-y-auto lg:grid-cols-[360px_1fr]">
-          <div
-            ref={imagePanelRef}
-            className="border-b border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-black lg:sticky lg:top-0 lg:self-start lg:border-b-0 lg:border-r"
-          >
-            <div
-              className="relative aspect-[3/4] w-full cursor-pointer"
-              onClick={() => setIsImageActionsOpen((prev) => !prev)}
-            >
-              {imageUrlInput ? (
-                <img
-                  src={imageUrlInput}
-                  alt={nameInput || item.title}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-end bg-gradient-to-br from-slate-700/60 via-slate-900 to-black p-6">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.25em] text-white/45">
-                      {platformInput || item.platform}
-                    </p>
-                    <h2 className="mt-2 text-3xl font-semibold text-white">
-                      {nameInput || item.title}
-                    </h2>
-                    {!isGame && subtitleInput && (
-                      <p className="mt-2 text-base text-white/70">
-                        {subtitleInput}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-              {isImageActionsOpen && (
-                <div
-                  className="absolute inset-0 flex items-end justify-center bg-black/35 px-3 py-4 backdrop-blur-[3px]"
-                >
-                  <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-cyan-200/45 bg-black/55 p-2 shadow-[0_0_0_1px_rgba(103,232,249,0.22)]">
-                    <IconActionButton
-                      icon="✏️"
-                      label="Editar imagem"
-                      onClick={() => setIsEditingImage((prev) => !prev)}
-                    />
-                    <IconActionButton
-                      icon="🖼️"
-                      label={isUploadingImage ? "Enviando..." : "Trocar imagem"}
-                      onClick={handlePickImageFromComputer}
-                    />
-                    {isGame && (
-                      <IconActionButton
-                        icon="🔎"
-                        label={isSearchingCover ? "Buscando..." : "IGDB"}
-                        onClick={handleSearchCoverAgain}
-                      />
-                    )}
-                    {imageUrlInput && (
-                      <IconActionButton
-                        icon="🗑️"
-                        label="Remover imagem"
-                        onClick={handleRemoveImage}
-                      />
-                    )}
-                  </div>
-                </div>
-              )}
+        <div className="mb-6 flex items-center gap-3">
+          {userAvatar ? (
+            <img src={userAvatar} alt={userName} className="h-12 w-12 rounded-full object-cover" />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-sm font-semibold">
+              {userName.slice(0, 2).toUpperCase()}
             </div>
-            <div className="space-y-3 border-t border-white/10 px-3 py-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-white/45">{ratingLabel}</p>
-                <div className="mt-1 flex items-center gap-1">
-                  {Array.from({ length: 5 }, (_, index) => {
-                    const star = index + 1;
-                    return (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setRatingInput(star === ratingInput ? 0 : star)}
-                        className="text-lg"
-                        aria-label={`Definir ${usesHypeScale ? "hype" : "nota"} ${star}`}
-                      >
-                        {star <= ratingInput ? "★" : "☆"}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 text-xs text-white/80">
-                {isGame && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    {progressIcon} {previewProgressLabel || "Sem status"}
-                  </span>
-                )}
-                {!!previewGenre && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    🎯 {previewGenre}
-                  </span>
-                )}
-                {previewReleaseDateLabel && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    📅 {previewReleaseDateLabel}
-                  </span>
-                )}
-                {expectedArrivalDateInput && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    🚚 Entrega: {expectedArrivalDateInput}
-                  </span>
-                )}
-                <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                  🕹 {platformInput || item.platform}
-                </span>
-                {!!item.franchise && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    🧩 {item.franchise}
-                  </span>
-                )}
-              </div>
-            </div>
+          )}
+          <div>
+            <p className="text-3xl font-semibold leading-none">{userName}</p>
+            <p className="text-lg text-white/60">@{userHandle.replace("@", "").split("@")[0]}</p>
           </div>
-
-          <div className="p-6 sm:p-8">
-            <div className="space-y-6">
-              <div>
-                <p className="text-sm uppercase tracking-[0.28em] text-white/40">
-                  Detalhes do item
-                </p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-                  {nameInput || item.title}
-                </h2>
-                {!isGame && subtitleInput && (
-                  <p className="mt-2 text-lg text-white/65">{subtitleInput}</p>
-                )}
-                <p className="mt-2 text-sm text-white/55">
-                  Data de lançamento: {previewReleaseDateLabel || "—"}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <StatusBadge
-                  label={formatOwnershipLabel(ownershipStatusInput)}
-                  variant={
-                    ownershipStatusInput === "wishlist"
-                      ? "wishlist"
-                      : "default"
-                  }
-                />
-
-                {previewPriorityLabel && isWishlist && (
-                  <StatusBadge label={previewPriorityLabel} variant="priority" />
-                )}
-
-                {previewProgressLabel && (
-                  <StatusBadge label={previewProgressLabel} variant="progress" />
-                )}
-
-                {mediaFormatsInput?.map((format) => (
-                  <StatusBadge
-                    key={format}
-                    label={formatMediaLabel(format)}
-                    variant="media"
-                  />
-                ))}
-
-                {rarityInput && (
-                  <StatusBadge
-                    label={formatRarityLabel(rarityInput)}
-                    variant="rarity"
-                  />
-                )}
-              </div>
-
-              <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                <h3 className="text-lg font-semibold text-white">
-                  Informações principais
-                </h3>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">Nome</span>
-                    <input
-                      value={nameInput}
-                      onChange={(e) => setNameInput(e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                    />
-                  </label>
-
-                  {shouldShowGameStatus && (
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/70">Franquia</span>
-                      <input
-                        value={franchiseInput}
-                        onChange={(e) => setFranchiseInput(e.target.value)}
-                        placeholder="Opcional"
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                      />
-                    </label>
-                  )}
-
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">Empresa</span>
-                    <input
-                      value={companyInput}
-                      onChange={(e) => setCompanyInput(e.target.value)}
-                      placeholder="Ex: Sony, Nintendo, Capcom"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
-                  </label>
-
-                  {!isGame && (
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/70">
-                        Versão
-                      </span>
-                      <input
-                        value={subtitleInput}
-                        onChange={(e) => setSubtitleInput(e.target.value)}
-                        placeholder="Opcional"
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                      />
-                    </label>
-                  )}
-
-                  {isGame && subtitleInput.trim() && (
-                    <p className="text-xs text-amber-200/90 md:col-span-2">
-                      Este jogo tinha subtítulo preenchido. O valor será movido para Notas ao salvar.
-                    </p>
-                  )}
-
-                  <label className="block md:col-span-2">
-                    <span className="mb-2 block text-sm text-white/70">
-                      Plataforma
-                    </span>
-                    <select
-                      value={platformInput}
-                      onChange={(e) => setPlatformInput(e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                    >
-                      {platformOptions.length === 0 && (
-                        <option value="" className="bg-[#0b1020]">
-                          Sem plataforma cadastrada
-                        </option>
-                      )}
-                      {platformOptions.map((platform) => (
-                        <option key={platform} value={platform} className="bg-[#0b1020]">
-                          {platform}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-              </section>
-
-              {isEditingImage && (
-                <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                  <h3 className="text-lg font-semibold text-white">Ajustar imagem</h3>
-                  <div className="mt-4 space-y-3">
-                    <input
-                      value={imageUrlInput}
-                      onChange={(e) => setImageUrlInput(e.target.value)}
-                      placeholder="Cole aqui a URL da nova imagem"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
-                    <p className="text-sm text-white/55">
-                      Você pode colar a URL manualmente, buscar via IGDB ou enviar do computador.
-                    </p>
-                  </div>
-                </section>
-              )}
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-
-              <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                <h3 className="text-lg font-semibold text-white">
-                  Edição rápida
-                </h3>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div className="block">
-                    <span className="mb-2 block text-sm text-white/70">
-                      Status de posse
-                    </span>
-                    <OwnershipStatusButtons
-                      value={ownershipStatusInput}
-                      onChange={(value) => setOwnershipStatusInput(value)}
-                    />
-                    {isGame && (
-                      <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                        <span className="mb-2 block text-sm text-white/70">Mídia</span>
-                        <div className="flex flex-wrap gap-2">
-                          <ToggleChip
-                            label="Física"
-                            active={mediaFormatsInput?.includes("physical") ?? false}
-                            onClick={() => toggleMediaFormat("physical")}
-                          />
-
-                          <ToggleChip
-                            label="Digital"
-                            active={mediaFormatsInput?.includes("digital") ?? false}
-                            onClick={() => toggleMediaFormat("digital")}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {shouldShowGameStatus && (
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/70">
-                        Status do jogo
-                      </span>
-                    <GameStatusChips
-                      value={gameProgressStatusInput}
-                      onChange={setGameProgressStatusInput}
-                      />
-                    </label>
-                  )}
-                </div>
-
-                {isGame && (
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/70">Gênero 1</span>
-                      <CustomSelect
-                        value={genrePrimaryInput}
-                        onChange={(value) => handleGenreChange("primary", value)}
-                        options={genrePrimaryOptions}
-                        placeholder="Em branco"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/70">Gênero 2</span>
-                      <CustomSelect
-                        value={genreSecondaryInput}
-                        onChange={(value) => handleGenreChange("secondary", value)}
-                        options={genreSecondaryOptions}
-                        placeholder="Em branco"
-                      />
-                    </label>
-                  </div>
-                )}
-              </section>
-
-              <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                <h3 className="text-lg font-semibold text-white">
-                  Financeiro e Metadados
-                </h3>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {isGame ? (
-                    <>
-                      {(hasPhysicalSelected || hasDigitalSelected) ? (
-                        <>
-                          {hasPhysicalSelected && (
-                            <label className="block">
-                              <span className="mb-2 block text-sm text-white/70">Preço (Físico)</span>
-                              <input
-                                value={pricePhysicalInput}
-                                onChange={(e) => setPricePhysicalInput(e.target.value)}
-                                placeholder={shouldDisablePaidInputs ? "Opcional na wishlist" : "Ex: 299.90"}
-                                disabled={shouldDisablePaidInputs}
-                                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
-                              />
-                            </label>
-                          )}
-                          {hasDigitalSelected && (
-                            <label className="block">
-                              <span className="mb-2 block text-sm text-white/70">Preço (Digital)</span>
-                              <input
-                                value={priceDigitalInput}
-                                onChange={(e) => setPriceDigitalInput(e.target.value)}
-                                placeholder={shouldDisablePaidInputs ? "Opcional na wishlist" : "Ex: 249.90"}
-                                disabled={shouldDisablePaidInputs}
-                                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
-                              />
-                            </label>
-                          )}
-                        </>
-                      ) : (
-                        <label className="block">
-                          <span className="mb-2 block text-sm text-white/70">
-                            {isWishlist ? "Valor de referência" : "Valor pago"}
-                          </span>
-                          <input
-                            value={amountPaidInput}
-                            onChange={(e) => setAmountPaidInput(e.target.value)}
-                            placeholder={
-                              shouldDisablePaidInputs
-                                ? "Wishlist não usa valor pago"
-                                : "Ex: 299.90"
-                            }
-                            disabled={shouldDisablePaidInputs}
-                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
-                          />
-                        </label>
-                      )}
-                    </>
-                  ) : (
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/70">
-                        {isWishlist ? "Valor de referência" : "Valor pago"}
-                      </span>
-                      <input
-                        value={amountPaidInput}
-                        onChange={(e) => setAmountPaidInput(e.target.value)}
-                        placeholder={
-                          shouldDisablePaidInputs
-                            ? "Wishlist não usa valor pago"
-                            : "Ex: 299.90"
-                        }
-                        disabled={shouldDisablePaidInputs}
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 disabled:opacity-50"
-                      />
-                    </label>
-                  )}
-
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">
-                      Valor atual
-                    </span>
-                    <input
-                      value={currentValueInput}
-                      onChange={(e) => setCurrentValueInput(e.target.value)}
-                      placeholder={
-                        isWishlist
-                          ? "Ex: valor atual da wishlist"
-                          : "Ex: valor atual de mercado"
-                      }
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
-                  </label>
-
-                  {isWishlist && !hasAcquisitionInWishlist ? (
-                    <label className="block md:col-span-2">
-                      <span className="mb-2 block text-sm text-white/70">
-                        Prioridade
-                      </span>
-                      <PriorityButtons
-                        value={purchasePriorityInput}
-                        onChange={(value) => setPurchasePriorityInput(value)}
-                      />
-                    </label>
-                  ) : (
-                    <div />
-                  )}
-
-                  <label className="block md:col-span-2">
-                    <span className="mb-2 block text-sm text-white/70">
-                      Raridade
-                    </span>
-                    <RarityButtons
-                      itemType={item.type}
-                      value={rarityInput}
-                      onChange={(value) => setRarityInput(value)}
-                    />
-                  </label>
-
-                  {isWishlist && (
-                    <>
-                      <label className="block md:col-span-2">
-                        <span className="mb-2 block text-sm text-white/70">
-                          Substatus de compra
-                        </span>
-                        <div className="grid grid-cols-1 gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setAcquisitionStatusInput((current) =>
-                                current === "purchased" ? "" : "purchased",
-                              )
-                            }
-                            className={`rounded-xl border px-3 py-2 text-sm transition ${
-                              acquisitionStatusInput === "purchased"
-                                ? "border-red-300 bg-red-500/20 text-red-100"
-                                : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
-                            }`}
-                          >
-                            Comprado
-                          </button>
-                        </div>
-                      </label>
-
-                      {acquisitionStatusInput && (
-                        <label className="block md:col-span-2">
-                          <span className="mb-2 block text-sm text-white/70">
-                            Previsão de entrega (opcional)
-                          </span>
-                          <input
-                            value={expectedArrivalDateInput}
-                            onChange={(e) => setExpectedArrivalDateInput(e.target.value)}
-                            placeholder="DD-MM-AAAA"
-                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                          />
-                          <p className="mt-2 text-xs text-white/55">
-                            Você pode preencher agora ou editar depois neste mesmo modal.
-                          </p>
-                        </label>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {!isWishlist && (
-                  <>
-                    <div className="mt-4">
-                      <span className="mb-2 block text-sm text-white/70">
-                        Data da compra
-                      </span>
-                      <div className="grid gap-4 md:grid-cols-3">
-                        <label className="block">
-                          <span className="mb-2 block text-sm text-white/60">Dia</span>
-                          <input
-                            value={purchaseDayInput}
-                            onChange={(e) => setPurchaseDayInput(e.target.value)}
-                            placeholder="11"
-                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                          />
-                        </label>
-                        <label className="block">
-                          <span className="mb-2 block text-sm text-white/60">Mês</span>
-                          <input
-                            value={purchaseMonthInput}
-                            onChange={(e) => setPurchaseMonthInput(e.target.value)}
-                            placeholder="04"
-                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                          />
-                        </label>
-                        <label className="block">
-                          <span className="mb-2 block text-sm text-white/60">Ano</span>
-                          <CustomSelect
-                            value={purchaseYearInput}
-                            onChange={setPurchaseYearInput}
-                            options={purchaseYearOptions}
-                            placeholder="2026"
-                          />
-                        </label>
-                      </div>
-                      {(item.type === "game" || previewReleaseDateLabel) && (
-                        <p className="mt-3 flex items-center gap-2 text-xs text-cyan-100/80">
-                          Referência de lançamento:{" "}
-                          {previewReleaseDateLabel
-                            ? `${previewReleaseDateLabel} ${
-                                item.type === "game" ? "(IGDB)" : "(cadastrada)"
-                              }`
-                            : "não informada"}
-                          {hasValidReleaseDate && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={copyReleaseDateToPurchaseDate}
-                                className="rounded border border-cyan-200/30 px-1.5 py-0.5 text-[11px] text-cyan-100 hover:bg-cyan-300/15"
-                              >
-                                ↘ usar na compra
-                              </button>
-                              <span
-                                title="Usa a data de lançamento para preencher dia, mês e ano da data da compra."
-                                className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-cyan-100/40 text-[10px]"
-                              >
-                                ?
-                              </span>
-                            </>
-                          )}
-                        </p>
-                      )}
-                      {purchaseVsReleaseInfo && (
-                        <p className="mt-2 text-sm text-cyan-100/85">{purchaseVsReleaseInfo}</p>
-                      )}
-                    </div>
-
-                  </>
-                )}
-
-                <div className="mt-4">
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">Notas</span>
-                    <textarea
-                      value={notesInput}
-                      onChange={(e) => setNotesInput(e.target.value.slice(0, 100))}
-                      rows={4}
-                      placeholder="Observações sobre o item (até 100 caracteres)"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
-                    <span className="mt-1 block text-right text-xs text-white/50">{notesInput.length}/100</span>
-                  </label>
-                </div>
-
-                <div className="mt-4">
-                  <label className="block">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="block text-sm text-white/70">Review</span>
-                      <span className="text-xs text-white/50">{reviewInput.length}/5000</span>
-                    </div>
-                    <textarea
-                      value={reviewInput}
-                      onChange={(e) => setReviewInput(e.target.value.slice(0, 5000))}
-                      rows={6}
-                      placeholder="Escreva sua review (até 5000 caracteres)"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
-                  </label>
-                </div>
-              </section>
-              {saveFeedback && <p className="text-sm text-rose-200">{saveFeedback}</p>}
+        </div>
+        <div className="grid gap-6 md:grid-cols-[320px_1fr]">
+          <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20">
+            {imageUrlInput ? (
+              <img src={imageUrlInput} alt={nameInput || item.title} className="h-full w-full object-cover" />
+            ) : (
+              <div className="aspect-[3/4] w-full bg-black/30" />
+            )}
+          </div>
+          <div>
+            <h2 className="text-5xl font-bold">{nameInput || item.title}</h2>
+            <p className="mt-2 text-2xl text-white/70">{previewGenre || "Sem gêneros cadastrados"}</p>
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-lg text-white/65">
+              <span>{previewReleaseDateLabel || "Sem data de lançamento"}</span>
+              {companyInput && <span>Empresa: {companyInput}</span>}
+              {franchiseInput && <span>Franquia: {franchiseInput}</span>}
             </div>
-            <div className="sticky bottom-0 mt-6 border-t border-white/10 bg-[#0b1020]/95 p-4 backdrop-blur">
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleSaveAll}
-                  className="rounded-2xl bg-white px-6 py-2 text-sm font-semibold text-black transition hover:bg-white/90"
-                >
-                  <span className="block">Salvar</span>
-                  <span className="block text-[11px] font-normal text-black/70">
-                    Ctrl/⌘ + Enter
-                  </span>
-                </button>
+            <div className="mt-5 flex items-center gap-4">
+              <div className="text-6xl font-bold text-cyan-300">{ratingInput || 0}</div>
+              <div className="rounded-full bg-cyan-400 px-5 py-2 text-xl font-medium text-black">
+                {progressIcon} {previewProgressLabel || "Sem status"}
               </div>
+            </div>
+            <div className="mt-6 border-t border-white/10 pt-4">
+              <p className="text-2xl font-semibold text-white/70">VISÃO GERAL</p>
+              <p className="mt-3 text-xl text-white/60">Plataformas</p>
+              <p className="text-3xl font-semibold">{gamePlatforms.join(", ") || item.platform}</p>
+            </div>
+            <div className="mt-8 border-t border-white/10 pt-4">
+              <button
+                type="button"
+                className="text-2xl text-white/70 transition hover:text-white"
+              >
+                ✎ Editar
+              </button>
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );
 }
-
-function ToggleChip({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full border px-4 py-2 text-sm transition ${
-        active
-          ? "border-cyan-400/30 bg-cyan-500/15 text-cyan-100"
-          : "border-white/10 bg-white/5 text-white/75 hover:bg-white/10"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function IconActionButton({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: string;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={(event) => {
-        event.stopPropagation();
-        onClick();
-      }}
-      title={label}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200/35 bg-cyan-500/15 text-sm shadow-[0_0_0_1px_rgba(103,232,249,0.2)] transition hover:bg-cyan-400/25"
-      aria-label={label}
-    >
-      {icon}
-    </button>
-  );
-}
-
-function OwnershipStatusButtons({
-  value,
-  onChange,
-}: {
-  value: Item["ownershipStatus"];
-  onChange: (value: Item["ownershipStatus"]) => void;
-}) {
-  return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      {[
-        { value: "collection", label: "Na coleção", active: "border-white/25 bg-white text-black" },
-        { value: "wishlist", label: "Wishlist", active: "border-amber-300 bg-amber-300 text-black" },
-      ].map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          onClick={() => onChange(option.value as Item["ownershipStatus"])}
-          className={`rounded-lg border px-2.5 py-2 text-xs transition ${
-            value === option.value
-              ? option.active
-              : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
-          }`}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function GameStatusChips({
-  value,
-  onChange,
-}: {
-  value: NonNullable<Item["gameProgressStatus"]> | "";
-  onChange: (value: NonNullable<Item["gameProgressStatus"]> | "") => void;
-}) {
-  const options: { value: NonNullable<Item["gameProgressStatus"]> | ""; label: string }[] = [
-    { value: "backlog", label: "📚 Backlog" },
-    { value: "playing", label: "🎮 Jogando" },
-    { value: "paused", label: "⏸️ Pausado" },
-    { value: "finished", label: "✅ Terminado" },
-    { value: "seeking_platinum", label: "🥇 Buscando a Platina" },
-    { value: "platinum", label: "🏆 Platinado" },
-  ];
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((option) => (
-        <button
-          key={option.label}
-          type="button"
-          onClick={() => onChange(option.value)}
-          className={`rounded-full border px-3 py-2 text-sm transition ${
-            value === option.value
-              ? "border-cyan-300/70 bg-cyan-400/20 text-cyan-100"
-              : "border-white/10 bg-black/20 text-white/75 hover:bg-white/10"
-          }`}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function PriorityButtons({
   value,
   onChange,
