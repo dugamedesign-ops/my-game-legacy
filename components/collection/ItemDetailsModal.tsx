@@ -712,6 +712,57 @@ export function ItemDetailsModal({
               </p>
             </div>
 
+            <section className="rounded-3xl border border-white/10 bg-black/15 p-4">
+              <h4 className="text-sm uppercase tracking-[0.2em] text-white/55">Informações principais</h4>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1 block text-xs text-white/45">Nome</span>
+                  <input
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs text-white/45">Franquia</span>
+                  <input
+                    value={franchiseInput}
+                    onChange={(e) => setFranchiseInput(e.target.value)}
+                    placeholder="(se houver)"
+                    className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30"
+                  />
+                </label>
+                <label className="block md:col-span-2">
+                  <span className="mb-1 block text-xs text-white/45">Empresa</span>
+                  <input
+                    value={companyInput}
+                    onChange={(e) => setCompanyInput(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white outline-none"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-4">
+                <span className="mb-2 block text-xs text-white/45">Plataformas</span>
+                <div className="flex flex-wrap gap-2">
+                  {(gamePlatforms.length > 0 ? gamePlatforms : platformOptions).map((platform) => (
+                    <button
+                      key={platform}
+                      type="button"
+                      onClick={() => setPlatformInput(platform)}
+                      className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                        platformInput === platform
+                          ? "border-cyan-300/40 bg-cyan-400/20 text-cyan-100"
+                          : "border-white/15 bg-black/20 text-white/75"
+                      }`}
+                    >
+                      {platform}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+
             <div className="rounded-3xl border border-white/10 bg-black/15 p-4">
               <textarea
                 value={reviewInput}
