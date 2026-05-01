@@ -14,6 +14,19 @@ type CloudRow = {
   updated_at: string;
 };
 
+function dedupeById(items: Item[]): Item[] {
+  const seen = new Set<string>();
+  const deduped: Item[] = [];
+
+  items.forEach((item) => {
+    if (seen.has(item.id)) return;
+    seen.add(item.id);
+    deduped.push(item);
+  });
+
+  return deduped;
+}
+
 function normalizeLegacyOwnership(item: Item): Item {
   const normalizedBase: Item = {
     ...item,
@@ -189,11 +202,13 @@ export function usePersistentCollection(initialItems: Item[]) {
 
         if (isCancelled) return;
 
-        const cloudItems = data.map((entry) => ({
-          ...normalizeLegacyOwnership(entry.payload),
-          id: entry.id,
-          userId: currentUserId,
-        }));
+        const cloudItems = dedupeById(
+          data.map((entry) => ({
+            ...normalizeLegacyOwnership(entry.payload),
+            id: entry.id,
+            userId: currentUserId,
+          })),
+        );
         const pendingItems = readPendingItems(currentUserId);
         const mergedItems = [...cloudItems];
         pendingItems.forEach((pending) => {
@@ -202,7 +217,7 @@ export function usePersistentCollection(initialItems: Item[]) {
           }
         });
 
-        setItems(mergedItems);
+        setItems(dedupeById(mergedItems));
 
         const dismissedKey = `game-collection-import-dismissed:${currentUserId}`;
         const wasDismissed =
@@ -328,6 +343,7 @@ export function usePersistentCollection(initialItems: Item[]) {
         void upsertCloudItem(normalized);
       },
       removeItem: (itemId: string) => {
+        unqueuePendingItem(itemId);
         setItems((prev) => prev.filter((item) => item.id !== itemId));
         void deleteCloudItem(itemId);
       },
@@ -336,5 +352,5 @@ export function usePersistentCollection(initialItems: Item[]) {
       },
       isLoaded,
     };
-  }, [deleteCloudItem, hasLocalDataToImport, isLoaded, isSyncing, items, session, upsertCloudItem, user]);
+  }, [deleteCloudItem, hasLocalDataToImport, isLoaded, isSyncing, items, session, unqueuePendingItem, upsertCloudItem, user]);
 }
