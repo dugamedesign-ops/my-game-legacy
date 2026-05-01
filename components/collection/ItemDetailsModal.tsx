@@ -701,74 +701,49 @@ export function ItemDetailsModal({
                 </div>
               )}
             </div>
-            <div className="space-y-3 border-t border-white/10 px-3 py-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-white/45">{ratingLabel}</p>
-                <div className="mt-1 flex items-center gap-1">
-                  {Array.from({ length: 5 }, (_, index) => {
-                    const star = index + 1;
-                    return (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setRatingInput(star === ratingInput ? 0 : star)}
-                        className="text-lg"
-                        aria-label={`Definir ${usesHypeScale ? "hype" : "nota"} ${star}`}
-                      >
-                        {star <= ratingInput ? "★" : "☆"}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 text-xs text-white/80">
-                {isGame && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    {progressIcon} {previewProgressLabel || "Sem status"}
-                  </span>
-                )}
-                {!!previewGenre && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    🎯 {previewGenre}
-                  </span>
-                )}
-                {previewReleaseDateLabel && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    📅 {previewReleaseDateLabel}
-                  </span>
-                )}
-                {expectedArrivalDateInput && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    🚚 Entrega: {expectedArrivalDateInput}
-                  </span>
-                )}
-                <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                  🕹 {platformInput || item.platform}
-                </span>
-                {!!item.franchise && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    🧩 {item.franchise}
-                  </span>
-                )}
-              </div>
-            </div>
           </div>
 
           <div className="p-6 sm:p-8">
             <div className="space-y-6">
               <div>
-                <p className="text-sm uppercase tracking-[0.28em] text-white/40">
-                  Detalhes do item
-                </p>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
                   {nameInput || item.title}
                 </h2>
                 {!isGame && subtitleInput && (
                   <p className="mt-2 text-lg text-white/65">{subtitleInput}</p>
                 )}
-                <p className="mt-2 text-sm text-white/55">
-                  Data de lançamento: {previewReleaseDateLabel || "—"}
+                <p className="mt-3 text-sm text-white/70">
+                  {(previewGenre || "Gênero não informado").split(",").map((genre) => genre.trim()).filter(Boolean).join(" | ")}
                 </p>
+                <p className="mt-1 text-sm text-white/55">
+                  {(previewReleaseDateLabel || "Data não informada")} | {(companyInput.trim() || "Empresa não informada")} | {(franchiseInput.trim() || "Franquia não informada")}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-white/45">{ratingLabel}</p>
+                    <div className="mt-1 flex items-center gap-1">
+                      {Array.from({ length: 5 }, (_, index) => {
+                        const star = index + 1;
+                        return (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setRatingInput(star === ratingInput ? 0 : star)}
+                            className="text-2xl leading-none"
+                            aria-label={`Definir ${usesHypeScale ? "hype" : "nota"} ${star}`}
+                          >
+                            {star <= ratingInput ? "★" : "☆"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {isGame && (
+                    <span className="rounded-full border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-white/85">
+                      {progressIcon} {previewProgressLabel || "Sem status"}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -806,9 +781,7 @@ export function ItemDetailsModal({
               </div>
 
               <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                <h3 className="text-lg font-semibold text-white">
-                  Informações principais
-                </h3>
+                <h3 className="text-lg font-semibold text-white">Detalhes</h3>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className="block">
