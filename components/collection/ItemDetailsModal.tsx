@@ -110,6 +110,8 @@ export function ItemDetailsModal({
   useEffect(() => {
     if (!item || !isOpen) return;
 
+    setIsEditingMode(false);
+
     setNameInput(item.title ?? "");
     setSubtitleInput(item.subtitle ?? "");
     setFranchiseInput(item.franchise ?? "");
