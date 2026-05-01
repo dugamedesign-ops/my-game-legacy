@@ -719,6 +719,22 @@ export function ItemDetailsModal({
                 <p className="mt-1 text-sm text-white/55">
                   {(previewReleaseDateLabel || "Data não informada")} | {(companyInput.trim() || "Empresa não informada")} | {(franchiseInput.trim() || "Franquia não informada")}
                 </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <StatusBadge
+                    label={formatOwnershipLabel(ownershipStatusInput)}
+                    variant={ownershipStatusInput === "wishlist" ? "wishlist" : "default"}
+                  />
+                  {previewPriorityLabel && isWishlist && (
+                    <StatusBadge label={previewPriorityLabel} variant="priority" />
+                  )}
+                  {previewProgressLabel && (
+                    <StatusBadge label={previewProgressLabel} variant="progress" />
+                  )}
+                  {mediaFormatsInput?.map((format) => (
+                    <StatusBadge key={format} label={formatMediaLabel(format)} variant="media" />
+                  ))}
+                  {rarityInput && <StatusBadge label={formatRarityLabel(rarityInput)} variant="rarity" />}
+                </div>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">{ratingLabel}</p>
@@ -726,13 +742,13 @@ export function ItemDetailsModal({
                       {Array.from({ length: 5 }, (_, index) => {
                         const star = index + 1;
                         const starColorClass =
-                          star === 1
+                          ratingInput <= 1
                             ? "text-red-400"
-                            : star === 2
+                            : ratingInput === 2
                               ? "text-orange-400"
-                              : star === 3
+                              : ratingInput === 3
                                 ? "text-yellow-300"
-                                : star === 4
+                                : ratingInput === 4
                                   ? "text-teal-300"
                                   : "text-cyan-300";
                         return (
@@ -740,7 +756,7 @@ export function ItemDetailsModal({
                             key={star}
                             type="button"
                             onClick={() => setRatingInput(star === ratingInput ? 0 : star)}
-                            className={`text-[30px] leading-none ${starColorClass}`}
+                            className={`text-[34px] leading-none ${starColorClass}`}
                             aria-label={`Definir ${usesHypeScale ? "hype" : "nota"} ${star}`}
                           >
                             {star <= ratingInput ? "★" : "☆"}
@@ -749,46 +765,7 @@ export function ItemDetailsModal({
                       })}
                     </div>
                   </div>
-                  {isGame && (
-                    <span className="rounded-full border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-white/85">
-                      {progressIcon} {previewProgressLabel || "Sem status"}
-                    </span>
-                  )}
                 </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <StatusBadge
-                  label={formatOwnershipLabel(ownershipStatusInput)}
-                  variant={
-                    ownershipStatusInput === "wishlist"
-                      ? "wishlist"
-                      : "default"
-                  }
-                />
-
-                {previewPriorityLabel && isWishlist && (
-                  <StatusBadge label={previewPriorityLabel} variant="priority" />
-                )}
-
-                {previewProgressLabel && (
-                  <StatusBadge label={previewProgressLabel} variant="progress" />
-                )}
-
-                {mediaFormatsInput?.map((format) => (
-                  <StatusBadge
-                    key={format}
-                    label={formatMediaLabel(format)}
-                    variant="media"
-                  />
-                ))}
-
-                {rarityInput && (
-                  <StatusBadge
-                    label={formatRarityLabel(rarityInput)}
-                    variant="rarity"
-                  />
-                )}
               </div>
 
               <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
@@ -879,6 +856,18 @@ export function ItemDetailsModal({
                       ))}
                     </select>
                   </label>
+                  {isGame && (
+                    <>
+                      <label className="block">
+                        <span className="mb-2 block text-sm text-white/70">Gênero 1</span>
+                        <CustomSelect value={genrePrimaryInput} onChange={(value) => handleGenreChange("primary", value)} options={genrePrimaryOptions} placeholder="Em branco" />
+                      </label>
+                      <label className="block">
+                        <span className="mb-2 block text-sm text-white/70">Gênero 2</span>
+                        <CustomSelect value={genreSecondaryInput} onChange={(value) => handleGenreChange("secondary", value)} options={genreSecondaryOptions} placeholder="Em branco" />
+                      </label>
+                    </>
+                  )}
                 </div>
 
               {isEditingImage && (
@@ -920,25 +909,16 @@ export function ItemDetailsModal({
                       value={ownershipStatusInput}
                       onChange={(value) => setOwnershipStatusInput(value)}
                     />
-                    {isGame && (
-                      <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                        <span className="mb-2 block text-sm text-white/70">Mídia</span>
-                        <div className="flex flex-wrap gap-2">
-                          <ToggleChip
-                            label="Física"
-                            active={mediaFormatsInput?.includes("physical") ?? false}
-                            onClick={() => toggleMediaFormat("physical")}
-                          />
-
-                          <ToggleChip
-                            label="Digital"
-                            active={mediaFormatsInput?.includes("digital") ?? false}
-                            onClick={() => toggleMediaFormat("digital")}
-                          />
-                        </div>
-                      </div>
-                    )}
                   </div>
+                  {isGame && (
+                    <div className="block">
+                      <span className="mb-2 block text-sm text-white/70">Mídia</span>
+                      <div className="flex flex-wrap gap-2">
+                        <ToggleChip label="💿 Física" active={mediaFormatsInput?.includes("physical") ?? false} onClick={() => toggleMediaFormat("physical")} />
+                        <ToggleChip label="☁️ Digital" active={mediaFormatsInput?.includes("digital") ?? false} onClick={() => toggleMediaFormat("digital")} />
+                      </div>
+                    </div>
+                  )}
 
                   {shouldShowGameStatus && (
                     <label className="block">
@@ -953,36 +933,20 @@ export function ItemDetailsModal({
                   )}
                 </div>
 
-                {isGame && (
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/70">Gênero 1</span>
-                      <CustomSelect
-                        value={genrePrimaryInput}
-                        onChange={(value) => handleGenreChange("primary", value)}
-                        options={genrePrimaryOptions}
-                        placeholder="Em branco"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/70">Gênero 2</span>
-                      <CustomSelect
-                        value={genreSecondaryInput}
-                        onChange={(value) => handleGenreChange("secondary", value)}
-                        options={genreSecondaryOptions}
-                        placeholder="Em branco"
-                      />
-                    </label>
-                  </div>
-                )}
               </section>
 
               <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
                 <h3 className="text-lg font-semibold text-white">
-                  Financeiro e Metadados
+                  Financeiro
                 </h3>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <label className="block md:col-span-2">
+                    <span className="mb-2 block text-sm text-white/70">
+                      Raridade
+                    </span>
+                    <RarityButtons itemType={item.type} value={rarityInput} onChange={(value) => setRarityInput(value)} />
+                  </label>
                   {isGame ? (
                     <>
                       {(hasPhysicalSelected || hasDigitalSelected) ? (
@@ -1080,16 +1044,6 @@ export function ItemDetailsModal({
                     <div />
                   )}
 
-                  <label className="block md:col-span-2">
-                    <span className="mb-2 block text-sm text-white/70">
-                      Raridade
-                    </span>
-                    <RarityButtons
-                      itemType={item.type}
-                      value={rarityInput}
-                      onChange={(value) => setRarityInput(value)}
-                    />
-                  </label>
 
                   {isWishlist && (
                     <>
@@ -1350,7 +1304,6 @@ function GameStatusChips({
   onChange: (value: NonNullable<Item["gameProgressStatus"]> | "") => void;
 }) {
   const options: { value: NonNullable<Item["gameProgressStatus"]> | ""; label: string }[] = [
-    { value: "undefined", label: "❔ Não definido" },
     { value: "backlog", label: "📚 Backlog" },
     { value: "playing", label: "🎮 Jogando" },
     { value: "paused", label: "⏸️ Pausado" },
