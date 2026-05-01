@@ -87,6 +87,7 @@ export function ItemDetailsModal({
   const [reviewInput, setReviewInput] = useState("");
   const [ratingInput, setRatingInput] = useState(0);
   const [isEditingMode, setIsEditingMode] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(true);
   const [selectedPlatformsInput, setSelectedPlatformsInput] = useState<string[]>([]);
   const [igdbPlatformOptions, setIgdbPlatformOptions] = useState<string[]>([]);
 
@@ -218,7 +219,7 @@ export function ItemDetailsModal({
       if (event.key === "Escape") {
         onClose();
       }
-      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      if ((event.ctrlKey || event.metaKey || event.altKey) && event.key === "Enter") {
         event.preventDefault();
         handleSaveAllRef.current();
       }
@@ -695,12 +696,12 @@ export function ItemDetailsModal({
                       onClick={() => setIsImageActionsOpen((prev) => !prev)}
                     />
                     {isImageActionsOpen && (
-                      <div className="absolute inset-0 flex items-end justify-center bg-black/35 p-2 backdrop-blur-[2px]">
-                        <div className="flex flex-wrap gap-2 rounded-xl border border-cyan-200/40 bg-black/55 p-2">
-                          <button type="button" onClick={() => setIsEditingImage((prev) => !prev)} className="rounded-lg border border-white/15 px-2 py-1 text-xs">Editar URL</button>
-                          <button type="button" onClick={handlePickImageFromComputer} className="rounded-lg border border-white/15 px-2 py-1 text-xs">Upload</button>
-                          <button type="button" onClick={handleSearchCoverAgain} className="rounded-lg border border-white/15 px-2 py-1 text-xs">IGDB</button>
-                          <button type="button" onClick={handleRemoveImage} className="rounded-lg border border-white/15 px-2 py-1 text-xs">Remover</button>
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/45 p-3 backdrop-blur-[3px]">
+                        <div className="grid w-full max-w-[180px] gap-2 rounded-2xl border border-cyan-200/40 bg-black/70 p-3 shadow-xl">
+                          <button type="button" onClick={() => setIsEditingImage((prev) => !prev)} className="rounded-lg border border-white/15 px-3 py-2 text-sm">Editar URL</button>
+                          <button type="button" onClick={handlePickImageFromComputer} className="rounded-lg border border-white/15 px-3 py-2 text-sm">Upload</button>
+                          <button type="button" onClick={handleSearchCoverAgain} className="rounded-lg border border-white/15 px-3 py-2 text-sm">IGDB</button>
+                          <button type="button" onClick={handleRemoveImage} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-rose-200">Remover</button>
                         </div>
                       </div>
                     )}
@@ -767,12 +768,15 @@ export function ItemDetailsModal({
               ))}
             </div>
 
-            <div>
-              <p className="inline-flex items-center gap-2 text-base font-semibold tracking-[0.12em] text-white/70">
-                DETALHES <span className="text-sm text-white/55">▾</span>
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsDetailsOpen((prev) => !prev)}
+              className="inline-flex items-center gap-2 text-base font-semibold tracking-[0.12em] text-white/70"
+            >
+              DETALHES <span className="text-sm text-white/55">{isDetailsOpen ? "▾" : "▸"}</span>
+            </button>
 
+            {isDetailsOpen && (
             <section className="rounded-3xl border border-white/10 bg-black/15 p-4">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm uppercase tracking-[0.2em] text-white/55">Informações principais</h4>
@@ -833,7 +837,16 @@ export function ItemDetailsModal({
                   ))}
                 </div>
               </div>
+
+              <div className="mt-4 space-y-2">
+                {selectedPlatformsInput.map((platform) => (
+                  <div key={`folder-${platform}`} className="rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white/75">
+                    📁 {platform}
+                  </div>
+                ))}
+              </div>
             </section>
+            )}
 
             <div className="rounded-3xl border border-white/10 bg-black/15 p-4">
               <textarea
@@ -869,6 +882,7 @@ export function ItemDetailsModal({
                 className="rounded-full bg-white px-8 py-3 text-lg font-semibold text-black"
               >
                 Atualizar
+                <span className="ml-2 text-xs text-black/60">Alt + Enter</span>
               </button>
             </div>
           </div>
