@@ -609,6 +609,17 @@ export function ItemDetailsModal({
         ? selectedPlatformsInput
         : [updatedItem.platform];
       const [primaryPlatform, ...extraPlatforms] = selectedPlatforms;
+      const selectedPlatformsSet = new Set(selectedPlatforms.map((platform) => platform.trim().toLowerCase()));
+      existingItems
+        .filter(
+          (existing) =>
+            !existing.isRemoved &&
+            existing.id !== updatedItem.id &&
+            existing.title.trim().toLowerCase() === updatedItem.title.trim().toLowerCase() &&
+            !selectedPlatformsSet.has(existing.platform.trim().toLowerCase()),
+        )
+        .forEach((existing) => onDeleteItem(existing.id));
+
       const baseUpdatedItem = {
         ...updatedItem,
         platform: primaryPlatform,
