@@ -89,6 +89,7 @@ export function ItemDetailsModal({
   const [notesInput, setNotesInput] = useState("");
   const [reviewInput, setReviewInput] = useState("");
   const [ratingInput, setRatingInput] = useState(0);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imagePanelRef = useRef<HTMLDivElement | null>(null);
@@ -720,16 +721,26 @@ export function ItemDetailsModal({
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-white/45">{ratingLabel}</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">{ratingLabel}</p>
                     <div className="mt-1 flex items-center gap-1">
                       {Array.from({ length: 5 }, (_, index) => {
                         const star = index + 1;
+                        const starColorClass =
+                          star === 1
+                            ? "text-red-400"
+                            : star === 2
+                              ? "text-orange-400"
+                              : star === 3
+                                ? "text-yellow-300"
+                                : star === 4
+                                  ? "text-teal-300"
+                                  : "text-cyan-300";
                         return (
                           <button
                             key={star}
                             type="button"
                             onClick={() => setRatingInput(star === ratingInput ? 0 : star)}
-                            className="text-2xl leading-none"
+                            className={`text-[30px] leading-none ${starColorClass}`}
                             aria-label={`Definir ${usesHypeScale ? "hype" : "nota"} ${star}`}
                           >
                             {star <= ratingInput ? "★" : "☆"}
@@ -781,9 +792,21 @@ export function ItemDetailsModal({
               </div>
 
               <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                <h3 className="text-lg font-semibold text-white">Detalhes</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsDetailsOpen((current) => !current)}
+                  className="flex w-full items-center justify-between text-left"
+                >
+                  <h3 className="text-lg font-semibold text-white">Detalhes</h3>
+                  <span className="text-sm text-white/65">{isDetailsOpen ? "▼" : "▶"}</span>
+                </button>
 
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {isDetailsOpen && (
+                  <>
+                <h4 className="mt-4 text-sm font-semibold uppercase tracking-[0.14em] text-white/55">
+                  Informações principais
+                </h4>
+                <div className="mt-3 grid gap-4 md:grid-cols-2">
                   <label className="block">
                     <span className="mb-2 block text-sm text-white/70">Nome</span>
                     <input
@@ -857,7 +880,6 @@ export function ItemDetailsModal({
                     </select>
                   </label>
                 </div>
-              </section>
 
               {isEditingImage && (
                 <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
@@ -884,7 +906,7 @@ export function ItemDetailsModal({
                 className="hidden"
               />
 
-              <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+              <section className="mt-5 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
                 <h3 className="text-lg font-semibold text-white">
                   Edição rápida
                 </h3>
@@ -1185,6 +1207,7 @@ export function ItemDetailsModal({
                 )}
 
                 <div className="mt-4">
+                  <h3 className="mb-2 text-lg font-semibold text-white">Notas</h3>
                   <label className="block">
                     <span className="mb-2 block text-sm text-white/70">Notas</span>
                     <textarea
@@ -1197,23 +1220,25 @@ export function ItemDetailsModal({
                     <span className="mt-1 block text-right text-xs text-white/50">{notesInput.length}/100</span>
                   </label>
                 </div>
+              </section>
+              </>
+                )}
+              </section>
 
-                <div className="mt-4">
-                  <label className="block">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="block text-sm text-white/70">Review do item</span>
-                      <span className="text-xs text-white/50">{reviewInput.length}/1000</span>
-                    </div>
-                    <textarea
-                      value={reviewInput}
-                      onChange={(e) => setReviewInput(e.target.value.slice(0, 1000))}
-                      rows={6}
-                      placeholder="Escreva sua review (até 1000 caracteres)"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
-                  </label>
-                </div>
-
+              <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+                <label className="block">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="block text-sm text-white/70">Review do item</span>
+                    <span className="text-xs text-white/50">{reviewInput.length}/1000</span>
+                  </div>
+                  <textarea
+                    value={reviewInput}
+                    onChange={(e) => setReviewInput(e.target.value.slice(0, 1000))}
+                    rows={6}
+                    placeholder="Escreva sua review (até 1000 caracteres)"
+                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                  />
+                </label>
               </section>
               {saveFeedback && <p className="text-sm text-rose-200">{saveFeedback}</p>}
             </div>
