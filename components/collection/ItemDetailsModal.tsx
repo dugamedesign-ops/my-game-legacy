@@ -85,6 +85,7 @@ export function ItemDetailsModal({
   const [reviewInput, setReviewInput] = useState("");
   const [ratingInput, setRatingInput] = useState(0);
   const [isEditingMode, setIsEditingMode] = useState(false);
+  const [selectedPlatformsInput, setSelectedPlatformsInput] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imagePanelRef = useRef<HTMLDivElement | null>(null);
@@ -117,6 +118,7 @@ export function ItemDetailsModal({
     setFranchiseInput(item.franchise ?? "");
     setCompanyInput(item.company ?? "");
     setPlatformInput(item.platform ?? "");
+    setSelectedPlatformsInput(item.platform ? [item.platform] : []);
     setImageUrlInput(item.imageUrl ?? "");
 
     setOwnershipStatusInput(item.ownershipStatus);
@@ -579,10 +581,11 @@ export function ItemDetailsModal({
         .filter(Boolean),
     ),
   );
+  const allGamePlatforms = Array.from(new Set([...gamePlatforms, platformInput].filter(Boolean)));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6 backdrop-blur-sm">
-      <div className="relative w-full max-w-5xl rounded-[32px] border border-white/10 bg-gradient-to-br from-[#1f2535] via-[#161b28] to-[#131722] p-6 text-white shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
+      <div className="relative max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[32px] border border-white/10 bg-gradient-to-br from-[#1f2535] via-[#161b28] to-[#131722] p-6 text-white shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
         <button
           type="button"
           onClick={onClose}
@@ -650,12 +653,44 @@ export function ItemDetailsModal({
           <div className="space-y-5">
             <div className="grid gap-4 md:grid-cols-[110px_1fr] md:items-center">
               <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/25">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
                 {imageUrlInput ? (
-                  <img src={imageUrlInput} alt={nameInput || item.title} className="h-[130px] w-full object-cover" />
+                  <div className="relative">
+                    <img
+                      src={imageUrlInput}
+                      alt={nameInput || item.title}
+                      className="h-[130px] w-full cursor-pointer object-cover"
+                      onClick={() => setIsImageActionsOpen((prev) => !prev)}
+                    />
+                    {isImageActionsOpen && (
+                      <div className="absolute inset-0 flex items-end justify-center bg-black/35 p-2 backdrop-blur-[2px]">
+                        <div className="flex flex-wrap gap-2 rounded-xl border border-cyan-200/40 bg-black/55 p-2">
+                          <button type="button" onClick={() => setIsEditingImage((prev) => !prev)} className="rounded-lg border border-white/15 px-2 py-1 text-xs">Editar URL</button>
+                          <button type="button" onClick={handlePickImageFromComputer} className="rounded-lg border border-white/15 px-2 py-1 text-xs">Upload</button>
+                          <button type="button" onClick={handleSearchCoverAgain} className="rounded-lg border border-white/15 px-2 py-1 text-xs">IGDB</button>
+                          <button type="button" onClick={handleRemoveImage} className="rounded-lg border border-white/15 px-2 py-1 text-xs">Remover</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="h-[130px] w-full bg-black/30" />
                 )}
               </div>
+              {isEditingImage && (
+                <input
+                  value={imageUrlInput}
+                  onChange={(e) => setImageUrlInput(e.target.value)}
+                  placeholder="Cole URL da capa"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-white placeholder:text-white/35"
+                />
+              )}
               <div>
                 <div className="flex items-center gap-3">
                   <p className="text-5xl tracking-wide text-cyan-300">
@@ -713,7 +748,10 @@ export function ItemDetailsModal({
             </div>
 
             <section className="rounded-3xl border border-white/10 bg-black/15 p-4">
-              <h4 className="text-sm uppercase tracking-[0.2em] text-white/55">Informações principais</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm uppercase tracking-[0.2em] text-white/55">Informações principais</h4>
+                <button type="button" onClick={handleSearchCoverAgain} className="text-xs text-cyan-200/80 hover:text-cyan-100">↻ Recarregar via IGDB</button>
+              </div>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
                 <label className="block">
                   <span className="mb-1 block text-xs text-white/45">Nome</span>
@@ -745,13 +783,21 @@ export function ItemDetailsModal({
               <div className="mt-4">
                 <span className="mb-2 block text-xs text-white/45">Plataformas</span>
                 <div className="flex flex-wrap gap-2">
-                  {(gamePlatforms.length > 0 ? gamePlatforms : platformOptions).map((platform) => (
+                  {(allGamePlatforms.length > 0 ? allGamePlatforms : platformOptions).map((platform) => (
                     <button
                       key={platform}
                       type="button"
-                      onClick={() => setPlatformInput(platform)}
+                      onClick={() =>
+                        setSelectedPlatformsInput((current) => {
+                          const next = current.includes(platform)
+                            ? current.filter((entry) => entry !== platform)
+                            : [...current, platform];
+                          setPlatformInput(next[0] ?? platformInput);
+                          return next;
+                        })
+                      }
                       className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                        platformInput === platform
+                        selectedPlatformsInput.includes(platform)
                           ? "border-cyan-300/40 bg-cyan-400/20 text-cyan-100"
                           : "border-white/15 bg-black/20 text-white/75"
                       }`}
