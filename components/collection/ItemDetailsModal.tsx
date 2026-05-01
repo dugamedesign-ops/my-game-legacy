@@ -9,7 +9,6 @@ import { uploadSupabaseImage } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
 import { getNormalizedAcquisitionStatus } from "@/lib/acquisition-utils";
 import {
-  formatCurrency,
   formatMediaLabel,
   formatOwnershipLabel,
   formatPriorityLabel,
@@ -19,7 +18,6 @@ import {
   GENRE_OPTIONS,
   getProgressIcon,
   NEW_GENRE_OPTION,
-  PURCHASE_ORIGIN_OPTIONS,
 } from "@/lib/item-details-utils";
 
 type ItemDetailsModalProps = {
@@ -79,9 +77,6 @@ export function ItemDetailsModal({
   const [purchaseMonthInput, setPurchaseMonthInput] = useState("");
   const [purchaseDayInput, setPurchaseDayInput] = useState("");
   const [purchaseOriginInput, setPurchaseOriginInput] = useState("");
-  const [purchaseOriginOptions, setPurchaseOriginOptions] = useState<string[]>(
-    [...PURCHASE_ORIGIN_OPTIONS],
-  );
   const [genrePrimaryInput, setGenrePrimaryInput] = useState("");
   const [genreSecondaryInput, setGenreSecondaryInput] = useState("");
   const [genreOptions, setGenreOptions] = useState<string[]>([...GENRE_OPTIONS]);
@@ -181,22 +176,6 @@ export function ItemDetailsModal({
     setIsUploadingImage(false);
     setIsImageActionsOpen(false);
 
-    const storedRaw =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem("my-game-legacy-purchase-origins")
-        : null;
-    let stored: string[] = [];
-    if (storedRaw) {
-      try {
-        stored = JSON.parse(storedRaw) as string[];
-      } catch {
-        stored = [];
-      }
-    }
-    const merged = [...new Set([...PURCHASE_ORIGIN_OPTIONS, ...stored, item.purchaseOrigin ?? ""])]
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
-    setPurchaseOriginOptions(merged);
     const mergedGenres = [...new Set([...GENRE_OPTIONS, primary, secondary])]
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
@@ -261,11 +240,6 @@ export function ItemDetailsModal({
   const hasPhysicalSelected = mediaFormatsInput?.includes("physical") ?? false;
   const hasDigitalSelected = mediaFormatsInput?.includes("digital") ?? false;
   const hasBothMediaSelected = hasPhysicalSelected && hasDigitalSelected;
-  const purchaseOriginSelectOptions: CustomSelectOption[] = [
-    { value: "", label: "Em branco" },
-    ...purchaseOriginOptions.map((origin) => ({ value: origin, label: origin })),
-    { value: "__new_origin__", label: "+ Cadastrar nova origem" },
-  ];
   const genrePrimaryOptions: CustomSelectOption[] = [
     { value: "", label: "Em branco" },
     ...genreOptions.map((genre) => ({ value: genre, label: genre })),
@@ -430,40 +404,6 @@ export function ItemDetailsModal({
     setIsEditingImage(false);
   }
 
-  function handlePurchaseOriginChange(value: string) {
-    if (value !== "__new_origin__") {
-      setPurchaseOriginInput(value);
-      return;
-    }
-
-    const typed = window.prompt("Digite a nova origem da compra:");
-    if (!typed) return;
-    const normalized = typed.trim();
-    if (!normalized) return;
-
-    const exists = purchaseOriginOptions.some(
-      (option) => option.toLowerCase() === normalized.toLowerCase(),
-    );
-    const finalValue = exists
-      ? purchaseOriginOptions.find(
-          (option) => option.toLowerCase() === normalized.toLowerCase(),
-        ) ?? normalized
-      : normalized;
-
-    if (!exists) {
-      const next = [...purchaseOriginOptions, normalized].sort((a, b) =>
-        a.localeCompare(b),
-      );
-      setPurchaseOriginOptions(next);
-      window.localStorage.setItem(
-        "my-game-legacy-purchase-origins",
-        JSON.stringify(next.filter((origin) => !PURCHASE_ORIGIN_OPTIONS.includes(origin))),
-      );
-    }
-
-    setPurchaseOriginInput(finalValue);
-  }
-
   function handleGenreChange(
     field: "primary" | "secondary",
     value: string,
@@ -585,7 +525,7 @@ export function ItemDetailsModal({
           : undefined,
       purchaseOrigin: purchaseOriginInput.trim() || undefined,
       notes: notesWithSubtitleForGame.slice(0, 100) || undefined,
-      review: reviewInput.trim().slice(0, 1000) || undefined,
+      review: reviewInput.trim().slice(0, 5000) || undefined,
       genre:
         isGame
           ? [genrePrimaryInput.trim(), genreSecondaryInput.trim()]
@@ -1208,20 +1148,6 @@ export function ItemDetailsModal({
                       )}
                     </div>
 
-                    <div className="mt-4 grid gap-4">
-                      <label className="block">
-                        <span className="mb-2 block text-sm text-white/70">
-                          Origem da compra
-                        </span>
-                        <CustomSelect
-                          value={purchaseOriginInput}
-                          onChange={handlePurchaseOriginChange}
-                          options={purchaseOriginSelectOptions}
-                          placeholder="Em branco"
-                        />
-                      </label>
-
-                    </div>
                   </>
                 )}
 
@@ -1242,71 +1168,20 @@ export function ItemDetailsModal({
                 <div className="mt-4">
                   <label className="block">
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="block text-sm text-white/70">Review do item</span>
-                      <span className="text-xs text-white/50">{reviewInput.length}/1000</span>
+                      <span className="block text-sm text-white/70">Review</span>
+                      <span className="text-xs text-white/50">{reviewInput.length}/5000</span>
                     </div>
                     <textarea
                       value={reviewInput}
-                      onChange={(e) => setReviewInput(e.target.value.slice(0, 1000))}
+                      onChange={(e) => setReviewInput(e.target.value.slice(0, 5000))}
                       rows={6}
-                      placeholder="Escreva sua review (até 1000 caracteres)"
+                      placeholder="Escreva sua review (até 5000 caracteres)"
                       className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                     />
                   </label>
                 </div>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {isGame && (hasPhysicalSelected || hasDigitalSelected) ? (
-                    <>
-                      {hasPhysicalSelected && (
-                        <MoneyCard
-                          label="Preço (Físico)"
-                          value={formatCurrency(
-                            isWishlist
-                              ? undefined
-                              : parseOptionalNumber(pricePhysicalInput),
-                          )}
-                        />
-                      )}
-                      {hasDigitalSelected && (
-                        <MoneyCard
-                          label="Preço (Digital)"
-                          value={formatCurrency(
-                            isWishlist
-                              ? undefined
-                              : parseOptionalNumber(priceDigitalInput),
-                          )}
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <MoneyCard
-                      label={isWishlist ? "Valor referência" : "Valor pago"}
-                      value={formatCurrency(
-                        isWishlist
-                          ? undefined
-                          : parseOptionalNumber(amountPaidInput),
-                      )}
-                    />
-                  )}
-                  <MoneyCard
-                    label="Valor atual"
-                    value={formatCurrency(parseOptionalNumber(currentValueInput))}
-                  />
-                </div>
               </section>
               {saveFeedback && <p className="text-sm text-rose-200">{saveFeedback}</p>}
-
-              <div className="grid gap-6 xl:grid-cols-2">
-                <HistorySection
-                  title="Histórico de preço monitorado"
-                  entries={item.trackedPriceHistory}
-                />
-                <HistorySection
-                  title="Histórico de valorização"
-                  entries={item.collectionValueHistory}
-                />
-              </div>
             </div>
             <div className="sticky bottom-0 mt-6 border-t border-white/10 bg-[#0b1020]/95 p-4 backdrop-blur">
               <div className="flex justify-end">
@@ -1416,7 +1291,6 @@ function GameStatusChips({
   onChange: (value: NonNullable<Item["gameProgressStatus"]> | "") => void;
 }) {
   const options: { value: NonNullable<Item["gameProgressStatus"]> | ""; label: string }[] = [
-    { value: "undefined", label: "❔ Não definido" },
     { value: "backlog", label: "📚 Backlog" },
     { value: "playing", label: "🎮 Jogando" },
     { value: "paused", label: "⏸️ Pausado" },
@@ -1518,51 +1392,5 @@ function RarityButtons({
         </button>
       ))}
     </div>
-  );
-}
-
-function MoneyCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.03] p-5">
-      <p className="text-xs uppercase tracking-[0.22em] text-white/40">{label}</p>
-      <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
-    </div>
-  );
-}
-
-function HistorySection({
-  title,
-  entries,
-}: {
-  title: string;
-  entries?: { date: string; value: number }[];
-}) {
-  return (
-    <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-      <h3 className="text-lg font-semibold text-white">{title}</h3>
-
-      {entries && entries.length > 0 ? (
-        <div className="mt-4 space-y-3">
-          {entries.map((entry, index) => (
-            <div
-              key={`${entry.date}-${index}`}
-              className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-            >
-              <span className="text-sm text-white/65">{entry.date}</span>
-              <span className="text-sm font-semibold text-white">
-                {new Intl.NumberFormat("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                }).format(entry.value)}
-              </span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-4 text-sm text-white/55">
-          Nenhum histórico registrado ainda.
-        </p>
-      )}
-    </section>
   );
 }
