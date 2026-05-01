@@ -84,6 +84,7 @@ export function ItemDetailsModal({
   const [notesInput, setNotesInput] = useState("");
   const [reviewInput, setReviewInput] = useState("");
   const [ratingInput, setRatingInput] = useState(0);
+  const [isEditingMode, setIsEditingMode] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imagePanelRef = useRef<HTMLDivElement | null>(null);
@@ -600,6 +601,7 @@ export function ItemDetailsModal({
             <p className="text-sm text-white/55">@{userHandle.replace("@", "").split("@")[0]}</p>
           </div>
         </div>
+        {!isEditingMode ? (
         <div className="grid gap-6 md:grid-cols-[320px_1fr]">
           <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20">
             {imageUrlInput ? (
@@ -632,6 +634,7 @@ export function ItemDetailsModal({
             <div className="mt-6 border-t border-white/10 pt-3.5">
               <button
                 type="button"
+                onClick={() => setIsEditingMode(true)}
                 className="text-lg text-white/70 transition hover:text-white"
               >
                 ✎ Editar
@@ -639,6 +642,109 @@ export function ItemDetailsModal({
             </div>
           </div>
         </div>
+        ) : (
+          <div className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-[110px_1fr] md:items-center">
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/25">
+                {imageUrlInput ? (
+                  <img src={imageUrlInput} alt={nameInput || item.title} className="h-[130px] w-full object-cover" />
+                ) : (
+                  <div className="h-[130px] w-full bg-black/30" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-3">
+                  <p className="text-6xl font-bold text-cyan-300">{ratingInput || 0}</p>
+                  <p className="rounded-full border border-cyan-300/30 bg-cyan-400/15 px-3 py-1 text-sm text-cyan-100">
+                    {progressIcon} {previewProgressLabel || "Sem status"}
+                  </p>
+                </div>
+                <p className="mt-1 text-4xl font-semibold">{nameInput || item.title}</p>
+              </div>
+            </div>
+
+            <div className="rounded-full border border-white/10 bg-black/20 px-4 py-3">
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-white/50">NS</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={10}
+                  value={ratingInput}
+                  onChange={(e) => setRatingInput(Number(e.target.value))}
+                  className="w-full accent-cyan-400"
+                />
+                <span className="rounded-full border border-cyan-300/40 px-2 py-1 text-sm">{ratingInput}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: "finished", label: "Concluído" },
+                { value: "playing", label: "Jogando" },
+                { value: "paused", label: "Abandonado" },
+                { value: "backlog", label: "Quero" },
+                { value: "undefined", label: "Em espera" },
+              ].map((status) => (
+                <button
+                  key={status.value}
+                  type="button"
+                  onClick={() => setGameProgressStatusInput(status.value as NonNullable<Item["gameProgressStatus"]>)}
+                  className={`rounded-full border px-5 py-2.5 text-sm transition ${
+                    gameProgressStatusInput === status.value
+                      ? "border-cyan-300/40 bg-cyan-400 text-black"
+                      : "border-white/15 bg-transparent text-white/80"
+                  }`}
+                >
+                  {status.label}
+                </button>
+              ))}
+            </div>
+
+            <div>
+              <p className="inline-flex items-center rounded-full border border-white/40 px-4 py-2 text-lg tracking-[0.18em] text-white/70">
+                DETALHES
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-black/15 p-4">
+              <textarea
+                value={reviewInput}
+                onChange={(e) => setReviewInput(e.target.value.slice(0, 5000))}
+                rows={8}
+                placeholder="Escreva sua análise em até 5000 caracteres..."
+                className="w-full resize-none bg-transparent text-base text-white outline-none placeholder:text-white/35"
+              />
+              <div className="mt-2 flex items-center justify-between text-sm text-white/50">
+                <span>{reviewInput.length} / 5000 caractere</span>
+                <span>{reviewInput.trim() ? reviewInput.trim().split(/\s+/).length : 0} palavras</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-white/10 pt-4">
+              <div className="flex items-center gap-6 text-lg">
+                <button type="button" onClick={() => setIsEditingMode(false)} className="text-white/70 hover:text-white">Fechar</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateItem({ ...item, isRemoved: true, updatedAt: new Date().toISOString() });
+                    onClose();
+                  }}
+                  className="text-rose-400 hover:text-rose-300"
+                >
+                  Remover
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveAll}
+                className="rounded-full bg-white px-8 py-3 text-lg font-semibold text-black"
+              >
+                Atualizar
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
