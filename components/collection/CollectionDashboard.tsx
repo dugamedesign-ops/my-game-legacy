@@ -1584,6 +1584,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           updateItem(updatedItem);
           setSelectedItem(updatedItem);
         }}
+        onDeleteItem={(itemId) => {
+          removeItem(itemId);
+          setSelectedItem(null);
+        }}
       />
 
             <AddItemModal

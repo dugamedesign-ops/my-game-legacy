@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Item } from "@/types/collection";
 import { StatusBadge } from "./StatusBadge";
-import { searchIgdbCover } from "@/lib/igdb";
+import { searchIgdbCover, searchIgdbGames } from "@/lib/igdb";
 import { CustomSelect, type CustomSelectOption } from "@/components/ui/CustomSelect";
 import { uploadSupabaseImage } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
@@ -26,6 +26,7 @@ type ItemDetailsModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onUpdateItem: (updatedItem: Item) => void;
+  onDeleteItem: (itemId: string) => void;
 };
 
 export function ItemDetailsModal({
@@ -34,6 +35,7 @@ export function ItemDetailsModal({
   isOpen,
   onClose,
   onUpdateItem,
+  onDeleteItem,
 }: ItemDetailsModalProps) {
   const { session, user } = useAuth();
   const [isEditingImage, setIsEditingImage] = useState(false);
@@ -86,6 +88,7 @@ export function ItemDetailsModal({
   const [ratingInput, setRatingInput] = useState(0);
   const [isEditingMode, setIsEditingMode] = useState(false);
   const [selectedPlatformsInput, setSelectedPlatformsInput] = useState<string[]>([]);
+  const [igdbPlatformOptions, setIgdbPlatformOptions] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imagePanelRef = useRef<HTMLDivElement | null>(null);
@@ -119,6 +122,7 @@ export function ItemDetailsModal({
     setCompanyInput(item.company ?? "");
     setPlatformInput(item.platform ?? "");
     setSelectedPlatformsInput(item.platform ? [item.platform] : []);
+    setIgdbPlatformOptions([]);
     setImageUrlInput(item.imageUrl ?? "");
 
     setOwnershipStatusInput(item.ownershipStatus);
@@ -186,6 +190,26 @@ export function ItemDetailsModal({
       .sort((a, b) => a.localeCompare(b));
     setGenreOptions(mergedGenres);
   }, [item, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !item || item.type !== "game") return;
+    let isMounted = true;
+    void searchIgdbGames(item.title)
+      .then((results) => {
+        if (!isMounted) return;
+        const exact = results.find(
+          (entry) => entry.name.trim().toLowerCase() === item.title.trim().toLowerCase(),
+        );
+        const platforms = (exact ?? results[0])?.platforms ?? [];
+        setIgdbPlatformOptions(Array.from(new Set(platforms.filter(Boolean))));
+      })
+      .catch(() => {
+        if (isMounted) setIgdbPlatformOptions([]);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, item]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -581,7 +605,9 @@ export function ItemDetailsModal({
         .filter(Boolean),
     ),
   );
-  const allGamePlatforms = Array.from(new Set([...gamePlatforms, platformInput].filter(Boolean)));
+  const allGamePlatforms = Array.from(
+    new Set([...igdbPlatformOptions, ...gamePlatforms, ...selectedPlatformsInput, platformInput].filter(Boolean)),
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6 backdrop-blur-sm">
@@ -829,7 +855,7 @@ export function ItemDetailsModal({
                 <button
                   type="button"
                   onClick={() => {
-                    onUpdateItem({ ...item, isRemoved: true, updatedAt: new Date().toISOString() });
+                    onDeleteItem(item.id);
                     onClose();
                   }}
                   className="text-rose-400 hover:text-rose-300"
