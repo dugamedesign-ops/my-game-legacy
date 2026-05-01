@@ -587,17 +587,17 @@ export function ItemDetailsModal({
         >
           ✕
         </button>
-        <div className="mb-6 flex items-center gap-3">
+        <div className="mb-5 flex items-center gap-2.5">
           {userAvatar ? (
-            <img src={userAvatar} alt={userName} className="h-12 w-12 rounded-full object-cover" />
+            <img src={userAvatar} alt={userName} className="h-9 w-9 rounded-full object-cover" />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-sm font-semibold">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-[11px] font-medium">
               {userName.slice(0, 2).toUpperCase()}
             </div>
           )}
           <div>
-            <p className="text-3xl font-semibold leading-none">{userName}</p>
-            <p className="text-lg text-white/60">@{userHandle.replace("@", "").split("@")[0]}</p>
+            <p className="text-base font-medium leading-none text-white/90">{userName}</p>
+            <p className="text-sm text-white/55">@{userHandle.replace("@", "").split("@")[0]}</p>
           </div>
         </div>
         <div className="grid gap-6 md:grid-cols-[320px_1fr]">
@@ -608,29 +608,31 @@ export function ItemDetailsModal({
               <div className="aspect-[3/4] w-full bg-black/30" />
             )}
           </div>
-          <div>
-            <h2 className="text-5xl font-bold">{nameInput || item.title}</h2>
-            <p className="mt-2 text-2xl text-white/70">{previewGenre || "Sem gêneros cadastrados"}</p>
-            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-lg text-white/65">
+          <div className="pt-1">
+            <h2 className="text-4xl font-semibold">{nameInput || item.title}</h2>
+            <p className="mt-1.5 text-xl text-white/70">{previewGenre || "Sem gêneros cadastrados"}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-base text-white/65">
               <span>{previewReleaseDateLabel || "Sem data de lançamento"}</span>
-              {companyInput && <span>Empresa: {companyInput}</span>}
-              {franchiseInput && <span>Franquia: {franchiseInput}</span>}
+              {companyInput && <span>| {companyInput}</span>}
+              {franchiseInput && <span>| {franchiseInput}</span>}
             </div>
-            <div className="mt-5 flex items-center gap-4">
-              <div className="text-6xl font-bold text-cyan-300">{ratingInput || 0}</div>
-              <div className="rounded-full bg-cyan-400 px-5 py-2 text-xl font-medium text-black">
+            <div className="mt-4 flex items-center gap-3">
+              <div className="text-3xl tracking-wide text-cyan-300">
+                {Array.from({ length: 5 }, (_, index) => (index < ratingInput ? "★" : "☆")).join("")}
+              </div>
+              <div className="rounded-full bg-cyan-400 px-4 py-1.5 text-base font-medium text-black">
                 {progressIcon} {previewProgressLabel || "Sem status"}
               </div>
             </div>
-            <div className="mt-6 border-t border-white/10 pt-4">
-              <p className="text-2xl font-semibold text-white/70">VISÃO GERAL</p>
-              <p className="mt-3 text-xl text-white/60">Plataformas</p>
-              <p className="text-3xl font-semibold">{gamePlatforms.join(", ") || item.platform}</p>
+            <div className="mt-5 border-t border-white/10 pt-4">
+              <p className="text-lg font-semibold text-white/65">VISÃO GERAL</p>
+              <p className="mt-2 text-base text-white/55">Plataformas</p>
+              <p className="text-2xl font-semibold">{gamePlatforms.join(", ") || item.platform}</p>
             </div>
-            <div className="mt-8 border-t border-white/10 pt-4">
+            <div className="mt-6 border-t border-white/10 pt-3.5">
               <button
                 type="button"
-                className="text-2xl text-white/70 transition hover:text-white"
+                className="text-lg text-white/70 transition hover:text-white"
               >
                 ✎ Editar
               </button>
