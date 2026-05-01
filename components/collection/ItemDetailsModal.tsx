@@ -674,7 +674,7 @@ export function ItemDetailsModal({
                   step={1}
                   value={ratingInput}
                   onChange={(e) => setRatingInput(Number(e.target.value))}
-                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/15 accent-cyan-400"
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/15 accent-cyan-400 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-cyan-300 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-300"
                 />
                 <span className="w-4 text-right text-sm font-medium text-white/55">5</span>
               </div>
@@ -705,7 +705,7 @@ export function ItemDetailsModal({
             </div>
 
             <div>
-              <p className="inline-flex items-center gap-2 text-lg font-semibold tracking-[0.12em] text-white/70">
+              <p className="inline-flex items-center gap-2 text-base font-semibold tracking-[0.12em] text-white/70">
                 DETALHES <span className="text-sm text-white/55">▾</span>
               </p>
             </div>
