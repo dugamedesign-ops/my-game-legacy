@@ -111,6 +111,9 @@ export function PendingItemsOverview({
     if (field === "image") {
       return { textValue: item.imageUrl ?? "", multiValue: [] };
     }
+    if (field === "company") {
+      return { textValue: item.company ?? "", multiValue: [] };
+    }
     return { textValue: "", multiValue: item.mediaFormats ?? [] };
   }
 
@@ -168,6 +171,8 @@ export function PendingItemsOverview({
         }
       } else if (field === "image") {
         if (draft.textValue.trim()) nextItem.imageUrl = draft.textValue.trim();
+      } else if (field === "company") {
+        nextItem.company = draft.textValue.trim() || undefined;
       } else if (field === "mediaFormats") {
         if (draft.multiValue.length > 0) {
           nextItem.mediaFormats = draft.multiValue as NonNullable<Item["mediaFormats"]>;
@@ -223,6 +228,8 @@ export function PendingItemsOverview({
           }
         } else if (field === "image") {
           if (draft.textValue.trim()) nextItem.imageUrl = draft.textValue.trim();
+        } else if (field === "company") {
+          nextItem.company = draft.textValue.trim() || undefined;
         } else if (field === "mediaFormats") {
           if (draft.multiValue.length > 0) {
             nextItem.mediaFormats = draft.multiValue as NonNullable<Item["mediaFormats"]>;
@@ -363,6 +370,7 @@ export function PendingItemsOverview({
                       { value: "gameProgressStatus", label: "Status jogo" },
                       { value: "rarity", label: "Raridade" },
                       { value: "mediaFormats", label: "Mídia" },
+                      { value: "company", label: "Empresa" },
                     ]}
                     selected={selectedMissingFields}
                     onToggle={(value) =>
@@ -512,7 +520,8 @@ function PendingInlineEditor({
     if (
       activeField === "amountPaid" ||
       activeField === "currentValue" ||
-      activeField === "image"
+      activeField === "image" ||
+      activeField === "company"
     ) {
       textInputRef.current?.focus();
       textInputRef.current?.select();
@@ -539,7 +548,7 @@ function PendingInlineEditor({
     );
   }
 
-  if (activeField === "image") {
+  if (activeField === "image" || activeField === "company") {
     return (
       <div className="space-y-2">
         <input
@@ -554,10 +563,11 @@ function PendingInlineEditor({
               },
             })
           }
-          placeholder="https://..."
+          placeholder={activeField === "image" ? "https://..." : "Digite a empresa"}
           className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-sm text-white outline-none"
         />
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/80 transition hover:bg-white/10">
+        {activeField === "image" && (
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/80 transition hover:bg-white/10">
           <input
             type="file"
             accept="image/*"
@@ -601,6 +611,7 @@ function PendingInlineEditor({
           />
           {isUploading ? "Enviando imagem..." : "Enviar do computador"}
         </label>
+        )}
         {uploadError && (
           <p className="text-xs text-rose-200/90">{uploadError}</p>
         )}
