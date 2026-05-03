@@ -404,6 +404,28 @@ export function ItemDetailsModal({
     setPurchaseYearInput(String(releaseDateObj.getFullYear()));
   }
 
+  function copyReleaseDateToPhysicalPurchaseDate() {
+    if (!releaseDateObj || Number.isNaN(releaseDateObj.getTime())) return;
+    setPurchaseDayPhysicalInput(String(releaseDateObj.getDate()).padStart(2, "0"));
+    setPurchaseMonthPhysicalInput(String(releaseDateObj.getMonth() + 1).padStart(2, "0"));
+    setPurchaseYearPhysicalInput(String(releaseDateObj.getFullYear()));
+  }
+
+  function copyReleaseDateToDigitalPurchaseDate() {
+    if (!releaseDateObj || Number.isNaN(releaseDateObj.getTime())) return;
+    setPurchaseDayDigitalInput(String(releaseDateObj.getDate()).padStart(2, "0"));
+    setPurchaseMonthDigitalInput(String(releaseDateObj.getMonth() + 1).padStart(2, "0"));
+    setPurchaseYearDigitalInput(String(releaseDateObj.getFullYear()));
+  }
+
+  function getPurchaseVsReleaseByYear(yearInput: string) {
+    const parsedYear = yearInput.trim() ? Number(yearInput.trim()) : undefined;
+    if (!parsedYear || !releaseYear) return null;
+    if (parsedYear === releaseYear) return "Comprado no ano de lançamento";
+    if (parsedYear > releaseYear) return `Comprado ${parsedYear - releaseYear} ano(s) após o lançamento`;
+    return "Comprado antes do lançamento";
+  }
+
   function handleReleaseDateDraftChange(rawValue: string) {
     const digits = rawValue.replace(/\D/g, "").slice(0, 8);
     if (digits.length <= 2) return setReleaseDateDraft(digits);
@@ -1259,6 +1281,28 @@ export function ItemDetailsModal({
                                 <CustomSelect value={purchaseYearPhysicalInput} onChange={setPurchaseYearPhysicalInput} options={purchaseYearOptions} placeholder="2026" />
                               </label>
                             </div>
+                            {(item.type === "game" || previewReleaseDateLabel) && (
+                              <p className="mt-3 flex items-center gap-2 text-xs text-cyan-100/80">
+                                Referência de lançamento:{" "}
+                                {previewReleaseDateLabel
+                                  ? `${previewReleaseDateLabel} ${item.type === "game" ? "(IGDB)" : "(cadastrada)"}`
+                                  : "não informada"}
+                                {hasValidReleaseDate && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={copyReleaseDateToPhysicalPurchaseDate}
+                                      className="rounded border border-cyan-200/30 px-1.5 py-0.5 text-[11px] text-cyan-100 hover:bg-cyan-300/15"
+                                    >
+                                      ↘ usar na compra
+                                    </button>
+                                  </>
+                                )}
+                              </p>
+                            )}
+                            {getPurchaseVsReleaseByYear(purchaseYearPhysicalInput) && (
+                              <p className="mt-2 text-sm text-cyan-100/85">{getPurchaseVsReleaseByYear(purchaseYearPhysicalInput)}</p>
+                            )}
                           </div>
                           <div>
                             <p className="mb-2 text-sm text-white/60">Mídia Digital</p>
@@ -1276,6 +1320,28 @@ export function ItemDetailsModal({
                                 <CustomSelect value={purchaseYearDigitalInput} onChange={setPurchaseYearDigitalInput} options={purchaseYearOptions} placeholder="2026" />
                               </label>
                             </div>
+                            {(item.type === "game" || previewReleaseDateLabel) && (
+                              <p className="mt-3 flex items-center gap-2 text-xs text-cyan-100/80">
+                                Referência de lançamento:{" "}
+                                {previewReleaseDateLabel
+                                  ? `${previewReleaseDateLabel} ${item.type === "game" ? "(IGDB)" : "(cadastrada)"}`
+                                  : "não informada"}
+                                {hasValidReleaseDate && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={copyReleaseDateToDigitalPurchaseDate}
+                                      className="rounded border border-cyan-200/30 px-1.5 py-0.5 text-[11px] text-cyan-100 hover:bg-cyan-300/15"
+                                    >
+                                      ↘ usar na compra
+                                    </button>
+                                  </>
+                                )}
+                              </p>
+                            )}
+                            {getPurchaseVsReleaseByYear(purchaseYearDigitalInput) && (
+                              <p className="mt-2 text-sm text-cyan-100/85">{getPurchaseVsReleaseByYear(purchaseYearDigitalInput)}</p>
+                            )}
                           </div>
                         </div>
                       ) : (
@@ -1309,7 +1375,7 @@ export function ItemDetailsModal({
                         </label>
                       </div>
                       )}
-                      {((item.type === "game" || item.type === "console" || item.type === "accessory") ||
+                      {!hasPhysicalSelected || !hasDigitalSelected ? (((item.type === "game" || item.type === "console" || item.type === "accessory") ||
                         previewReleaseDateLabel) && (
                         <p className="mt-3 flex items-center gap-2 text-xs text-cyan-100/80">
                           Referência de lançamento:{" "}
@@ -1336,8 +1402,8 @@ export function ItemDetailsModal({
                             </>
                           )}
                         </p>
-                      )}
-                      {purchaseVsReleaseInfo && (
+                      )) : null}
+                      {(!hasPhysicalSelected || !hasDigitalSelected) && purchaseVsReleaseInfo && (
                         <p className="mt-2 text-sm text-cyan-100/85">{purchaseVsReleaseInfo}</p>
                       )}
                     </div>
