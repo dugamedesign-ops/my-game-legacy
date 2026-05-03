@@ -1448,7 +1448,25 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                 <div
                   key={`${group.platform}-${platformSectionSeed}`}
                   draggable={isInlineOrganizeMode}
-                  onDragStart={() => setDraggedPlatform(group.platform)}
+                  onDragStart={(event) => {
+                    setDraggedPlatform(group.platform);
+                    event.dataTransfer.effectAllowed = "move";
+                    const dragPreview = document.createElement("div");
+                    dragPreview.textContent = `↕ ${group.platform}`;
+                    dragPreview.style.padding = "6px 10px";
+                    dragPreview.style.borderRadius = "9999px";
+                    dragPreview.style.background = "rgba(8, 14, 30, 0.92)";
+                    dragPreview.style.border = "1px solid rgba(103, 232, 249, 0.6)";
+                    dragPreview.style.color = "white";
+                    dragPreview.style.fontSize = "12px";
+                    dragPreview.style.position = "absolute";
+                    dragPreview.style.top = "-9999px";
+                    document.body.appendChild(dragPreview);
+                    event.dataTransfer.setDragImage(dragPreview, 12, 12);
+                    window.setTimeout(() => {
+                      document.body.removeChild(dragPreview);
+                    }, 0);
+                  }}
                   onDragEnd={() => {
                     setDraggedPlatform(null);
                     setDragOverPlatform(null);
