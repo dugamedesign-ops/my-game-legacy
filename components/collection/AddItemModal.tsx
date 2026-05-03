@@ -55,6 +55,26 @@ type FormState = {
   pcGpu: string;
   pcRam: string;
   pcStorage: string;
+  pcMachineName: string;
+  pcMachineBrand: string;
+  cpuModel: string;
+  cpuBrand: string;
+  cpuCores: string;
+  cpuFrequency: string;
+  gpuName: string;
+  gpuBrand: string;
+  gpuVram: string;
+  gpuMemoryType: string;
+  ramCapacity: string;
+  ramType: string;
+  ramFrequency: string;
+  ramModules: string;
+  storageType: string;
+  storageCapacity: string;
+  storageBrand: string;
+  mbModel: string;
+  mbBrand: string;
+  mbSocket: string;
   accessoryCategory: string;
 };
 
@@ -147,6 +167,26 @@ export function AddItemModal({
       pcGpu: "",
       pcRam: "",
       pcStorage: "",
+      pcMachineName: "",
+      pcMachineBrand: "",
+      cpuModel: "",
+      cpuBrand: "",
+      cpuCores: "",
+      cpuFrequency: "",
+      gpuName: "",
+      gpuBrand: "",
+      gpuVram: "",
+      gpuMemoryType: "",
+      ramCapacity: "",
+      ramType: "",
+      ramFrequency: "",
+      ramModules: "",
+      storageType: "",
+      storageCapacity: "",
+      storageBrand: "",
+      mbModel: "",
+      mbBrand: "",
+      mbSocket: "",
       accessoryCategory: "",
     };
   }
@@ -438,6 +478,26 @@ export function AddItemModal({
               form.pcGpu && `GPU: ${form.pcGpu}`,
               form.pcRam && `RAM: ${form.pcRam}`,
               form.pcStorage && `HD/SSD: ${form.pcStorage}`,
+              form.pcMachineName && `Máquina: ${form.pcMachineName}`,
+              form.pcMachineBrand && `Marca máquina: ${form.pcMachineBrand}`,
+              form.mbModel && `MB Modelo: ${form.mbModel}`,
+              form.mbBrand && `MB Marca: ${form.mbBrand}`,
+              form.mbSocket && `MB Socket: ${form.mbSocket}`,
+              form.cpuModel && `CPU Modelo: ${form.cpuModel}`,
+              form.cpuBrand && `CPU Marca: ${form.cpuBrand}`,
+              form.cpuCores && `CPU Núcleos: ${form.cpuCores}`,
+              form.cpuFrequency && `CPU Frequência: ${form.cpuFrequency}`,
+              form.gpuName && `GPU Nome: ${form.gpuName}`,
+              form.gpuBrand && `GPU Marca: ${form.gpuBrand}`,
+              form.gpuVram && `GPU VRAM: ${form.gpuVram}`,
+              form.gpuMemoryType && `GPU Memória: ${form.gpuMemoryType}`,
+              form.ramCapacity && `RAM Capacidade: ${form.ramCapacity}`,
+              form.ramType && `RAM Tipo: ${form.ramType}`,
+              form.ramFrequency && `RAM Frequência: ${form.ramFrequency}`,
+              form.ramModules && `RAM Módulos: ${form.ramModules}`,
+              form.storageType && `Armazenamento Tipo: ${form.storageType}`,
+              form.storageCapacity && `Armazenamento Capacidade: ${form.storageCapacity}`,
+              form.storageBrand && `Armazenamento Marca: ${form.storageBrand}`,
               ...form.pcComponents.split(","),
             ]
               .join(",")
@@ -472,6 +532,26 @@ export function AddItemModal({
     form.pcGpu,
     form.pcRam,
     form.pcStorage,
+    form.pcMachineName,
+    form.pcMachineBrand,
+    form.cpuModel,
+    form.cpuBrand,
+    form.cpuCores,
+    form.cpuFrequency,
+    form.gpuName,
+    form.gpuBrand,
+    form.gpuVram,
+    form.gpuMemoryType,
+    form.ramCapacity,
+    form.ramType,
+    form.ramFrequency,
+    form.ramModules,
+    form.storageType,
+    form.storageCapacity,
+    form.storageBrand,
+    form.mbModel,
+    form.mbBrand,
+    form.mbSocket,
     form.platform,
     form.priceDigital,
     form.pricePhysical,
@@ -1028,11 +1108,25 @@ export function AddItemModal({
 
                   {(form.pcMachineMode === "desktop_modular" || form.pcMachineMode === "prebuilt") && (
                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                      <FieldBlock label="Placa-mãe"><input value={form.pcMotherboard} onChange={(e) => updateField("pcMotherboard", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
-                      <FieldBlock label="CPU"><input value={form.pcCpu} onChange={(e) => updateField("pcCpu", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
-                      <FieldBlock label="GPU"><input value={form.pcGpu} onChange={(e) => updateField("pcGpu", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
-                      <FieldBlock label="RAM"><input value={form.pcRam} onChange={(e) => updateField("pcRam", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
-                      <FieldBlock label="HD/SSD"><input value={form.pcStorage} onChange={(e) => updateField("pcStorage", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
+                      {form.pcMachineMode === "prebuilt" && (
+                        <>
+                          <FieldBlock label="Nome da máquina *"><input value={form.pcMachineName} onChange={(e) => updateField("pcMachineName", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
+                          <FieldBlock label="Marca da máquina *"><input value={form.pcMachineBrand} onChange={(e) => updateField("pcMachineBrand", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
+                        </>
+                      )}
+                      {form.pcMachineMode === "desktop_modular" && (
+                        <FieldBlock label="Nome do PC (opcional)"><input value={form.pcMachineName} onChange={(e) => updateField("pcMachineName", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
+                      )}
+                    </div>
+                  )}
+
+                  {(form.pcMachineMode === "desktop_modular" || form.pcMachineMode === "prebuilt") && (
+                    <div className="mt-4 space-y-4">
+                      <div className="rounded-2xl border border-white/10 p-3"><p className="mb-2 text-sm text-white/80">CPU (Processador) {form.pcMachineMode === "prebuilt" ? "(opcional)" : ""}</p><div className="grid gap-3 sm:grid-cols-2"><input placeholder="Modelo" value={form.cpuModel} onChange={(e)=>updateField("cpuModel",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Marca" value={form.cpuBrand} onChange={(e)=>updateField("cpuBrand",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Núcleos" value={form.cpuCores} onChange={(e)=>updateField("cpuCores",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Frequência" value={form.cpuFrequency} onChange={(e)=>updateField("cpuFrequency",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/></div></div>
+                      <div className="rounded-2xl border border-white/10 p-3"><p className="mb-2 text-sm text-white/80">GPU (Placa de Vídeo) {form.pcMachineMode === "prebuilt" ? "(opcional)" : ""}</p><div className="grid gap-3 sm:grid-cols-2"><input placeholder="Nome" value={form.gpuName} onChange={(e)=>updateField("gpuName",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Marca" value={form.gpuBrand} onChange={(e)=>updateField("gpuBrand",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="VRAM" value={form.gpuVram} onChange={(e)=>updateField("gpuVram",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Tipo de memória" value={form.gpuMemoryType} onChange={(e)=>updateField("gpuMemoryType",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/></div></div>
+                      <div className="rounded-2xl border border-white/10 p-3"><p className="mb-2 text-sm text-white/80">RAM {form.pcMachineMode === "prebuilt" ? "(opcional)" : ""}</p><div className="grid gap-3 sm:grid-cols-2"><input placeholder="Capacidade" value={form.ramCapacity} onChange={(e)=>updateField("ramCapacity",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Tipo" value={form.ramType} onChange={(e)=>updateField("ramType",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Frequência" value={form.ramFrequency} onChange={(e)=>updateField("ramFrequency",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Quantidade de módulos" value={form.ramModules} onChange={(e)=>updateField("ramModules",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/></div></div>
+                      <div className="rounded-2xl border border-white/10 p-3"><p className="mb-2 text-sm text-white/80">Armazenamento (HD / SSD / NVMe) {form.pcMachineMode === "prebuilt" ? "(opcional)" : ""}</p><div className="grid gap-3 sm:grid-cols-2"><input placeholder="Tipo (HD, SSD, NVMe)" value={form.storageType} onChange={(e)=>updateField("storageType",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Capacidade" value={form.storageCapacity} onChange={(e)=>updateField("storageCapacity",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Marca" value={form.storageBrand} onChange={(e)=>updateField("storageBrand",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/></div></div>
+                      <div className="rounded-2xl border border-white/10 p-3"><p className="mb-2 text-sm text-white/80">MB (Placa-Mãe) {form.pcMachineMode === "prebuilt" ? "(opcional)" : ""}</p><div className="grid gap-3 sm:grid-cols-2"><input placeholder="Modelo" value={form.mbModel} onChange={(e)=>updateField("mbModel",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Marca" value={form.mbBrand} onChange={(e)=>updateField("mbBrand",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Socket" value={form.mbSocket} onChange={(e)=>updateField("mbSocket",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/></div></div>
                     </div>
                   )}
                 </div>
