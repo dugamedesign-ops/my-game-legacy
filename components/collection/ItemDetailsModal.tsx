@@ -95,6 +95,7 @@ export function ItemDetailsModal({
   const [isEditingReleaseDate, setIsEditingReleaseDate] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const releaseDateInputRef = useRef<HTMLInputElement | null>(null);
   const imagePanelRef = useRef<HTMLDivElement | null>(null);
   const handleSaveAllRef = useRef<() => void>(() => {});
   const platformOptions = useMemo(() => {
@@ -186,6 +187,7 @@ export function ItemDetailsModal({
     setIsSearchingCover(false);
     setIsUploadingImage(false);
     setIsImageActionsOpen(false);
+    setIsEditingReleaseDate(false);
 
     const storedRaw =
       typeof window !== "undefined"
@@ -208,6 +210,21 @@ export function ItemDetailsModal({
       .sort((a, b) => a.localeCompare(b));
     setGenreOptions(mergedGenres);
   }, [item, isOpen]);
+
+  useEffect(() => {
+    if (!isEditingReleaseDate) return;
+    releaseDateInputRef.current?.focus();
+    releaseDateInputRef.current?.select();
+
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsEditingReleaseDate(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isEditingReleaseDate]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -298,9 +315,9 @@ export function ItemDetailsModal({
   const previewPriorityLabel = formatPriorityLabel(
     purchasePriorityInput || undefined,
   );
-  const previewReleaseDateLabel = formatReleaseDate(item.releaseDate);
+  const previewReleaseDateLabel = formatReleaseDate(releaseDateInput);
   const purchaseYearNumber = purchaseYearInput ? Number(purchaseYearInput) : undefined;
-  const releaseDateObj = item.releaseDate ? new Date(item.releaseDate) : null;
+  const releaseDateObj = releaseDateInput ? new Date(releaseDateInput) : null;
   const isReleasedForRating =
     !releaseDateObj ||
     Number.isNaN(releaseDateObj.getTime()) ||
@@ -563,7 +580,7 @@ export function ItemDetailsModal({
       title: nameInput.trim() || item.title,
       subtitle: isGame ? undefined : subtitleText || undefined,
       franchise: isGame ? franchiseInput.trim() || undefined : undefined,
-      releaseDate: isGame ? releaseDateInput : undefined,
+      releaseDate: releaseDateInput,
       company: companyInput.trim() || undefined,
       platform: platformInput.trim() || item.platform,
       imageUrl: imageUrlInput.trim() || undefined,
@@ -755,12 +772,14 @@ export function ItemDetailsModal({
                   {isEditingReleaseDate ? (
                     <div className="flex items-center gap-2">
                       <input
+                        ref={releaseDateInputRef}
                         value={releaseDateDraft}
                         onChange={(e) => handleReleaseDateDraftChange(e.target.value)}
                         placeholder="DD/MM/AAAA"
                         className="w-[150px] rounded-lg border border-white/15 bg-black/30 px-2 py-1 text-sm text-white"
                       />
                       <button type="button" onClick={handleSaveReleaseDateDraft} className="rounded border border-cyan-200/40 px-2 py-1 text-xs text-cyan-100">OK</button>
+                      <button type="button" onClick={() => setIsEditingReleaseDate(false)} className="rounded border border-white/20 px-2 py-1 text-xs text-white/75">Cancelar</button>
                     </div>
                   ) : (
                     <button type="button" onClick={() => setIsEditingReleaseDate(true)} className="underline decoration-dotted underline-offset-2">
@@ -1175,7 +1194,8 @@ export function ItemDetailsModal({
                           />
                         </label>
                       </div>
-                      {(item.type === "game" || previewReleaseDateLabel) && (
+                      {((item.type === "game" || item.type === "console" || item.type === "accessory") ||
+                        previewReleaseDateLabel) && (
                         <p className="mt-3 flex items-center gap-2 text-xs text-cyan-100/80">
                           Referência de lançamento:{" "}
                           {previewReleaseDateLabel
