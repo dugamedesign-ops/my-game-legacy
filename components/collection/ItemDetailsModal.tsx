@@ -91,6 +91,8 @@ export function ItemDetailsModal({
   const [ratingInput, setRatingInput] = useState(0);
   const [isDetailsOpen, setIsDetailsOpen] = useState(true);
   const [releaseDateInput, setReleaseDateInput] = useState<string | undefined>(undefined);
+  const [releaseDateDraft, setReleaseDateDraft] = useState("");
+  const [isEditingReleaseDate, setIsEditingReleaseDate] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imagePanelRef = useRef<HTMLDivElement | null>(null);
@@ -171,6 +173,7 @@ export function ItemDetailsModal({
     setReviewInput(item.review ?? "");
     setRatingInput(item.rating ?? 0);
     setReleaseDateInput(item.releaseDate);
+    setReleaseDateDraft(item.releaseDate ? (formatReleaseDate(item.releaseDate) ?? "") : "");
     setSaveFeedback(null);
     const [primary = "", secondary = ""] = (item.genre ?? "")
       .split("/")
@@ -360,16 +363,31 @@ export function ItemDetailsModal({
     setPurchaseYearInput(String(releaseDateObj.getFullYear()));
   }
 
-  function handleEditReleaseDate() {
-    const typed = window.prompt("Informe a data de lançamento (AAAA-MM-DD):", releaseDateInput ?? "");
-    if (typed === null) return;
-    const value = typed.trim();
-    if (!value) return setReleaseDateInput(undefined);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      window.alert("Formato inválido. Use AAAA-MM-DD.");
+  function handleReleaseDateDraftChange(rawValue: string) {
+    const digits = rawValue.replace(/\D/g, "").slice(0, 8);
+    if (digits.length <= 2) return setReleaseDateDraft(digits);
+    if (digits.length <= 4) return setReleaseDateDraft(`${digits.slice(0, 2)}/${digits.slice(2)}`);
+    setReleaseDateDraft(`${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`);
+  }
+
+  function handleSaveReleaseDateDraft() {
+    const digits = releaseDateDraft.replace(/\D/g, "");
+    if (!digits) {
+      setReleaseDateInput(undefined);
+      setIsEditingReleaseDate(false);
       return;
     }
-    setReleaseDateInput(value);
+    if (!(digits.length === 6 || digits.length === 8)) {
+      window.alert("Use DD/MM/AA ou DD/MM/AAAA.");
+      return;
+    }
+    const day = Number(digits.slice(0, 2));
+    const month = Number(digits.slice(2, 4));
+    const year = digits.length === 6 ? Number(`20${digits.slice(4, 6)}`) : Number(digits.slice(4, 8));
+    const iso = `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+    setReleaseDateInput(iso);
+    setReleaseDateDraft(`${day.toString().padStart(2, "0")}/${month.toString().padStart(2, "0")}/${year.toString().padStart(4, "0")}`);
+    setIsEditingReleaseDate(false);
   }
 
   async function handleSearchCoverAgain() {
@@ -733,14 +751,24 @@ export function ItemDetailsModal({
                     {(previewGenre || "Gênero não informado").split(",").map((genre) => genre.trim()).filter(Boolean).join(" | ")}
                   </p>
                 )}
-                <p className="mt-1 text-sm text-white/55">
-                  <button type="button" onClick={handleEditReleaseDate} className="underline decoration-dotted underline-offset-2">
-                    {formatReleaseDate(releaseDateInput) || "Data não informada"}
-                  </button>
-                  {" | "}
-                  {companyInput.trim() || "Empresa não informada"}
-                  {isGame ? ` | ${franchiseInput.trim() || "Franquia não informada"}` : ""}
-                </p>
+                <div className="mt-1 text-sm text-white/55">
+                  {isEditingReleaseDate ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={releaseDateDraft}
+                        onChange={(e) => handleReleaseDateDraftChange(e.target.value)}
+                        placeholder="DD/MM/AAAA"
+                        className="w-[150px] rounded-lg border border-white/15 bg-black/30 px-2 py-1 text-sm text-white"
+                      />
+                      <button type="button" onClick={handleSaveReleaseDateDraft} className="rounded border border-cyan-200/40 px-2 py-1 text-xs text-cyan-100">OK</button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setIsEditingReleaseDate(true)} className="underline decoration-dotted underline-offset-2">
+                      {formatReleaseDate(releaseDateInput) || "Data não informada"}
+                    </button>
+                  )}
+                  <span> | {companyInput.trim() || "Empresa não informada"}{isGame ? ` | ${franchiseInput.trim() || "Franquia não informada"}` : ""}</span>
+                </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <StatusBadge
                     label={formatOwnershipLabel(ownershipStatusInput)}
@@ -802,7 +830,7 @@ export function ItemDetailsModal({
 
                 {isDetailsOpen && (
                   <>
-                <h4 className="mt-4 text-sm font-semibold uppercase tracking-[0.14em] text-white/55">
+                <h4 className="mt-4 text-base font-semibold tracking-[0.08em] text-white/75">
                   Informações principais
                 </h4>
                 <div className="mt-3 grid gap-4 md:grid-cols-2">
@@ -918,7 +946,7 @@ export function ItemDetailsModal({
               />
 
               <section className="mt-5 p-0">
-                <h3 className="text-lg font-semibold text-white">
+                <h3 className="mt-6 text-base font-semibold tracking-[0.08em] text-white/75">
                   Edição rápida
                 </h3>
 
@@ -957,8 +985,8 @@ export function ItemDetailsModal({
 
               </section>
 
-              <section className="p-0">
-                <h3 className="text-lg font-semibold text-white">
+              <section className="mt-6 p-0">
+                <h3 className="text-base font-semibold tracking-[0.08em] text-white/75">
                   Financeiro
                 </h3>
 
