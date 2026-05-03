@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Item } from "@/types/collection";
 import { StatusBadge } from "./StatusBadge";
-import { searchIgdbCover } from "@/lib/igdb";
+import { searchIgdbCover, searchIgdbGames } from "@/lib/igdb";
 import { CustomSelect, type CustomSelectOption } from "@/components/ui/CustomSelect";
 import { uploadSupabaseImage } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
@@ -792,7 +792,11 @@ export function ItemDetailsModal({
                       {formatReleaseDate(releaseDateInput) || "Data não informada"}
                     </button>
                   )}
-                  <span> | {companyInput.trim() || "Empresa não informada"}{isGame ? ` | ${franchiseInput.trim() || "Franquia não informada"}` : ""}</span>
+                  <span>
+                    {" | "}
+                    {companyInput.trim() || "Empresa não informada"}
+                    {isGame && franchiseInput.trim() ? ` | ${franchiseInput.trim()}` : ""}
+                  </span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <StatusBadge
@@ -881,7 +885,37 @@ export function ItemDetailsModal({
                   )}
 
                   <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">Empresa</span>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="block text-sm text-white/70">Empresa</span>
+                      {isGame && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const results = await searchIgdbGames(nameInput || item.title);
+                              const match = results.find((entry) =>
+                                (entry.publisher || entry.company).trim().length > 0,
+                              );
+                              const detected = match?.publisher?.trim() || match?.company?.trim() || "";
+                              if (!detected) {
+                                window.alert("Não encontrei publisher/empresa na IGDB para este item.");
+                                return;
+                              }
+                              setCompanyInput(detected);
+                            } catch (error) {
+                              window.alert(
+                                error instanceof Error
+                                  ? error.message
+                                  : "Não foi possível consultar a IGDB agora.",
+                              );
+                            }
+                          }}
+                          className="rounded-full border border-cyan-300/35 bg-cyan-500/10 px-2.5 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-500/20"
+                        >
+                          🔎 IGDB
+                        </button>
+                      )}
+                    </div>
                     <input
                       value={companyInput}
                       onChange={(e) => setCompanyInput(e.target.value)}
@@ -1453,7 +1487,6 @@ function RarityButtons({
   onChange: (value: NonNullable<Item["rarityTags"]>[number] | "") => void;
 }) {
   const options: { value: NonNullable<Item["rarityTags"]>[number] | ""; label: string }[] = [
-    { value: "undefined", label: "Não definida" },
     { value: "normal", label: "Normal" },
     { value: "rare", label: "Raro" },
     { value: "special_edition", label: "Edição especial" },
