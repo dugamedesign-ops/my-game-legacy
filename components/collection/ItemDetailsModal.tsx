@@ -775,6 +775,12 @@ export function ItemDetailsModal({
                         ref={releaseDateInputRef}
                         value={releaseDateDraft}
                         onChange={(e) => handleReleaseDateDraftChange(e.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            handleSaveReleaseDateDraft();
+                          }
+                        }}
                         placeholder="DD/MM/AAAA"
                         className="w-[150px] rounded-lg border border-white/15 bg-black/30 px-2 py-1 text-sm text-white"
                       />
