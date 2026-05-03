@@ -78,6 +78,12 @@ export function ItemDetailsModal({
   const [purchaseYearInput, setPurchaseYearInput] = useState("");
   const [purchaseMonthInput, setPurchaseMonthInput] = useState("");
   const [purchaseDayInput, setPurchaseDayInput] = useState("");
+  const [purchaseYearPhysicalInput, setPurchaseYearPhysicalInput] = useState("");
+  const [purchaseMonthPhysicalInput, setPurchaseMonthPhysicalInput] = useState("");
+  const [purchaseDayPhysicalInput, setPurchaseDayPhysicalInput] = useState("");
+  const [purchaseYearDigitalInput, setPurchaseYearDigitalInput] = useState("");
+  const [purchaseMonthDigitalInput, setPurchaseMonthDigitalInput] = useState("");
+  const [purchaseDayDigitalInput, setPurchaseDayDigitalInput] = useState("");
   const [purchaseOriginInput, setPurchaseOriginInput] = useState("");
   const [purchaseOriginOptions, setPurchaseOriginOptions] = useState<string[]>(
     [...PURCHASE_ORIGIN_OPTIONS],
@@ -169,6 +175,24 @@ export function ItemDetailsModal({
     setPurchaseYearInput(item.purchaseDate?.year ? String(item.purchaseDate.year) : "2026");
     setPurchaseMonthInput(item.purchaseDate?.month ? String(item.purchaseDate.month) : "");
     setPurchaseDayInput(item.purchaseDate?.day ? String(item.purchaseDate.day) : "");
+    setPurchaseYearPhysicalInput(
+      item.purchaseDatePhysical?.year ? String(item.purchaseDatePhysical.year) : "",
+    );
+    setPurchaseMonthPhysicalInput(
+      item.purchaseDatePhysical?.month ? String(item.purchaseDatePhysical.month) : "",
+    );
+    setPurchaseDayPhysicalInput(
+      item.purchaseDatePhysical?.day ? String(item.purchaseDatePhysical.day) : "",
+    );
+    setPurchaseYearDigitalInput(
+      item.purchaseDateDigital?.year ? String(item.purchaseDateDigital.year) : "",
+    );
+    setPurchaseMonthDigitalInput(
+      item.purchaseDateDigital?.month ? String(item.purchaseDateDigital.month) : "",
+    );
+    setPurchaseDayDigitalInput(
+      item.purchaseDateDigital?.day ? String(item.purchaseDateDigital.day) : "",
+    );
     setPurchaseOriginInput(item.purchaseOrigin ?? "");
     setNotesInput(item.notes ?? "");
     setReviewInput(item.review ?? "");
@@ -564,6 +588,12 @@ export function ItemDetailsModal({
     const year = purchaseYearInput.trim() ? Number(purchaseYearInput.trim()) : undefined;
     const month = purchaseMonthInput.trim() ? Number(purchaseMonthInput.trim()) : undefined;
     const day = purchaseDayInput.trim() ? Number(purchaseDayInput.trim()) : undefined;
+    const physicalYear = purchaseYearPhysicalInput.trim() ? Number(purchaseYearPhysicalInput.trim()) : undefined;
+    const physicalMonth = purchaseMonthPhysicalInput.trim() ? Number(purchaseMonthPhysicalInput.trim()) : undefined;
+    const physicalDay = purchaseDayPhysicalInput.trim() ? Number(purchaseDayPhysicalInput.trim()) : undefined;
+    const digitalYear = purchaseYearDigitalInput.trim() ? Number(purchaseYearDigitalInput.trim()) : undefined;
+    const digitalMonth = purchaseMonthDigitalInput.trim() ? Number(purchaseMonthDigitalInput.trim()) : undefined;
+    const digitalDay = purchaseDayDigitalInput.trim() ? Number(purchaseDayDigitalInput.trim()) : undefined;
     const hasWishlistAcquisitionStatus =
       ownershipStatusInput === "wishlist" &&
       acquisitionStatusInput === "purchased";
@@ -633,6 +663,14 @@ export function ItemDetailsModal({
               month,
               day,
             }
+          : undefined,
+      purchaseDatePhysical:
+        physicalYear || physicalMonth || physicalDay
+          ? { year: physicalYear, month: physicalMonth, day: physicalDay }
+          : undefined,
+      purchaseDateDigital:
+        digitalYear || digitalMonth || digitalDay
+          ? { year: digitalYear, month: digitalMonth, day: digitalDay }
           : undefined,
       purchaseOrigin: purchaseOriginInput.trim() || undefined,
       notes: notesWithSubtitleForGame.slice(0, 100) || undefined,
@@ -1202,9 +1240,45 @@ export function ItemDetailsModal({
                 {!isWishlist && (
                   <>
                     <div className="mt-4">
-                      <span className="mb-2 block text-sm text-white/70">
-                        Data da compra
-                      </span>
+                      <span className="mb-2 block text-sm text-white/70">Data da compra</span>
+                      {hasPhysicalSelected && hasDigitalSelected ? (
+                        <div className="space-y-4">
+                          <div>
+                            <p className="mb-2 text-sm text-white/60">Mídia Física</p>
+                            <div className="grid gap-4 md:grid-cols-3">
+                              <label className="block">
+                                <span className="mb-2 block text-sm text-white/60">Dia</span>
+                                <input value={purchaseDayPhysicalInput} onChange={(e) => setPurchaseDayPhysicalInput(e.target.value)} placeholder="11" className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35" />
+                              </label>
+                              <label className="block">
+                                <span className="mb-2 block text-sm text-white/60">Mês</span>
+                                <input value={purchaseMonthPhysicalInput} onChange={(e) => setPurchaseMonthPhysicalInput(e.target.value)} placeholder="04" className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35" />
+                              </label>
+                              <label className="block">
+                                <span className="mb-2 block text-sm text-white/60">Ano</span>
+                                <CustomSelect value={purchaseYearPhysicalInput} onChange={setPurchaseYearPhysicalInput} options={purchaseYearOptions} placeholder="2026" />
+                              </label>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="mb-2 text-sm text-white/60">Mídia Digital</p>
+                            <div className="grid gap-4 md:grid-cols-3">
+                              <label className="block">
+                                <span className="mb-2 block text-sm text-white/60">Dia</span>
+                                <input value={purchaseDayDigitalInput} onChange={(e) => setPurchaseDayDigitalInput(e.target.value)} placeholder="11" className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35" />
+                              </label>
+                              <label className="block">
+                                <span className="mb-2 block text-sm text-white/60">Mês</span>
+                                <input value={purchaseMonthDigitalInput} onChange={(e) => setPurchaseMonthDigitalInput(e.target.value)} placeholder="04" className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35" />
+                              </label>
+                              <label className="block">
+                                <span className="mb-2 block text-sm text-white/60">Ano</span>
+                                <CustomSelect value={purchaseYearDigitalInput} onChange={setPurchaseYearDigitalInput} options={purchaseYearOptions} placeholder="2026" />
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
                       <div className="grid gap-4 md:grid-cols-3">
                         <label className="block">
                           <span className="mb-2 block text-sm text-white/60">Dia</span>
@@ -1234,6 +1308,7 @@ export function ItemDetailsModal({
                           />
                         </label>
                       </div>
+                      )}
                       {((item.type === "game" || item.type === "console" || item.type === "accessory") ||
                         previewReleaseDateLabel) && (
                         <p className="mt-3 flex items-center gap-2 text-xs text-cyan-100/80">

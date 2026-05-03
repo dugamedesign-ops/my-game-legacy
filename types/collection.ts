@@ -89,6 +89,8 @@ export type Item = {
   purchaseOrigin?: string;
 
   purchaseDate?: PurchaseDate;
+  purchaseDatePhysical?: PurchaseDate;
+  purchaseDateDigital?: PurchaseDate;
   releaseDate?: string;
   expectedArrivalDate?: string;
 
