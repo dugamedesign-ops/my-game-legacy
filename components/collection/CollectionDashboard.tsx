@@ -207,6 +207,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [isCollectionFiltersOpen, setIsCollectionFiltersOpen] = useState(false);
   const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false);
   const [isPlatformOrganizerOpen, setIsPlatformOrganizerOpen] = useState(false);
+  const [isInlineOrganizeMode, setIsInlineOrganizeMode] = useState(false);
+  const [draggedPlatform, setDraggedPlatform] = useState<string | null>(null);
+  const [dragOverPlatform, setDragOverPlatform] = useState<string | null>(null);
   const [platformDefaultOpen, setPlatformDefaultOpen] = useState(true);
   const [platformSectionSeed, setPlatformSectionSeed] = useState(0);
   const [platformOrderMode, setPlatformOrderMode] =
@@ -217,7 +220,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [platformOrderSlots, setPlatformOrderSlots] = useState<PlatformOrderSlot[]>(
     getInitialPlatformOrderSlots,
   );
-  const [draggedPlatform, setDraggedPlatform] = useState<string | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [financialFocusFilters, setFinancialFocusFilters] = useState<FinancialCollectionViewFilters>(
     createEmptyFinancialCollectionViewFilters,
@@ -656,6 +658,24 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   function handleOpenAllPlatforms() {
     setPlatformDefaultOpen(true);
     setPlatformSectionSeed((prev) => prev + 1);
+  }
+
+  function handleReorderPlatforms(sourcePlatform: string, targetPlatform: string) {
+    if (!sourcePlatform || !targetPlatform || sourcePlatform === targetPlatform) return;
+    setPlatformOrderMode("custom");
+    setCustomPlatformOrder((current) => {
+      const baseOrder = [
+        ...current.filter((platform) => allActivePlatforms.includes(platform)),
+        ...allActivePlatforms.filter((platform) => !current.includes(platform)),
+      ];
+      const sourceIndex = baseOrder.indexOf(sourcePlatform);
+      const targetIndex = baseOrder.indexOf(targetPlatform);
+      if (sourceIndex === -1 || targetIndex === -1) return baseOrder;
+      const next = [...baseOrder];
+      const [moved] = next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
   }
 
   function handleCloseAllPlatforms() {
@@ -1393,11 +1413,11 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                     type="button"
                     onClick={() => {
                       handleCloseAllPlatforms();
-                      setIsPlatformOrganizerOpen(true);
+                      setIsInlineOrganizeMode((current) => !current);
                     }}
                     className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/85 transition hover:bg-white/10"
                   >
-                    Organize seu legado
+                    {isInlineOrganizeMode ? "Finalizar organização" : "Organize seu legado"}
                   </button>
                   <button
                     type="button"
@@ -1425,17 +1445,51 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                 </div>
               </div>
               {groupedPlatforms.map((group) => (
-                <PlatformSection
+                <div
                   key={`${group.platform}-${platformSectionSeed}`}
-                  platform={group.platform}
-                  items={group.items}
-                  onItemClick={setSelectedItem}
-                  onItemContextMenu={(item, x, y) => {
-                    setContextMenu({ item, x, y });
+                  draggable={isInlineOrganizeMode}
+                  onDragStart={() => setDraggedPlatform(group.platform)}
+                  onDragEnd={() => {
+                    setDraggedPlatform(null);
+                    setDragOverPlatform(null);
                   }}
-                  onAddItem={handleOpenContextualAdd}
-                  defaultOpen={platformDefaultOpen}
-                />
+                  onDragOver={(event) => {
+                    if (!isInlineOrganizeMode) return;
+                    event.preventDefault();
+                    setDragOverPlatform(group.platform);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (!isInlineOrganizeMode || !draggedPlatform) return;
+                    handleReorderPlatforms(draggedPlatform, group.platform);
+                    setDraggedPlatform(null);
+                    setDragOverPlatform(null);
+                  }}
+                  className={`rounded-2xl transition ${
+                    isInlineOrganizeMode ? "cursor-grab" : ""
+                  } ${
+                    dragOverPlatform === group.platform && draggedPlatform !== group.platform
+                      ? "ring-2 ring-cyan-300/70"
+                      : ""
+                  }`}
+                >
+                  {isInlineOrganizeMode && (
+                    <div className="mb-2 flex items-center gap-2 px-3 text-xs uppercase tracking-[0.18em] text-cyan-100/80">
+                      <span aria-hidden>⠿</span>
+                      <span>Arraste para reordenar</span>
+                    </div>
+                  )}
+                  <PlatformSection
+                    platform={group.platform}
+                    items={group.items}
+                    onItemClick={setSelectedItem}
+                    onItemContextMenu={(item, x, y) => {
+                      setContextMenu({ item, x, y });
+                    }}
+                    onAddItem={handleOpenContextualAdd}
+                    defaultOpen={!isInlineOrganizeMode && platformDefaultOpen}
+                  />
+                </div>
               ))}
             </section>
           ) : (
