@@ -50,6 +50,11 @@ type FormState = {
   pcMachineMode: NonNullable<Item["pcMachineMode"]> | "";
   pcStorefront: NonNullable<Item["pcStorefront"]> | "";
   pcComponents: string;
+  pcMotherboard: string;
+  pcCpu: string;
+  pcGpu: string;
+  pcRam: string;
+  pcStorage: string;
   accessoryCategory: string;
 };
 
@@ -137,6 +142,11 @@ export function AddItemModal({
       pcMachineMode: "",
       pcStorefront: "",
       pcComponents: "",
+      pcMotherboard: "",
+      pcCpu: "",
+      pcGpu: "",
+      pcRam: "",
+      pcStorage: "",
       accessoryCategory: "",
     };
   }
@@ -409,21 +419,28 @@ export function AddItemModal({
           : undefined,
       pcFolder:
         form.platform.trim().toLowerCase() === "pc"
-          ? form.pcFolder || undefined
+          ? "machine"
           : undefined,
       pcMachineMode:
-        form.platform.trim().toLowerCase() === "pc" && form.pcFolder === "machine"
+        form.platform.trim().toLowerCase() === "pc"
           ? form.pcMachineMode || undefined
           : undefined,
       pcStorefront:
-        form.platform.trim().toLowerCase() === "pc" && form.pcFolder === "games"
+        false
           ? form.pcStorefront || undefined
           : undefined,
       pcComponents:
         form.platform.trim().toLowerCase() === "pc" &&
-        form.pcFolder === "machine" &&
-        form.pcMachineMode === "desktop_modular"
-          ? form.pcComponents
+        (form.pcMachineMode === "desktop_modular" || form.pcMachineMode === "prebuilt")
+          ? [
+              form.pcMotherboard && `Placa-mãe: ${form.pcMotherboard}`,
+              form.pcCpu && `CPU: ${form.pcCpu}`,
+              form.pcGpu && `GPU: ${form.pcGpu}`,
+              form.pcRam && `RAM: ${form.pcRam}`,
+              form.pcStorage && `HD/SSD: ${form.pcStorage}`,
+              ...form.pcComponents.split(","),
+            ]
+              .join(",")
               .split(",")
               .map((value) => value.trim())
               .filter(Boolean)
@@ -450,6 +467,11 @@ export function AddItemModal({
     form.pcFolder,
     form.pcMachineMode,
     form.pcStorefront,
+    form.pcMotherboard,
+    form.pcCpu,
+    form.pcGpu,
+    form.pcRam,
+    form.pcStorage,
     form.platform,
     form.priceDigital,
     form.pricePhysical,
@@ -983,80 +1005,35 @@ export function AddItemModal({
 
               {form.platform.trim().toLowerCase() === "pc" && (
                 <div className="rounded-3xl border border-cyan-300/20 bg-cyan-500/5 p-4">
-                  <p className="mb-3 text-sm font-medium text-cyan-100">Estrutura da plataforma PC</p>
+                  <p className="mb-3 text-sm font-medium text-cyan-100">Novo (PC)</p>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <FieldBlock label="Subpasta PC">
+                    <FieldBlock label="Modo de cadastro">
                       <CustomSelect
-                        value={form.pcFolder}
+                        value={form.pcMachineMode}
                         onChange={(value) =>
                           updateField(
-                            "pcFolder",
-                            (value as NonNullable<Item["pcFolder"]> | "") ?? "",
+                            "pcMachineMode",
+                            (value as NonNullable<Item["pcMachineMode"]> | "") ?? "",
                           )
                         }
                         options={[
                           { value: "", label: "Selecione" },
-                          { value: "machine", label: "Máquina" },
-                          { value: "peripherals", label: "Periféricos" },
-                          { value: "games", label: "Jogos" },
+                          { value: "desktop_modular", label: "Montar seu Computador" },
+                          { value: "prebuilt", label: "Máquina fechada (Notebook/Handheld)" },
                         ]}
                         placeholder="Selecione"
                       />
                     </FieldBlock>
-
-                    {form.pcFolder === "machine" && (
-                      <FieldBlock label="Tipo de máquina">
-                        <CustomSelect
-                          value={form.pcMachineMode}
-                          onChange={(value) =>
-                            updateField(
-                              "pcMachineMode",
-                              (value as NonNullable<Item["pcMachineMode"]> | "") ?? "",
-                            )
-                          }
-                          options={[
-                            { value: "", label: "Selecione" },
-                            { value: "prebuilt", label: "Aparelho fechado" },
-                            { value: "desktop_modular", label: "Desktop modular" },
-                          ]}
-                          placeholder="Selecione"
-                        />
-                      </FieldBlock>
-                    )}
                   </div>
 
-                  {form.pcFolder === "machine" && form.pcMachineMode === "desktop_modular" && (
-                    <FieldBlock label="Componentes do desktop (opcional)">
-                      <input
-                        value={form.pcComponents}
-                        onChange={(e) => updateField("pcComponents", e.target.value)}
-                        placeholder="CPU, GPU, RAM, SSD..."
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                      />
-                    </FieldBlock>
-                  )}
-
-                  {form.pcFolder === "games" && (
-                    <FieldBlock label="Loja">
-                      <CustomSelect
-                        value={form.pcStorefront}
-                        onChange={(value) =>
-                          updateField(
-                            "pcStorefront",
-                            (value as NonNullable<Item["pcStorefront"]> | "") ?? "",
-                          )
-                        }
-                        options={[
-                          { value: "", label: "Selecione" },
-                          { value: "steam", label: "Steam" },
-                          { value: "ea", label: "EA App" },
-                          { value: "epic", label: "Epic" },
-                          { value: "gog", label: "GOG" },
-                          { value: "other", label: "Outra" },
-                        ]}
-                        placeholder="Selecione"
-                      />
-                    </FieldBlock>
+                  {(form.pcMachineMode === "desktop_modular" || form.pcMachineMode === "prebuilt") && (
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <FieldBlock label="Placa-mãe"><input value={form.pcMotherboard} onChange={(e) => updateField("pcMotherboard", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
+                      <FieldBlock label="CPU"><input value={form.pcCpu} onChange={(e) => updateField("pcCpu", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
+                      <FieldBlock label="GPU"><input value={form.pcGpu} onChange={(e) => updateField("pcGpu", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
+                      <FieldBlock label="RAM"><input value={form.pcRam} onChange={(e) => updateField("pcRam", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
+                      <FieldBlock label="HD/SSD"><input value={form.pcStorage} onChange={(e) => updateField("pcStorage", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
+                    </div>
                   )}
                 </div>
               )}
