@@ -90,6 +90,7 @@ export function ItemDetailsModal({
   const [reviewInput, setReviewInput] = useState("");
   const [ratingInput, setRatingInput] = useState(0);
   const [isDetailsOpen, setIsDetailsOpen] = useState(true);
+  const [releaseDateInput, setReleaseDateInput] = useState<string | undefined>(undefined);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imagePanelRef = useRef<HTMLDivElement | null>(null);
@@ -169,6 +170,7 @@ export function ItemDetailsModal({
     setNotesInput(item.notes ?? "");
     setReviewInput(item.review ?? "");
     setRatingInput(item.rating ?? 0);
+    setReleaseDateInput(item.releaseDate);
     setSaveFeedback(null);
     const [primary = "", secondary = ""] = (item.genre ?? "")
       .split("/")
@@ -358,6 +360,18 @@ export function ItemDetailsModal({
     setPurchaseYearInput(String(releaseDateObj.getFullYear()));
   }
 
+  function handleEditReleaseDate() {
+    const typed = window.prompt("Informe a data de lançamento (AAAA-MM-DD):", releaseDateInput ?? "");
+    if (typed === null) return;
+    const value = typed.trim();
+    if (!value) return setReleaseDateInput(undefined);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      window.alert("Formato inválido. Use AAAA-MM-DD.");
+      return;
+    }
+    setReleaseDateInput(value);
+  }
+
   async function handleSearchCoverAgain() {
     if (!isGame || !item) return;
 
@@ -531,6 +545,7 @@ export function ItemDetailsModal({
       title: nameInput.trim() || item.title,
       subtitle: isGame ? undefined : subtitleText || undefined,
       franchise: isGame ? franchiseInput.trim() || undefined : undefined,
+      releaseDate: isGame ? releaseDateInput : undefined,
       company: companyInput.trim() || undefined,
       platform: platformInput.trim() || item.platform,
       imageUrl: imageUrlInput.trim() || undefined,
@@ -713,11 +728,18 @@ export function ItemDetailsModal({
                 {!isGame && subtitleInput && (
                   <p className="mt-2 text-lg text-white/65">{subtitleInput}</p>
                 )}
-                <p className="mt-3 text-sm text-white/70">
-                  {(previewGenre || "Gênero não informado").split(",").map((genre) => genre.trim()).filter(Boolean).join(" | ")}
-                </p>
+                {isGame && (
+                  <p className="mt-3 text-sm text-white/70">
+                    {(previewGenre || "Gênero não informado").split(",").map((genre) => genre.trim()).filter(Boolean).join(" | ")}
+                  </p>
+                )}
                 <p className="mt-1 text-sm text-white/55">
-                  {(previewReleaseDateLabel || "Data não informada")} | {(companyInput.trim() || "Empresa não informada")} | {(franchiseInput.trim() || "Franquia não informada")}
+                  <button type="button" onClick={handleEditReleaseDate} className="underline decoration-dotted underline-offset-2">
+                    {formatReleaseDate(releaseDateInput) || "Data não informada"}
+                  </button>
+                  {" | "}
+                  {companyInput.trim() || "Empresa não informada"}
+                  {isGame ? ` | ${franchiseInput.trim() || "Franquia não informada"}` : ""}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <StatusBadge
@@ -895,7 +917,7 @@ export function ItemDetailsModal({
                 className="hidden"
               />
 
-              <section className="mt-5 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+              <section className="mt-5 p-0">
                 <h3 className="text-lg font-semibold text-white">
                   Edição rápida
                 </h3>
@@ -920,7 +942,7 @@ export function ItemDetailsModal({
                     </div>
                   )}
 
-                  {shouldShowGameStatus && (
+                  {isGame && shouldShowGameStatus && (
                     <label className="block">
                       <span className="mb-2 block text-sm text-white/70">
                         Status do jogo
@@ -935,7 +957,7 @@ export function ItemDetailsModal({
 
               </section>
 
-              <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+              <section className="p-0">
                 <h3 className="text-lg font-semibold text-white">
                   Financeiro
                 </h3>
