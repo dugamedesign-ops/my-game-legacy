@@ -323,6 +323,8 @@ export function AddItemModal({
   const hasPhysicalSelected = form.physical;
   const hasDigitalSelected = form.digital;
   const hasBothMediaSelected = hasPhysicalSelected && hasDigitalSelected;
+  const isPcPlatform = form.platform.trim().toLowerCase() === "pc";
+  const isPcAccessory = isPcPlatform && form.type === "accessory";
 
   const parseOptionalNumber = useCallback((value: string): number | undefined => {
     const normalized = value.replace(",", ".").trim();
@@ -1083,7 +1085,7 @@ export function AddItemModal({
                 </>
               )}
 
-              {form.platform.trim().toLowerCase() === "pc" && (
+              {isPcPlatform && form.type !== "accessory" && (
                 <div className="rounded-3xl border border-cyan-300/20 bg-cyan-500/5 p-4">
                   <p className="mb-3 text-sm font-medium text-cyan-100">Novo (PC)</p>
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -1165,15 +1167,26 @@ export function AddItemModal({
                       />
                     </FieldBlock>
 
-                    <FieldBlock label="Subtítulo / versão">
+                    <FieldBlock label="Marca">
                       <input
                         value={form.subtitle}
                         onChange={(e) => updateField("subtitle", e.target.value)}
-                        placeholder="Ex: Helldivers 2"
+                        placeholder="Ex: Valve"
                         className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                       />
                     </FieldBlock>
                   </div>
+
+                  {isPcAccessory && (
+                    <FieldBlock label="Categoria do acessório">
+                      <input
+                        value={form.accessoryCategory}
+                        onChange={(e) => updateField("accessoryCategory", e.target.value)}
+                        placeholder="Ex: Controle, Teclado, Headset..."
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      />
+                    </FieldBlock>
+                  )}
 
                   <FieldBlock label="Status de posse">
                     <OwnershipStatusButtons
@@ -1214,143 +1227,144 @@ export function AddItemModal({
                 </>
               )}
 
-              <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
-                <button
-                  type="button"
-                  onClick={() => setIsAdvancedOpen((prev) => !prev)}
-                  className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left text-sm text-white/90 transition hover:bg-white/10"
-                >
-                  <span>Mais opções</span>
-                  <span className="text-xs">{isAdvancedOpen ? "▲" : "▼"}</span>
-                </button>
+              {!isPcAccessory ? (
+                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdvancedOpen((prev) => !prev)}
+                    className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left text-sm text-white/90 transition hover:bg-white/10"
+                  >
+                    <span>Mais opções</span>
+                    <span className="text-xs">{isAdvancedOpen ? "▲" : "▼"}</span>
+                  </button>
 
-                {isAdvancedOpen && (
-                  <div className="mt-4 space-y-4">
-                    {form.type === "game" && (
-                      <>
-                        <FieldBlock label="Status do jogo">
-                          <CustomSelect
-                            value={form.gameProgressStatus}
-                            onChange={(value) =>
-                              updateField(
-                                "gameProgressStatus",
-                                (value as NonNullable<Item["gameProgressStatus"]> | "") ?? "",
-                              )
-                            }
-                            options={gameProgressOptions}
-                            placeholder="Não definido"
-                          />
-                        </FieldBlock>
+                  {isAdvancedOpen && (
+                    <div className="mt-4 space-y-4">
+                      {form.type === "game" && (
+                        <>
+                          <FieldBlock label="Status do jogo">
+                            <CustomSelect
+                              value={form.gameProgressStatus}
+                              onChange={(value) =>
+                                updateField(
+                                  "gameProgressStatus",
+                                  (value as NonNullable<Item["gameProgressStatus"]> | "") ?? "",
+                                )
+                              }
+                              options={gameProgressOptions}
+                              placeholder="Não definido"
+                            />
+                          </FieldBlock>
 
-                        {(hasPhysicalSelected || hasDigitalSelected) && (
-                          <div
-                            className={`grid gap-4 ${
-                              hasBothMediaSelected ? "sm:grid-cols-2" : "sm:grid-cols-1"
-                            }`}
-                          >
-                            {hasPhysicalSelected && (
-                              <FieldBlock label="Preço (Físico)">
-                                <input
-                                  value={form.pricePhysical}
-                                  onChange={(e) => updateField("pricePhysical", e.target.value)}
-                                  placeholder="Ex: 299.90"
-                                  className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                                />
-                              </FieldBlock>
-                            )}
+                          {(hasPhysicalSelected || hasDigitalSelected) && (
+                            <div
+                              className={`grid gap-4 ${
+                                hasBothMediaSelected ? "sm:grid-cols-2" : "sm:grid-cols-1"
+                              }`}
+                            >
+                              {hasPhysicalSelected && (
+                                <FieldBlock label="Preço (Físico)">
+                                  <input
+                                    value={form.pricePhysical}
+                                    onChange={(e) => updateField("pricePhysical", e.target.value)}
+                                    placeholder="Ex: 299.90"
+                                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                                  />
+                                </FieldBlock>
+                              )}
 
-                            {hasDigitalSelected && (
-                              <FieldBlock label="Preço (Digital)">
-                                <input
-                                  value={form.priceDigital}
-                                  onChange={(e) => updateField("priceDigital", e.target.value)}
-                                  placeholder="Ex: 249.90"
-                                  className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                                />
-                              </FieldBlock>
-                            )}
+                              {hasDigitalSelected && (
+                                <FieldBlock label="Preço (Digital)">
+                                  <input
+                                    value={form.priceDigital}
+                                    onChange={(e) => updateField("priceDigital", e.target.value)}
+                                    placeholder="Ex: 249.90"
+                                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                                  />
+                                </FieldBlock>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <FieldBlock label="Empresa">
+                              <input
+                                value={form.company}
+                                onChange={(e) => updateField("company", e.target.value)}
+                                placeholder="Ex: Sony, Nintendo, Capcom"
+                                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                              />
+                            </FieldBlock>
+
+                            <FieldBlock label="Franquia">
+                              <CustomSelect
+                                value={form.franchise}
+                                onChange={handleFranchiseSelect}
+                                options={franchiseSelectOptions}
+                                placeholder="Em branco"
+                              />
+                            </FieldBlock>
+
+                            <FieldBlock label="Gênero 1">
+                              <CustomSelect
+                                value={form.genrePrimary}
+                                onChange={(value) => handleGenreSelect("genrePrimary", value)}
+                                options={primaryGenreOptions}
+                                placeholder="Em branco"
+                              />
+                            </FieldBlock>
                           </div>
-                        )}
+                          {form.genrePrimary && (
+                            <FieldBlock label="Gênero 2 (opcional)">
+                              <CustomSelect
+                                value={form.genreSecondary}
+                                onChange={(value) => handleGenreSelect("genreSecondary", value)}
+                                options={secondaryGenreOptions}
+                                placeholder="Em branco"
+                              />
+                            </FieldBlock>
+                          )}
+                        </>
+                      )}
 
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          <FieldBlock label="Empresa">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div className="flex-1">
+                          <FieldBlock label="URL da imagem / Capa">
                             <input
-                              value={form.company}
-                              onChange={(e) => updateField("company", e.target.value)}
-                              placeholder="Ex: Sony, Nintendo, Capcom"
+                              value={form.imageUrl}
+                              onChange={(e) => updateField("imageUrl", e.target.value)}
+                              placeholder="Cole a URL da imagem ou use a busca automática"
                               className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                             />
                           </FieldBlock>
-
-                          <FieldBlock label="Franquia">
-                            <CustomSelect
-                              value={form.franchise}
-                              onChange={handleFranchiseSelect}
-                              options={franchiseSelectOptions}
-                              placeholder="Em branco"
-                            />
-                          </FieldBlock>
-
-                          <FieldBlock label="Gênero 1">
-                            <CustomSelect
-                              value={form.genrePrimary}
-                              onChange={(value) => handleGenreSelect("genrePrimary", value)}
-                              options={primaryGenreOptions}
-                              placeholder="Em branco"
-                            />
-                          </FieldBlock>
                         </div>
-                        {form.genrePrimary && (
-                          <FieldBlock label="Gênero 2 (opcional)">
-                            <CustomSelect
-                              value={form.genreSecondary}
-                              onChange={(value) => handleGenreSelect("genreSecondary", value)}
-                              options={secondaryGenreOptions}
-                              placeholder="Em branco"
-                            />
-                          </FieldBlock>
+
+                        {form.type === "game" && (
+                          <button
+                            type="button"
+                            onClick={handleSearchCover}
+                            disabled={!form.title.trim() || isSearchingCover}
+                            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isSearchingCover ? "Buscando..." : "Buscar capa via IGDB"}
+                          </button>
                         )}
-
-                      </>
-                    )}
-
-                    {form.type === "accessory" && (
-                      <FieldBlock label="Categoria do acessório">
-                        <input
-                          value={form.accessoryCategory}
-                          onChange={(e) => updateField("accessoryCategory", e.target.value)}
-                          placeholder="Ex: controlador mobile, teclado, headset..."
-                          className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                        />
-                      </FieldBlock>
-                    )}
-
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                      <div className="flex-1">
-                        <FieldBlock label="URL da imagem / capa">
-                          <input
-                            value={form.imageUrl}
-                            onChange={(e) => updateField("imageUrl", e.target.value)}
-                            placeholder="Cole a URL da imagem ou use a busca automática"
-                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                          />
-                        </FieldBlock>
                       </div>
-
-                      {form.type === "game" && (
-                        <button
-                          type="button"
-                          onClick={handleSearchCover}
-                          disabled={!form.title.trim() || isSearchingCover}
-                          className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {isSearchingCover ? "Buscando..." : "Buscar capa via IGDB"}
-                        </button>
-                      )}
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+                  <FieldBlock label="URL da imagem / Capa">
+                    <input
+                      value={form.imageUrl}
+                      onChange={(e) => updateField("imageUrl", e.target.value)}
+                      placeholder="Cole a URL da imagem"
+                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                    />
+                  </FieldBlock>
+                </div>
+              )}
 
               {(duplicateCheck.exactDuplicates.length > 0 ||
                 duplicateCheck.relatedItems.length > 0) && (
