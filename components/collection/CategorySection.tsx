@@ -11,6 +11,7 @@ type CategorySectionProps = {
   defaultOpen?: boolean;
   onItemClick?: (item: Item) => void;
   onItemContextMenu?: (item: Item, x: number, y: number) => void;
+  categoryLabelOverride?: string;
 };
 
 export function CategorySection({
@@ -19,6 +20,7 @@ export function CategorySection({
   defaultOpen = true,
   onItemClick,
   onItemContextMenu,
+  categoryLabelOverride,
 }: CategorySectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const itemCountLabel = `${items.length} ${items.length === 1 ? "item" : "itens"}`;
@@ -30,7 +32,7 @@ export function CategorySection({
           <div>
             <div className="flex items-center gap-3">
               <h3 className="text-base font-semibold text-white sm:text-lg">
-                {CATEGORY_LABELS[category]}
+                {categoryLabelOverride ?? CATEGORY_LABELS[category]}
               </h3>
             </div>
 

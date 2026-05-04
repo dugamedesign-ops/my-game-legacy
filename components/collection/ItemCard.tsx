@@ -1,4 +1,5 @@
 import { Item } from "@/types/collection";
+import Image from "next/image";
 import { getAcquisitionStatusLabel, getNormalizedAcquisitionStatus } from "@/lib/acquisition-utils";
 
 type CardSize = "large" | "medium" | "small";
@@ -78,6 +79,13 @@ export function ItemCard({
   showMediaSeals = true,
 }: ItemCardProps) {
   const isSmall = size === "small";
+  const isPcMachine = item.platform.trim().toLowerCase() === "pc" && item.type === "console";
+  const machineTypeLabel =
+    item.pcMachineMode === "desktop_modular" ? "Desktop" : item.pcMachineMode === "prebuilt" ? "Máquina fechada" : "Máquina";
+  const machineNameFromComponents =
+    item.pcComponents?.find((value) => value.toLowerCase().startsWith("máquina:"))?.split(":")[1]?.trim() ?? "";
+  const displayTitle = isPcMachine ? machineNameFromComponents || item.title : item.title;
+  const displaySubtitle = isPcMachine ? machineTypeLabel : (item.subtitle ?? "");
   const cornerSeal = getCornerSeal(item);
   const gameStatusSeal = getGameStatusSeal(item);
   const acquisitionStatus = getNormalizedAcquisitionStatus(item);
@@ -107,9 +115,12 @@ export function ItemCard({
           </span>
         )}
         {item.imageUrl ? (
-          <img
+          <Image
             src={item.imageUrl}
             alt={item.title}
+            width={420}
+            height={560}
+            unoptimized
             className="h-full w-full bg-black/30 object-contain p-1 transition duration-500 group-hover:scale-[1.02]"
           />
         ) : (
@@ -123,7 +134,7 @@ export function ItemCard({
             isSmall ? "text-sm" : "text-[15px]"
           }`}
         >
-          {item.title}
+            {displayTitle}
         </h3>
 
         <div className="mt-2 flex min-h-[32px] items-center justify-between gap-2">
@@ -132,7 +143,7 @@ export function ItemCard({
               isSmall ? "text-[11px]" : "text-xs"
             } text-white/65`}
           >
-            {item.subtitle ?? ""}
+            {displaySubtitle}
           </p>
 
           <div className="flex shrink-0 items-center gap-1.5">

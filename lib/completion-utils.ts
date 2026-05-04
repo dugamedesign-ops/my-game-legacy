@@ -9,7 +9,8 @@ export type ItemPendingField =
   | "gameProgressStatus"
   | "purchasePriority"
   | "rarity"
-  | "company";
+  | "company"
+  | "machineBrand";
 
 export type ItemPendingInfo = {
   itemId: string;
@@ -31,6 +32,7 @@ export function getItemPendingLabel(field: ItemPendingField) {
     purchasePriority: "Prioridade pendente",
     rarity: "Raridade pendente",
     company: "Empresa pendente",
+    machineBrand: "Marca da máquina pendente",
   };
 
   return map[field];
@@ -89,8 +91,17 @@ export function getPendingItems(items: Item[]): ItemPendingInfo[] {
       }
     }
 
-    if (!item.company?.trim()) {
-      missingFields.push("company");
+    const isPcPrebuiltMachine =
+      item.platform.trim().toLowerCase() === "pc" &&
+      item.type === "console" &&
+      item.pcMachineMode === "prebuilt";
+    const machineBrand = item.pcComponents
+      ?.find((entry) => entry.toLowerCase().startsWith("marca máquina:"))
+      ?.split(":")[1]
+      ?.trim();
+
+    if (isPcPrebuiltMachine ? !machineBrand : !item.company?.trim()) {
+      missingFields.push(isPcPrebuiltMachine ? "machineBrand" : "company");
     }
 
     if (

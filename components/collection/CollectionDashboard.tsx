@@ -140,13 +140,6 @@ function mergePlatformOrderSlots(
   }) as PlatformOrderSlot[];
 }
 
-function getSlotLabel(slot: PlatformOrderSlot) {
-  const fallback = "Minha ordem";
-  if (!slot?.label) return fallback;
-  const sanitized = slot.label.trim();
-  return sanitized.length > 0 ? sanitized : fallback;
-}
-
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const { user: authUser, session, signOut, publicProfile, setProfileVisibility } = useAuth();
   const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
@@ -204,8 +197,11 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [isLegacyMenuOpen, setIsLegacyMenuOpen] = useState(false);
   const [isFinancialOpen, setIsFinancialOpen] = useState(false);
   const [isPendingOpen, setIsPendingOpen] = useState(false);
-  const [isCollectionFiltersOpen, setIsCollectionFiltersOpen] = useState(false);
+  const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false);
   const [isPlatformOrganizerOpen, setIsPlatformOrganizerOpen] = useState(false);
+  const [isInlineOrganizeMode, setIsInlineOrganizeMode] = useState(false);
+  const [draggedPlatform, setDraggedPlatform] = useState<string | null>(null);
+  const [dragOverPlatform, setDragOverPlatform] = useState<string | null>(null);
   const [platformDefaultOpen, setPlatformDefaultOpen] = useState(true);
   const [platformSectionSeed, setPlatformSectionSeed] = useState(0);
   const [platformOrderMode, setPlatformOrderMode] =
@@ -213,18 +209,15 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [customPlatformOrder, setCustomPlatformOrder] = useState<string[]>(
     getInitialCustomPlatformOrder,
   );
-  const [platformOrderSlots, setPlatformOrderSlots] = useState<PlatformOrderSlot[]>(
+  const [, setPlatformOrderSlots] = useState<PlatformOrderSlot[]>(
     getInitialPlatformOrderSlots,
   );
-  const [draggedPlatform, setDraggedPlatform] = useState<string | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [financialFocusFilters, setFinancialFocusFilters] = useState<FinancialCollectionViewFilters>(
     createEmptyFinancialCollectionViewFilters,
   );
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
-  const [openSlotMenu, setOpenSlotMenu] = useState<1 | 2 | 3 | null>(null);
-  const [isOrganizerExpanded, setIsOrganizerExpanded] = useState(false);
   const collectionSectionRef = useRef<HTMLElement | null>(null);
   const legacyMenuRef = useRef<HTMLDivElement | null>(null);
   const isModalOpenRef = useRef(false);
@@ -657,6 +650,24 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     setPlatformSectionSeed((prev) => prev + 1);
   }
 
+  function handleReorderPlatforms(sourcePlatform: string, targetPlatform: string) {
+    if (!sourcePlatform || !targetPlatform || sourcePlatform === targetPlatform) return;
+    setPlatformOrderMode("custom");
+    setCustomPlatformOrder((current) => {
+      const baseOrder = [
+        ...current.filter((platform) => allActivePlatforms.includes(platform)),
+        ...allActivePlatforms.filter((platform) => !current.includes(platform)),
+      ];
+      const sourceIndex = baseOrder.indexOf(sourcePlatform);
+      const targetIndex = baseOrder.indexOf(targetPlatform);
+      if (sourceIndex === -1 || targetIndex === -1) return baseOrder;
+      const next = [...baseOrder];
+      const [moved] = next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  }
+
   function handleCloseAllPlatforms() {
     setPlatformDefaultOpen(false);
     setPlatformSectionSeed((prev) => prev + 1);
@@ -690,165 +701,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   function handleResetAlphabeticalPlatformOrder() {
     setPlatformOrderMode("alphabetical");
     setCustomPlatformOrder(allActivePlatforms);
-  }
-
-  async function saveCurrentOrderToSlot(slot: 1 | 2 | 3) {
-    const existingLabel = platformOrderSlots[slot - 1]?.label;
-    const nextSlot: PlatformOrderSlotPreference = {
-      slot,
-      label: existingLabel,
-      mode: platformOrderMode,
-      order:
-        platformOrderMode === "custom"
-          ? [...effectiveCustomPlatformOrder]
-          : [],
-      updated_at: new Date().toISOString(),
-    };
-
-    const nextSlots = [...platformOrderSlots] as PlatformOrderSlot[];
-    nextSlots[slot - 1] = nextSlot;
-    setPlatformOrderSlots(nextSlots);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        PLATFORM_ORDER_SLOTS_DRAFT_KEY,
-        JSON.stringify(nextSlots.filter(Boolean)),
-      );
-      window.localStorage.setItem(
-        PLATFORM_ORDER_SLOTS_CACHE_KEY,
-        JSON.stringify(nextSlots.filter(Boolean)),
-      );
-    }
-
-    const token = session?.access_token;
-    if (!token || !authUser?.id) return;
-
-    try {
-      await saveUserPlatformOrderSlots(
-        token,
-        authUser.id,
-        nextSlots.filter(Boolean) as PlatformOrderSlotPreference[],
-      );
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
-      }
-    } catch (error) {
-      console.error("Erro ao salvar slots de ordem:", error);
-    }
-  }
-
-  async function deletePlatformOrderSlot(slotNumber: 1 | 2 | 3) {
-    const slot = platformOrderSlots[slotNumber - 1];
-    if (!slot) return;
-    const confirmed = window.confirm(
-      `Tem certeza que deseja deletar o Slot ${slotNumber}?`,
-    );
-    if (!confirmed) return;
-
-    const nextSlots = [...platformOrderSlots] as PlatformOrderSlot[];
-    nextSlots[slotNumber - 1] = null;
-    setPlatformOrderSlots(nextSlots);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        PLATFORM_ORDER_SLOTS_DRAFT_KEY,
-        JSON.stringify(nextSlots.filter(Boolean)),
-      );
-      window.localStorage.setItem(
-        PLATFORM_ORDER_SLOTS_CACHE_KEY,
-        JSON.stringify(nextSlots.filter(Boolean)),
-      );
-    }
-
-    const token = session?.access_token;
-    if (!token || !authUser?.id) return;
-
-    try {
-      await saveUserPlatformOrderSlots(
-        token,
-        authUser.id,
-        nextSlots.filter(Boolean) as PlatformOrderSlotPreference[],
-      );
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
-      }
-    } catch (error) {
-      console.error("Erro ao deletar slot de ordem:", error);
-    }
-  }
-
-  async function renamePlatformOrderSlot(slotNumber: 1 | 2 | 3) {
-    const current = platformOrderSlots[slotNumber - 1];
-    if (!current) {
-      window.alert("Salve uma ordenação neste slot antes de renomear.");
-      return;
-    }
-
-    const promptValue = window.prompt(
-      "Novo nome do filtro rápido:",
-      current.label?.trim() || `Slot ${slotNumber}`,
-    );
-    if (promptValue === null) return;
-
-    const nextLabel = promptValue.trim();
-    if (nextLabel.length === 0) {
-      window.alert("O nome do filtro não pode ficar vazio.");
-      return;
-    }
-
-    const nextSlots = [...platformOrderSlots] as PlatformOrderSlot[];
-    nextSlots[slotNumber - 1] = {
-      ...current,
-      label: nextLabel.slice(0, 40),
-      updated_at: new Date().toISOString(),
-    };
-    setPlatformOrderSlots(nextSlots);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        PLATFORM_ORDER_SLOTS_DRAFT_KEY,
-        JSON.stringify(nextSlots.filter(Boolean)),
-      );
-      window.localStorage.setItem(
-        PLATFORM_ORDER_SLOTS_CACHE_KEY,
-        JSON.stringify(nextSlots.filter(Boolean)),
-      );
-    }
-
-    const token = session?.access_token;
-    if (!token || !authUser?.id) return;
-
-    try {
-      await saveUserPlatformOrderSlots(
-        token,
-        authUser.id,
-        nextSlots.filter(Boolean) as PlatformOrderSlotPreference[],
-      );
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
-      }
-    } catch (error) {
-      console.error("Erro ao renomear slot de ordem:", error);
-    }
-  }
-
-  const canSaveCurrentOrder = useMemo(() => {
-    if (platformOrderMode !== "custom") return false;
-    if (effectiveCustomPlatformOrder.length <= 1) return false;
-    const alphabetical = [...allActivePlatforms].sort((a, b) =>
-      a.localeCompare(b, "pt-BR", { sensitivity: "base" }),
-    );
-    return JSON.stringify(effectiveCustomPlatformOrder) !== JSON.stringify(alphabetical);
-  }, [allActivePlatforms, effectiveCustomPlatformOrder, platformOrderMode]);
-
-  function applyPlatformOrderSlot(slot: PlatformOrderSlot) {
-    if (!slot) return;
-    if (slot.mode === "alphabetical") {
-      handleResetAlphabeticalPlatformOrder();
-      return;
-    }
-    setPlatformOrderMode("custom");
-    setCustomPlatformOrder(slot.order);
   }
 
   function applyWishlistPurchaseStatus(item: Item) {
@@ -1386,136 +1238,27 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             <EmptyCollectionState onAddClick={handleOpenDefaultAdd} />
           ) : groupedPlatforms.length > 0 ? (
             <section ref={collectionSectionRef} className="space-y-6">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <button
-                  type="button"
-                  onClick={() => setIsOrganizerExpanded((current) => !current)}
-                  className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-left transition hover:bg-white/10"
-                >
-                  <p className="text-xs uppercase tracking-[0.18em] text-white">
-                    Organize seu legado
-                  </p>
-                  <span className="text-xs text-white/70">{isOrganizerExpanded ? "▲" : "▼"}</span>
-                </button>
-
-                {isOrganizerExpanded && (
-                  <>
-                    <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-                      <p className="text-sm text-white/85">Configure a ordem das plataformas do seu jeito.</p>
-                      <button
-                        type="button"
-                        onClick={() => setIsPlatformOrganizerOpen(true)}
-                        className="rounded-full border border-white/15 px-3 py-1 text-xs text-white/75 transition hover:bg-white/10"
-                      >
-                        {platformOrderMode === "alphabetical" ? "Ordem alfabética" : "Minha ordem"}
-                      </button>
-                    </div>
-
-                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                      {platformOrderSlots.map((slot, index) => (
-                        <button
-                          key={`order-slot-${index + 1}`}
-                          type="button"
-                          disabled={!slot}
-                          onClick={() => {
-                            if (slot) applyPlatformOrderSlot(slot);
-                          }}
-                          className="rounded-xl border border-white/10 bg-black/20 p-2 text-left transition enabled:hover:bg-white/10 disabled:cursor-default"
-                        >
-                          <p className="text-[11px] uppercase tracking-[0.12em] text-white/45">
-                            SLOT {index + 1}
-                          </p>
-                          <div className="mt-1 flex items-center justify-between gap-2">
-                            <p className="text-sm text-white/90">{getSlotLabel(slot)}</p>
-                            {slot && (
-                              <div className="relative">
-                                <button
-                                  type="button"
-                                  aria-label={`Abrir opções do slot ${index + 1}`}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    setOpenSlotMenu((current) =>
-                                      current === index + 1 ? null : ((index + 1) as 1 | 2 | 3),
-                                    );
-                                  }}
-                                  className="rounded-md border border-white/15 px-1.5 py-0.5 text-xs text-white/75 transition hover:bg-white/10"
-                                >
-                                  ⋯
-                                </button>
-                                {openSlotMenu === index + 1 && (
-                                  <div className="absolute right-0 top-7 z-20 min-w-[150px] rounded-lg border border-white/10 bg-[#141421] p-1 shadow-xl">
-                                    <button
-                                      type="button"
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        void renamePlatformOrderSlot((index + 1) as 1 | 2 | 3);
-                                        setOpenSlotMenu(null);
-                                      }}
-                                      className="w-full rounded-md px-2 py-1.5 text-left text-xs text-white/85 transition hover:bg-white/10"
-                                    >
-                                      Renomear filtro
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        void deletePlatformOrderSlot((index + 1) as 1 | 2 | 3);
-                                        setOpenSlotMenu(null);
-                                      }}
-                                      className="mt-1 w-full rounded-md px-2 py-1.5 text-left text-xs text-rose-200 transition hover:bg-rose-500/15"
-                                    >
-                                      Excluir slot
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          <div className="mt-2 flex items-center gap-2">
-                            {!slot && canSaveCurrentOrder ? (
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  void saveCurrentOrderToSlot((index + 1) as 1 | 2 | 3);
-                                }}
-                                className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-500/20"
-                              >
-                                Salvar atual
-                              </button>
-                            ) : null}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-
-                <div className="mt-3 rounded-xl border border-white/10 bg-black/20">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsCollectionFiltersOpen((open) => !open)}
-                    className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm text-white/85 transition hover:bg-white/10"
+                    onClick={() => {
+                      handleCloseAllPlatforms();
+                      setIsInlineOrganizeMode((current) => !current);
+                    }}
+                    className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/85 transition hover:bg-white/10"
                   >
-                    <span className="text-xs uppercase tracking-[0.18em] text-white">
-                      Filtros inteligentes
-                    </span>
-                    <span className="text-xs">{isCollectionFiltersOpen ? "▲" : "▼"}</span>
+                    {isInlineOrganizeMode ? "Finalizar organização" : "Organize seu legado"}
                   </button>
-                  {isCollectionFiltersOpen && (
-                    <div className="border-t border-white/10 p-2">
-                      <FiltersBar
-                        filters={filters}
-                        setFilters={setFilters}
-                        items={collectionItems}
-                        compact
-                      />
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsFiltersModalOpen(true)}
+                    className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/85 transition hover:bg-white/10"
+                  >
+                    Filtros
+                  </button>
                 </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={handleOpenAllPlatforms}
@@ -1530,19 +1273,72 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                 >
                   Fechar todas as plataformas
                 </button>
+                </div>
               </div>
               {groupedPlatforms.map((group) => (
-                <PlatformSection
+                <div
                   key={`${group.platform}-${platformSectionSeed}`}
-                  platform={group.platform}
-                  items={group.items}
-                  onItemClick={setSelectedItem}
-                  onItemContextMenu={(item, x, y) => {
-                    setContextMenu({ item, x, y });
+                  draggable={isInlineOrganizeMode}
+                  onDragStart={(event) => {
+                    setDraggedPlatform(group.platform);
+                    event.dataTransfer.effectAllowed = "move";
+                    const dragPreview = document.createElement("div");
+                    dragPreview.textContent = `↕ ${group.platform}`;
+                    dragPreview.style.padding = "6px 10px";
+                    dragPreview.style.borderRadius = "9999px";
+                    dragPreview.style.background = "rgba(8, 14, 30, 0.92)";
+                    dragPreview.style.border = "1px solid rgba(103, 232, 249, 0.6)";
+                    dragPreview.style.color = "white";
+                    dragPreview.style.fontSize = "12px";
+                    dragPreview.style.position = "absolute";
+                    dragPreview.style.top = "-9999px";
+                    document.body.appendChild(dragPreview);
+                    event.dataTransfer.setDragImage(dragPreview, 12, 12);
+                    window.setTimeout(() => {
+                      document.body.removeChild(dragPreview);
+                    }, 0);
                   }}
-                  onAddItem={handleOpenContextualAdd}
-                  defaultOpen={platformDefaultOpen}
-                />
+                  onDragEnd={() => {
+                    setDraggedPlatform(null);
+                    setDragOverPlatform(null);
+                  }}
+                  onDragOver={(event) => {
+                    if (!isInlineOrganizeMode) return;
+                    event.preventDefault();
+                    setDragOverPlatform(group.platform);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (!isInlineOrganizeMode || !draggedPlatform) return;
+                    handleReorderPlatforms(draggedPlatform, group.platform);
+                    setDraggedPlatform(null);
+                    setDragOverPlatform(null);
+                  }}
+                  className={`rounded-2xl transition ${
+                    isInlineOrganizeMode ? "cursor-grab" : ""
+                  } ${
+                    dragOverPlatform === group.platform && draggedPlatform !== group.platform
+                      ? "ring-2 ring-cyan-300/70"
+                      : ""
+                  }`}
+                >
+                  {isInlineOrganizeMode && (
+                    <div className="mb-2 flex items-center gap-2 px-3 text-xs uppercase tracking-[0.18em] text-cyan-100/80">
+                      <span aria-hidden>⠿</span>
+                      <span>Arraste para reordenar</span>
+                    </div>
+                  )}
+                  <PlatformSection
+                    platform={group.platform}
+                    items={group.items}
+                    onItemClick={setSelectedItem}
+                    onItemContextMenu={(item, x, y) => {
+                      setContextMenu({ item, x, y });
+                    }}
+                    onAddItem={handleOpenContextualAdd}
+                    defaultOpen={!isInlineOrganizeMode && platformDefaultOpen}
+                  />
+                </div>
               ))}
             </section>
           ) : (
@@ -1682,6 +1478,19 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
             defaultOpen
             hideToggle
           />
+        </OverlayPanel>
+      )}
+
+      {isFiltersModalOpen && (
+        <OverlayPanel title="Filtros" onClose={() => setIsFiltersModalOpen(false)}>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <FiltersBar
+              filters={filters}
+              setFilters={setFilters}
+              items={collectionItems}
+              compact
+            />
+          </div>
         </OverlayPanel>
       )}
 

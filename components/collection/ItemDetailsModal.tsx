@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { Item } from "@/types/collection";
 import { StatusBadge } from "./StatusBadge";
-import { searchIgdbCover } from "@/lib/igdb";
+import { searchIgdbCover, searchIgdbGames } from "@/lib/igdb";
 import { CustomSelect, type CustomSelectOption } from "@/components/ui/CustomSelect";
 import { uploadSupabaseImage } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
 import { getNormalizedAcquisitionStatus } from "@/lib/acquisition-utils";
 import {
-  formatCurrency,
   formatMediaLabel,
   formatOwnershipLabel,
   formatPriorityLabel,
@@ -17,9 +17,7 @@ import {
   formatRarityLabel,
   formatReleaseDate,
   GENRE_OPTIONS,
-  getProgressIcon,
   NEW_GENRE_OPTION,
-  PURCHASE_ORIGIN_OPTIONS,
 } from "@/lib/item-details-utils";
 
 type ItemDetailsModalProps = {
@@ -78,10 +76,13 @@ export function ItemDetailsModal({
   const [purchaseYearInput, setPurchaseYearInput] = useState("");
   const [purchaseMonthInput, setPurchaseMonthInput] = useState("");
   const [purchaseDayInput, setPurchaseDayInput] = useState("");
+  const [purchaseYearPhysicalInput, setPurchaseYearPhysicalInput] = useState("");
+  const [purchaseMonthPhysicalInput, setPurchaseMonthPhysicalInput] = useState("");
+  const [purchaseDayPhysicalInput, setPurchaseDayPhysicalInput] = useState("");
+  const [purchaseYearDigitalInput, setPurchaseYearDigitalInput] = useState("");
+  const [purchaseMonthDigitalInput, setPurchaseMonthDigitalInput] = useState("");
+  const [purchaseDayDigitalInput, setPurchaseDayDigitalInput] = useState("");
   const [purchaseOriginInput, setPurchaseOriginInput] = useState("");
-  const [purchaseOriginOptions, setPurchaseOriginOptions] = useState<string[]>(
-    [...PURCHASE_ORIGIN_OPTIONS],
-  );
   const [genrePrimaryInput, setGenrePrimaryInput] = useState("");
   const [genreSecondaryInput, setGenreSecondaryInput] = useState("");
   const [genreOptions, setGenreOptions] = useState<string[]>([...GENRE_OPTIONS]);
@@ -89,8 +90,14 @@ export function ItemDetailsModal({
   const [notesInput, setNotesInput] = useState("");
   const [reviewInput, setReviewInput] = useState("");
   const [ratingInput, setRatingInput] = useState(0);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(true);
+  const [releaseDateInput, setReleaseDateInput] = useState<string | undefined>(undefined);
+  const [releaseDateDraft, setReleaseDateDraft] = useState("");
+  const [isEditingReleaseDate, setIsEditingReleaseDate] = useState(false);
+  const [pcSpecs, setPcSpecs] = useState<Record<string, string>>({});
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const releaseDateInputRef = useRef<HTMLInputElement | null>(null);
   const imagePanelRef = useRef<HTMLDivElement | null>(null);
   const handleSaveAllRef = useRef<() => void>(() => {});
   const platformOptions = useMemo(() => {
@@ -164,10 +171,30 @@ export function ItemDetailsModal({
     setPurchaseYearInput(item.purchaseDate?.year ? String(item.purchaseDate.year) : "2026");
     setPurchaseMonthInput(item.purchaseDate?.month ? String(item.purchaseDate.month) : "");
     setPurchaseDayInput(item.purchaseDate?.day ? String(item.purchaseDate.day) : "");
+    setPurchaseYearPhysicalInput(
+      item.purchaseDatePhysical?.year ? String(item.purchaseDatePhysical.year) : "",
+    );
+    setPurchaseMonthPhysicalInput(
+      item.purchaseDatePhysical?.month ? String(item.purchaseDatePhysical.month) : "",
+    );
+    setPurchaseDayPhysicalInput(
+      item.purchaseDatePhysical?.day ? String(item.purchaseDatePhysical.day) : "",
+    );
+    setPurchaseYearDigitalInput(
+      item.purchaseDateDigital?.year ? String(item.purchaseDateDigital.year) : "",
+    );
+    setPurchaseMonthDigitalInput(
+      item.purchaseDateDigital?.month ? String(item.purchaseDateDigital.month) : "",
+    );
+    setPurchaseDayDigitalInput(
+      item.purchaseDateDigital?.day ? String(item.purchaseDateDigital.day) : "",
+    );
     setPurchaseOriginInput(item.purchaseOrigin ?? "");
     setNotesInput(item.notes ?? "");
     setReviewInput(item.review ?? "");
     setRatingInput(item.rating ?? 0);
+    setReleaseDateInput(item.releaseDate);
+    setReleaseDateDraft(item.releaseDate ? (formatReleaseDate(item.releaseDate) ?? "") : "");
     setSaveFeedback(null);
     const [primary = "", secondary = ""] = (item.genre ?? "")
       .split("/")
@@ -175,33 +202,42 @@ export function ItemDetailsModal({
       .filter(Boolean);
     setGenrePrimaryInput(primary);
     setGenreSecondaryInput(secondary);
+    const parsedSpecs = Object.fromEntries(
+      (item.pcComponents ?? [])
+        .map((entry) => {
+          const [key, ...rest] = entry.split(":");
+          return [key.trim(), rest.join(":").trim()];
+        })
+        .filter(([key, value]) => key && value),
+    );
+    setPcSpecs(parsedSpecs);
 
     setIsEditingImage(false);
     setIsSearchingCover(false);
     setIsUploadingImage(false);
     setIsImageActionsOpen(false);
+    setIsEditingReleaseDate(false);
 
-    const storedRaw =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem("my-game-legacy-purchase-origins")
-        : null;
-    let stored: string[] = [];
-    if (storedRaw) {
-      try {
-        stored = JSON.parse(storedRaw) as string[];
-      } catch {
-        stored = [];
-      }
-    }
-    const merged = [...new Set([...PURCHASE_ORIGIN_OPTIONS, ...stored, item.purchaseOrigin ?? ""])]
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
-    setPurchaseOriginOptions(merged);
     const mergedGenres = [...new Set([...GENRE_OPTIONS, primary, secondary])]
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
     setGenreOptions(mergedGenres);
   }, [item, isOpen]);
+
+  useEffect(() => {
+    if (!isEditingReleaseDate) return;
+    releaseDateInputRef.current?.focus();
+    releaseDateInputRef.current?.select();
+
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsEditingReleaseDate(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isEditingReleaseDate]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -255,17 +291,21 @@ export function ItemDetailsModal({
   if (!isOpen || !item) return null;
 
   const isGame = item.type === "game";
+  const isPcGameWithLibrary =
+    item.platform.trim().toLowerCase() === "pc" &&
+    item.type === "game" &&
+    (item.pcStorefront ?? "").trim().length > 0;
+  const isPcMachine = item.platform.trim().toLowerCase() === "pc" && item.type === "console";
+  const isPcAccessory = item.platform.trim().toLowerCase() === "pc" && item.type === "accessory";
+  const isPcHardware = isPcMachine || isPcAccessory;
+  const machineNameFromComponents = pcSpecs["Máquina"] ?? "";
+  const accessoryNameFromComponents = pcSpecs["Nome"] ?? "";
   const isWishlist = ownershipStatusInput === "wishlist";
   const hasAcquisitionInWishlist = isWishlist && acquisitionStatusInput === "purchased";
   const shouldDisablePaidInputs = isWishlist && !hasAcquisitionInWishlist;
   const hasPhysicalSelected = mediaFormatsInput?.includes("physical") ?? false;
   const hasDigitalSelected = mediaFormatsInput?.includes("digital") ?? false;
   const hasBothMediaSelected = hasPhysicalSelected && hasDigitalSelected;
-  const purchaseOriginSelectOptions: CustomSelectOption[] = [
-    { value: "", label: "Em branco" },
-    ...purchaseOriginOptions.map((origin) => ({ value: origin, label: origin })),
-    { value: "__new_origin__", label: "+ Cadastrar nova origem" },
-  ];
   const genrePrimaryOptions: CustomSelectOption[] = [
     { value: "", label: "Em branco" },
     ...genreOptions.map((genre) => ({ value: genre, label: genre })),
@@ -292,9 +332,9 @@ export function ItemDetailsModal({
   const previewPriorityLabel = formatPriorityLabel(
     purchasePriorityInput || undefined,
   );
-  const previewReleaseDateLabel = formatReleaseDate(item.releaseDate);
+  const previewReleaseDateLabel = formatReleaseDate(releaseDateInput);
   const purchaseYearNumber = purchaseYearInput ? Number(purchaseYearInput) : undefined;
-  const releaseDateObj = item.releaseDate ? new Date(item.releaseDate) : null;
+  const releaseDateObj = releaseDateInput ? new Date(releaseDateInput) : null;
   const isReleasedForRating =
     !releaseDateObj ||
     Number.isNaN(releaseDateObj.getTime()) ||
@@ -316,7 +356,6 @@ export function ItemDetailsModal({
           ? `Comprado ${purchaseYearNumber - releaseYear} ano(s) após o lançamento`
           : "Comprado antes do lançamento"
       : null;
-  const progressIcon = getProgressIcon(gameProgressStatusInput || undefined);
   const previewGenre = [genrePrimaryInput, genreSecondaryInput].filter(Boolean).join(" / ");
 
   function parseOptionalNumber(value: string): number | undefined {
@@ -355,6 +394,55 @@ export function ItemDetailsModal({
     setPurchaseDayInput(String(releaseDateObj.getDate()).padStart(2, "0"));
     setPurchaseMonthInput(String(releaseDateObj.getMonth() + 1).padStart(2, "0"));
     setPurchaseYearInput(String(releaseDateObj.getFullYear()));
+  }
+
+  function copyReleaseDateToPhysicalPurchaseDate() {
+    if (!releaseDateObj || Number.isNaN(releaseDateObj.getTime())) return;
+    setPurchaseDayPhysicalInput(String(releaseDateObj.getDate()).padStart(2, "0"));
+    setPurchaseMonthPhysicalInput(String(releaseDateObj.getMonth() + 1).padStart(2, "0"));
+    setPurchaseYearPhysicalInput(String(releaseDateObj.getFullYear()));
+  }
+
+  function copyReleaseDateToDigitalPurchaseDate() {
+    if (!releaseDateObj || Number.isNaN(releaseDateObj.getTime())) return;
+    setPurchaseDayDigitalInput(String(releaseDateObj.getDate()).padStart(2, "0"));
+    setPurchaseMonthDigitalInput(String(releaseDateObj.getMonth() + 1).padStart(2, "0"));
+    setPurchaseYearDigitalInput(String(releaseDateObj.getFullYear()));
+  }
+
+  function getPurchaseVsReleaseByYear(yearInput: string) {
+    const parsedYear = yearInput.trim() ? Number(yearInput.trim()) : undefined;
+    if (!parsedYear || !releaseYear) return null;
+    if (parsedYear === releaseYear) return "Comprado no ano de lançamento";
+    if (parsedYear > releaseYear) return `Comprado ${parsedYear - releaseYear} ano(s) após o lançamento`;
+    return "Comprado antes do lançamento";
+  }
+
+  function handleReleaseDateDraftChange(rawValue: string) {
+    const digits = rawValue.replace(/\D/g, "").slice(0, 8);
+    if (digits.length <= 2) return setReleaseDateDraft(digits);
+    if (digits.length <= 4) return setReleaseDateDraft(`${digits.slice(0, 2)}/${digits.slice(2)}`);
+    setReleaseDateDraft(`${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`);
+  }
+
+  function handleSaveReleaseDateDraft() {
+    const digits = releaseDateDraft.replace(/\D/g, "");
+    if (!digits) {
+      setReleaseDateInput(undefined);
+      setIsEditingReleaseDate(false);
+      return;
+    }
+    if (!(digits.length === 6 || digits.length === 8)) {
+      window.alert("Use DD/MM/AA ou DD/MM/AAAA.");
+      return;
+    }
+    const day = Number(digits.slice(0, 2));
+    const month = Number(digits.slice(2, 4));
+    const year = digits.length === 6 ? Number(`20${digits.slice(4, 6)}`) : Number(digits.slice(4, 8));
+    const iso = `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+    setReleaseDateInput(iso);
+    setReleaseDateDraft(`${day.toString().padStart(2, "0")}/${month.toString().padStart(2, "0")}/${year.toString().padStart(4, "0")}`);
+    setIsEditingReleaseDate(false);
   }
 
   async function handleSearchCoverAgain() {
@@ -430,39 +518,6 @@ export function ItemDetailsModal({
     setIsEditingImage(false);
   }
 
-  function handlePurchaseOriginChange(value: string) {
-    if (value !== "__new_origin__") {
-      setPurchaseOriginInput(value);
-      return;
-    }
-
-    const typed = window.prompt("Digite a nova origem da compra:");
-    if (!typed) return;
-    const normalized = typed.trim();
-    if (!normalized) return;
-
-    const exists = purchaseOriginOptions.some(
-      (option) => option.toLowerCase() === normalized.toLowerCase(),
-    );
-    const finalValue = exists
-      ? purchaseOriginOptions.find(
-          (option) => option.toLowerCase() === normalized.toLowerCase(),
-        ) ?? normalized
-      : normalized;
-
-    if (!exists) {
-      const next = [...purchaseOriginOptions, normalized].sort((a, b) =>
-        a.localeCompare(b),
-      );
-      setPurchaseOriginOptions(next);
-      window.localStorage.setItem(
-        "my-game-legacy-purchase-origins",
-        JSON.stringify(next.filter((origin) => !PURCHASE_ORIGIN_OPTIONS.includes(origin))),
-      );
-    }
-
-    setPurchaseOriginInput(finalValue);
-  }
 
   function handleGenreChange(
     field: "primary" | "secondary",
@@ -514,6 +569,12 @@ export function ItemDetailsModal({
     const year = purchaseYearInput.trim() ? Number(purchaseYearInput.trim()) : undefined;
     const month = purchaseMonthInput.trim() ? Number(purchaseMonthInput.trim()) : undefined;
     const day = purchaseDayInput.trim() ? Number(purchaseDayInput.trim()) : undefined;
+    const physicalYear = purchaseYearPhysicalInput.trim() ? Number(purchaseYearPhysicalInput.trim()) : undefined;
+    const physicalMonth = purchaseMonthPhysicalInput.trim() ? Number(purchaseMonthPhysicalInput.trim()) : undefined;
+    const physicalDay = purchaseDayPhysicalInput.trim() ? Number(purchaseDayPhysicalInput.trim()) : undefined;
+    const digitalYear = purchaseYearDigitalInput.trim() ? Number(purchaseYearDigitalInput.trim()) : undefined;
+    const digitalMonth = purchaseMonthDigitalInput.trim() ? Number(purchaseMonthDigitalInput.trim()) : undefined;
+    const digitalDay = purchaseDayDigitalInput.trim() ? Number(purchaseDayDigitalInput.trim()) : undefined;
     const hasWishlistAcquisitionStatus =
       ownershipStatusInput === "wishlist" &&
       acquisitionStatusInput === "purchased";
@@ -530,6 +591,7 @@ export function ItemDetailsModal({
       title: nameInput.trim() || item.title,
       subtitle: isGame ? undefined : subtitleText || undefined,
       franchise: isGame ? franchiseInput.trim() || undefined : undefined,
+      releaseDate: releaseDateInput,
       company: companyInput.trim() || undefined,
       platform: platformInput.trim() || item.platform,
       imageUrl: imageUrlInput.trim() || undefined,
@@ -583,6 +645,14 @@ export function ItemDetailsModal({
               day,
             }
           : undefined,
+      purchaseDatePhysical:
+        physicalYear || physicalMonth || physicalDay
+          ? { year: physicalYear, month: physicalMonth, day: physicalDay }
+          : undefined,
+      purchaseDateDigital:
+        digitalYear || digitalMonth || digitalDay
+          ? { year: digitalYear, month: digitalMonth, day: digitalDay }
+          : undefined,
       purchaseOrigin: purchaseOriginInput.trim() || undefined,
       notes: notesWithSubtitleForGame.slice(0, 100) || undefined,
       review: reviewInput.trim().slice(0, 1000) || undefined,
@@ -592,6 +662,11 @@ export function ItemDetailsModal({
               .filter(Boolean)
               .join(" / ") || undefined
           : item.genre,
+      pcComponents: isPcHardware
+        ? Object.entries(pcSpecs)
+            .filter(([, value]) => value.trim().length > 0)
+            .map(([key, value]) => `${key}: ${value.trim()}`)
+        : item.pcComponents,
 
       updatedAt: new Date().toISOString(),
     };
@@ -646,9 +721,12 @@ export function ItemDetailsModal({
               onClick={() => setIsImageActionsOpen((prev) => !prev)}
             >
               {imageUrlInput ? (
-                <img
+                <Image
                   src={imageUrlInput}
                   alt={nameInput || item.title}
+                  width={900}
+                  height={1200}
+                  unoptimized
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -701,116 +779,152 @@ export function ItemDetailsModal({
                 </div>
               )}
             </div>
-            <div className="space-y-3 border-t border-white/10 px-3 py-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-white/45">{ratingLabel}</p>
-                <div className="mt-1 flex items-center gap-1">
-                  {Array.from({ length: 5 }, (_, index) => {
-                    const star = index + 1;
-                    return (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setRatingInput(star === ratingInput ? 0 : star)}
-                        className="text-lg"
-                        aria-label={`Definir ${usesHypeScale ? "hype" : "nota"} ${star}`}
-                      >
-                        {star <= ratingInput ? "★" : "☆"}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 text-xs text-white/80">
-                {isGame && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    {progressIcon} {previewProgressLabel || "Sem status"}
-                  </span>
-                )}
-                {!!previewGenre && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    🎯 {previewGenre}
-                  </span>
-                )}
-                {previewReleaseDateLabel && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    📅 {previewReleaseDateLabel}
-                  </span>
-                )}
-                {expectedArrivalDateInput && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    🚚 Entrega: {expectedArrivalDateInput}
-                  </span>
-                )}
-                <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                  🕹 {platformInput || item.platform}
-                </span>
-                {!!item.franchise && (
-                  <span className="rounded-full border border-white/20 bg-black/30 px-2 py-1">
-                    🧩 {item.franchise}
-                  </span>
-                )}
-              </div>
-            </div>
           </div>
 
           <div className="p-6 sm:p-8">
             <div className="space-y-6">
               <div>
-                <p className="text-sm uppercase tracking-[0.28em] text-white/40">
-                  Detalhes do item
-                </p>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-                  {nameInput || item.title}
+                  {isPcHardware
+                    ? (isPcAccessory
+                        ? accessoryNameFromComponents || nameInput || item.title
+                        : machineNameFromComponents || nameInput || item.title)
+                    : nameInput || item.title}
                 </h2>
                 {!isGame && subtitleInput && (
                   <p className="mt-2 text-lg text-white/65">{subtitleInput}</p>
                 )}
-                <p className="mt-2 text-sm text-white/55">
-                  Data de lançamento: {previewReleaseDateLabel || "—"}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <StatusBadge
-                  label={formatOwnershipLabel(ownershipStatusInput)}
-                  variant={
-                    ownershipStatusInput === "wishlist"
-                      ? "wishlist"
-                      : "default"
-                  }
-                />
-
-                {previewPriorityLabel && isWishlist && (
-                  <StatusBadge label={previewPriorityLabel} variant="priority" />
+                {isGame && (
+                  <p className="mt-3 text-sm text-white/70">
+                    {(previewGenre || "Gênero não informado").split(",").map((genre) => genre.trim()).filter(Boolean).join(" | ")}
+                  </p>
                 )}
-
-                {previewProgressLabel && (
-                  <StatusBadge label={previewProgressLabel} variant="progress" />
+                {!isPcHardware && (
+                <div className="mt-1 text-sm text-white/55">
+                  {isEditingReleaseDate ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={releaseDateInputRef}
+                        value={releaseDateDraft}
+                        onChange={(e) => handleReleaseDateDraftChange(e.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            handleSaveReleaseDateDraft();
+                          }
+                        }}
+                        placeholder="DD/MM/AAAA"
+                        className="w-[150px] rounded-lg border border-white/15 bg-black/30 px-2 py-1 text-sm text-white"
+                      />
+                      <button type="button" onClick={handleSaveReleaseDateDraft} className="rounded border border-cyan-200/40 px-2 py-1 text-xs text-cyan-100">OK</button>
+                      <button type="button" onClick={() => setIsEditingReleaseDate(false)} className="rounded border border-white/20 px-2 py-1 text-xs text-white/75">Cancelar</button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setIsEditingReleaseDate(true)} className="underline decoration-dotted underline-offset-2">
+                      {formatReleaseDate(releaseDateInput) || "Data não informada"}
+                    </button>
+                  )}
+                  <span>
+                    {" | "}
+                    {companyInput.trim() || "Empresa não informada"}
+                    {isGame && franchiseInput.trim() ? ` | ${franchiseInput.trim()}` : ""}
+                  </span>
+                </div>
                 )}
-
-                {mediaFormatsInput?.map((format) => (
+                <div className="mt-3 flex flex-wrap gap-2">
                   <StatusBadge
-                    key={format}
-                    label={formatMediaLabel(format)}
-                    variant="media"
+                    label={formatOwnershipLabel(ownershipStatusInput)}
+                    variant={ownershipStatusInput === "wishlist" ? "wishlist" : "default"}
                   />
-                ))}
-
-                {rarityInput && (
-                  <StatusBadge
-                    label={formatRarityLabel(rarityInput)}
-                    variant="rarity"
-                  />
-                )}
+                  {!isPcHardware && previewPriorityLabel && isWishlist && (
+                    <StatusBadge label={previewPriorityLabel} variant="priority" />
+                  )}
+                  {!isPcHardware && previewProgressLabel && (
+                    <StatusBadge label={previewProgressLabel} variant="progress" />
+                  )}
+                  {!isPcHardware && mediaFormatsInput?.map((format) => (
+                    <StatusBadge key={format} label={formatMediaLabel(format)} variant="media" />
+                  ))}
+                  {!isPcHardware && rarityInput && <StatusBadge label={formatRarityLabel(rarityInput)} variant="rarity" />}
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">{ratingLabel}</p>
+                    <div className="mt-1 flex items-center gap-1">
+                      {Array.from({ length: 5 }, (_, index) => {
+                        const star = index + 1;
+                        const starColorClass =
+                          ratingInput <= 1
+                            ? "text-red-400"
+                            : ratingInput === 2
+                              ? "text-orange-400"
+                              : ratingInput === 3
+                                ? "text-yellow-300"
+                                : ratingInput === 4
+                                  ? "text-teal-300"
+                                  : "text-cyan-300";
+                        return (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setRatingInput(star === ratingInput ? 0 : star)}
+                            className={`text-[34px] leading-none ${starColorClass}`}
+                            aria-label={`Definir ${usesHypeScale ? "hype" : "nota"} ${star}`}
+                          >
+                            {star <= ratingInput ? "★" : "☆"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                <h3 className="text-lg font-semibold text-white">
-                  Informações principais
-                </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsDetailsOpen((current) => !current)}
+                  className="flex w-full items-center justify-between text-left"
+                >
+                  <h3 className="text-lg font-semibold text-white">Detalhes</h3>
+                  <span className="text-sm text-white/65">{isDetailsOpen ? "▼" : "▶"}</span>
+                </button>
 
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {isDetailsOpen && (
+                  <>
+                <h4 className="mt-4 text-base font-semibold tracking-[0.08em] text-white/75">
+                  {isPcHardware ? "Especificações" : "Informações principais"}
+                </h4>
+                {isPcHardware ? (
+                  <div className="mt-3 space-y-4">
+                    {(isPcAccessory
+                      ? [["Acessório", ["Nome", "Marca", "Categoria do acessório"]]]
+                      : [
+                          ["Máquina", ["Máquina", "Marca máquina"]],
+                          ["CPU (Processador)", ["CPU Modelo", "CPU Marca", "CPU Núcleos", "CPU Frequência"]],
+                          ["GPU (Placa de Vídeo)", ["GPU Nome", "GPU Marca", "GPU VRAM", "GPU Memória"]],
+                          ["RAM", ["RAM Capacidade", "RAM Tipo", "RAM Frequência", "RAM Módulos"]],
+                          ["Armazenamento (HD / SSD / NVMe)", ["Armazenamento Tipo", "Armazenamento Capacidade", "Armazenamento Marca"]],
+                          ["MB (Placa-Mãe)", ["MB Modelo", "MB Marca", "MB Socket"]],
+                        ]).map(([title, keys]) => (
+                      <div key={String(title)} className="rounded-2xl border border-white/10 p-3">
+                        <p className="mb-2 text-sm text-white/80">{title}</p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {(keys as string[]).map((key) => (
+                            <input
+                              key={key}
+                              value={pcSpecs[key] ?? ""}
+                              onChange={(e) => setPcSpecs((prev) => ({ ...prev, [key]: e.target.value }))}
+                              placeholder={key}
+                              className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                <div className="mt-3 grid gap-4 md:grid-cols-2">
                   <label className="block">
                     <span className="mb-2 block text-sm text-white/70">Nome</span>
                     <input
@@ -833,7 +947,37 @@ export function ItemDetailsModal({
                   )}
 
                   <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">Empresa</span>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="block text-sm text-white/70">Empresa</span>
+                      {isGame && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const results = await searchIgdbGames(nameInput || item.title);
+                              const match = results.find((entry) =>
+                                (entry.publisher || entry.company).trim().length > 0,
+                              );
+                              const detected = match?.publisher?.trim() || match?.company?.trim() || "";
+                              if (!detected) {
+                                window.alert("Não encontrei publisher/empresa na IGDB para este item.");
+                                return;
+                              }
+                              setCompanyInput(detected);
+                            } catch (error) {
+                              window.alert(
+                                error instanceof Error
+                                  ? error.message
+                                  : "Não foi possível consultar a IGDB agora.",
+                              );
+                            }
+                          }}
+                          className="rounded-full border border-cyan-300/35 bg-cyan-500/10 px-2.5 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-500/20"
+                        >
+                          🔎 IGDB
+                        </button>
+                      )}
+                    </div>
                     <input
                       value={companyInput}
                       onChange={(e) => setCompanyInput(e.target.value)}
@@ -883,8 +1027,20 @@ export function ItemDetailsModal({
                       ))}
                     </select>
                   </label>
+                  {isGame && (
+                    <>
+                      <label className="block">
+                        <span className="mb-2 block text-sm text-white/70">Gênero 1</span>
+                        <CustomSelect value={genrePrimaryInput} onChange={(value) => handleGenreChange("primary", value)} options={genrePrimaryOptions} placeholder="Em branco" />
+                      </label>
+                      <label className="block">
+                        <span className="mb-2 block text-sm text-white/70">Gênero 2</span>
+                        <CustomSelect value={genreSecondaryInput} onChange={(value) => handleGenreChange("secondary", value)} options={genreSecondaryOptions} placeholder="Em branco" />
+                      </label>
+                    </>
+                  )}
                 </div>
-              </section>
+                )}
 
               {isEditingImage && (
                 <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
@@ -911,8 +1067,8 @@ export function ItemDetailsModal({
                 className="hidden"
               />
 
-              <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                <h3 className="text-lg font-semibold text-white">
+              <section className="mt-5 p-0">
+                <h3 className="mt-6 text-base font-semibold tracking-[0.08em] text-white/75">
                   Edição rápida
                 </h3>
 
@@ -925,27 +1081,18 @@ export function ItemDetailsModal({
                       value={ownershipStatusInput}
                       onChange={(value) => setOwnershipStatusInput(value)}
                     />
-                    {isGame && (
-                      <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                        <span className="mb-2 block text-sm text-white/70">Mídia</span>
-                        <div className="flex flex-wrap gap-2">
-                          <ToggleChip
-                            label="Física"
-                            active={mediaFormatsInput?.includes("physical") ?? false}
-                            onClick={() => toggleMediaFormat("physical")}
-                          />
-
-                          <ToggleChip
-                            label="Digital"
-                            active={mediaFormatsInput?.includes("digital") ?? false}
-                            onClick={() => toggleMediaFormat("digital")}
-                          />
-                        </div>
-                      </div>
-                    )}
                   </div>
+                  {isGame && !isPcGameWithLibrary && (
+                    <div className="block">
+                      <span className="mb-2 block text-sm text-white/70">Mídia</span>
+                      <div className="flex flex-wrap gap-2">
+                        <ToggleChip label="💿 Física" active={mediaFormatsInput?.includes("physical") ?? false} onClick={() => toggleMediaFormat("physical")} />
+                        <ToggleChip label="☁️ Digital" active={mediaFormatsInput?.includes("digital") ?? false} onClick={() => toggleMediaFormat("digital")} />
+                      </div>
+                    </div>
+                  )}
 
-                  {shouldShowGameStatus && (
+                  {isGame && shouldShowGameStatus && (
                     <label className="block">
                       <span className="mb-2 block text-sm text-white/70">
                         Status do jogo
@@ -958,36 +1105,20 @@ export function ItemDetailsModal({
                   )}
                 </div>
 
-                {isGame && (
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/70">Gênero 1</span>
-                      <CustomSelect
-                        value={genrePrimaryInput}
-                        onChange={(value) => handleGenreChange("primary", value)}
-                        options={genrePrimaryOptions}
-                        placeholder="Em branco"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-2 block text-sm text-white/70">Gênero 2</span>
-                      <CustomSelect
-                        value={genreSecondaryInput}
-                        onChange={(value) => handleGenreChange("secondary", value)}
-                        options={genreSecondaryOptions}
-                        placeholder="Em branco"
-                      />
-                    </label>
-                  </div>
-                )}
               </section>
 
-              <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                <h3 className="text-lg font-semibold text-white">
-                  Financeiro e Metadados
+              <section className="mt-6 p-0">
+                <h3 className="text-base font-semibold tracking-[0.08em] text-white/75">
+                  Financeiro
                 </h3>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <label className="block md:col-span-2">
+                    <span className="mb-2 block text-sm text-white/70">
+                      Raridade
+                    </span>
+                    <RarityButtons itemType={item.type} value={rarityInput} onChange={(value) => setRarityInput(value)} />
+                  </label>
                   {isGame ? (
                     <>
                       {(hasPhysicalSelected || hasDigitalSelected) ? (
@@ -1085,16 +1216,6 @@ export function ItemDetailsModal({
                     <div />
                   )}
 
-                  <label className="block md:col-span-2">
-                    <span className="mb-2 block text-sm text-white/70">
-                      Raridade
-                    </span>
-                    <RarityButtons
-                      itemType={item.type}
-                      value={rarityInput}
-                      onChange={(value) => setRarityInput(value)}
-                    />
-                  </label>
 
                   {isWishlist && (
                     <>
@@ -1144,9 +1265,89 @@ export function ItemDetailsModal({
                 {!isWishlist && (
                   <>
                     <div className="mt-4">
-                      <span className="mb-2 block text-sm text-white/70">
-                        Data da compra
-                      </span>
+                      <span className="mb-2 block text-sm text-white/70">Data da compra</span>
+                      {hasPhysicalSelected && hasDigitalSelected ? (
+                        <div className="space-y-4">
+                          <div>
+                            <p className="mb-2 text-sm text-white/60">Mídia Física</p>
+                            <div className="grid gap-4 md:grid-cols-3">
+                              <label className="block">
+                                <span className="mb-2 block text-sm text-white/60">Dia</span>
+                                <input value={purchaseDayPhysicalInput} onChange={(e) => setPurchaseDayPhysicalInput(e.target.value)} placeholder="11" className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35" />
+                              </label>
+                              <label className="block">
+                                <span className="mb-2 block text-sm text-white/60">Mês</span>
+                                <input value={purchaseMonthPhysicalInput} onChange={(e) => setPurchaseMonthPhysicalInput(e.target.value)} placeholder="04" className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35" />
+                              </label>
+                              <label className="block">
+                                <span className="mb-2 block text-sm text-white/60">Ano</span>
+                                <CustomSelect value={purchaseYearPhysicalInput} onChange={setPurchaseYearPhysicalInput} options={purchaseYearOptions} placeholder="2026" />
+                              </label>
+                            </div>
+                            {(item.type === "game" || previewReleaseDateLabel) && (
+                              <p className="mt-3 flex items-center gap-2 text-xs text-cyan-100/80">
+                                Referência de lançamento:{" "}
+                                {previewReleaseDateLabel
+                                  ? `${previewReleaseDateLabel} ${item.type === "game" ? "(IGDB)" : "(cadastrada)"}`
+                                  : "não informada"}
+                                {hasValidReleaseDate && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={copyReleaseDateToPhysicalPurchaseDate}
+                                      className="rounded border border-cyan-200/30 px-1.5 py-0.5 text-[11px] text-cyan-100 hover:bg-cyan-300/15"
+                                    >
+                                      ↘ usar na compra
+                                    </button>
+                                  </>
+                                )}
+                              </p>
+                            )}
+                            {getPurchaseVsReleaseByYear(purchaseYearPhysicalInput) && (
+                              <p className="mt-2 text-sm text-cyan-100/85">{getPurchaseVsReleaseByYear(purchaseYearPhysicalInput)}</p>
+                            )}
+                          </div>
+                          <div>
+                            <p className="mb-2 text-sm text-white/60">Mídia Digital</p>
+                            <div className="grid gap-4 md:grid-cols-3">
+                              <label className="block">
+                                <span className="mb-2 block text-sm text-white/60">Dia</span>
+                                <input value={purchaseDayDigitalInput} onChange={(e) => setPurchaseDayDigitalInput(e.target.value)} placeholder="11" className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35" />
+                              </label>
+                              <label className="block">
+                                <span className="mb-2 block text-sm text-white/60">Mês</span>
+                                <input value={purchaseMonthDigitalInput} onChange={(e) => setPurchaseMonthDigitalInput(e.target.value)} placeholder="04" className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35" />
+                              </label>
+                              <label className="block">
+                                <span className="mb-2 block text-sm text-white/60">Ano</span>
+                                <CustomSelect value={purchaseYearDigitalInput} onChange={setPurchaseYearDigitalInput} options={purchaseYearOptions} placeholder="2026" />
+                              </label>
+                            </div>
+                            {(item.type === "game" || previewReleaseDateLabel) && (
+                              <p className="mt-3 flex items-center gap-2 text-xs text-cyan-100/80">
+                                Referência de lançamento:{" "}
+                                {previewReleaseDateLabel
+                                  ? `${previewReleaseDateLabel} ${item.type === "game" ? "(IGDB)" : "(cadastrada)"}`
+                                  : "não informada"}
+                                {hasValidReleaseDate && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={copyReleaseDateToDigitalPurchaseDate}
+                                      className="rounded border border-cyan-200/30 px-1.5 py-0.5 text-[11px] text-cyan-100 hover:bg-cyan-300/15"
+                                    >
+                                      ↘ usar na compra
+                                    </button>
+                                  </>
+                                )}
+                              </p>
+                            )}
+                            {getPurchaseVsReleaseByYear(purchaseYearDigitalInput) && (
+                              <p className="mt-2 text-sm text-cyan-100/85">{getPurchaseVsReleaseByYear(purchaseYearDigitalInput)}</p>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
                       <div className="grid gap-4 md:grid-cols-3">
                         <label className="block">
                           <span className="mb-2 block text-sm text-white/60">Dia</span>
@@ -1176,7 +1377,9 @@ export function ItemDetailsModal({
                           />
                         </label>
                       </div>
-                      {(item.type === "game" || previewReleaseDateLabel) && (
+                      )}
+                      {!hasPhysicalSelected || !hasDigitalSelected ? (((item.type === "game" || item.type === "console" || item.type === "accessory") ||
+                        previewReleaseDateLabel) && (
                         <p className="mt-3 flex items-center gap-2 text-xs text-cyan-100/80">
                           Referência de lançamento:{" "}
                           {previewReleaseDateLabel
@@ -1202,30 +1405,17 @@ export function ItemDetailsModal({
                             </>
                           )}
                         </p>
-                      )}
-                      {purchaseVsReleaseInfo && (
+                      )) : null}
+                      {(!hasPhysicalSelected || !hasDigitalSelected) && purchaseVsReleaseInfo && (
                         <p className="mt-2 text-sm text-cyan-100/85">{purchaseVsReleaseInfo}</p>
                       )}
                     </div>
 
-                    <div className="mt-4 grid gap-4">
-                      <label className="block">
-                        <span className="mb-2 block text-sm text-white/70">
-                          Origem da compra
-                        </span>
-                        <CustomSelect
-                          value={purchaseOriginInput}
-                          onChange={handlePurchaseOriginChange}
-                          options={purchaseOriginSelectOptions}
-                          placeholder="Em branco"
-                        />
-                      </label>
-
-                    </div>
                   </>
                 )}
 
                 <div className="mt-4">
+                  <h3 className="mb-2 text-lg font-semibold text-white">Notas</h3>
                   <label className="block">
                     <span className="mb-2 block text-sm text-white/70">Notas</span>
                     <textarea
@@ -1238,75 +1428,27 @@ export function ItemDetailsModal({
                     <span className="mt-1 block text-right text-xs text-white/50">{notesInput.length}/100</span>
                   </label>
                 </div>
+              </section>
+              </>
+                )}
+              </section>
 
-                <div className="mt-4">
-                  <label className="block">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="block text-sm text-white/70">Review do item</span>
-                      <span className="text-xs text-white/50">{reviewInput.length}/1000</span>
-                    </div>
-                    <textarea
-                      value={reviewInput}
-                      onChange={(e) => setReviewInput(e.target.value.slice(0, 1000))}
-                      rows={6}
-                      placeholder="Escreva sua review (até 1000 caracteres)"
-                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                    />
-                  </label>
-                </div>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {isGame && (hasPhysicalSelected || hasDigitalSelected) ? (
-                    <>
-                      {hasPhysicalSelected && (
-                        <MoneyCard
-                          label="Preço (Físico)"
-                          value={formatCurrency(
-                            isWishlist
-                              ? undefined
-                              : parseOptionalNumber(pricePhysicalInput),
-                          )}
-                        />
-                      )}
-                      {hasDigitalSelected && (
-                        <MoneyCard
-                          label="Preço (Digital)"
-                          value={formatCurrency(
-                            isWishlist
-                              ? undefined
-                              : parseOptionalNumber(priceDigitalInput),
-                          )}
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <MoneyCard
-                      label={isWishlist ? "Valor referência" : "Valor pago"}
-                      value={formatCurrency(
-                        isWishlist
-                          ? undefined
-                          : parseOptionalNumber(amountPaidInput),
-                      )}
-                    />
-                  )}
-                  <MoneyCard
-                    label="Valor atual"
-                    value={formatCurrency(parseOptionalNumber(currentValueInput))}
+              <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+                <label className="block">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="block text-sm text-white/70">Review do item</span>
+                    <span className="text-xs text-white/50">{reviewInput.length}/1000</span>
+                  </div>
+                  <textarea
+                    value={reviewInput}
+                    onChange={(e) => setReviewInput(e.target.value.slice(0, 1000))}
+                    rows={6}
+                    placeholder="Escreva sua review (até 1000 caracteres)"
+                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                   />
-                </div>
+                </label>
               </section>
               {saveFeedback && <p className="text-sm text-rose-200">{saveFeedback}</p>}
-
-              <div className="grid gap-6 xl:grid-cols-2">
-                <HistorySection
-                  title="Histórico de preço monitorado"
-                  entries={item.trackedPriceHistory}
-                />
-                <HistorySection
-                  title="Histórico de valorização"
-                  entries={item.collectionValueHistory}
-                />
-              </div>
             </div>
             <div className="sticky bottom-0 mt-6 border-t border-white/10 bg-[#0b1020]/95 p-4 backdrop-blur">
               <div className="flex justify-end">
@@ -1416,7 +1558,6 @@ function GameStatusChips({
   onChange: (value: NonNullable<Item["gameProgressStatus"]> | "") => void;
 }) {
   const options: { value: NonNullable<Item["gameProgressStatus"]> | ""; label: string }[] = [
-    { value: "undefined", label: "❔ Não definido" },
     { value: "backlog", label: "📚 Backlog" },
     { value: "playing", label: "🎮 Jogando" },
     { value: "paused", label: "⏸️ Pausado" },
@@ -1490,7 +1631,6 @@ function RarityButtons({
   onChange: (value: NonNullable<Item["rarityTags"]>[number] | "") => void;
 }) {
   const options: { value: NonNullable<Item["rarityTags"]>[number] | ""; label: string }[] = [
-    { value: "undefined", label: "Não definida" },
     { value: "normal", label: "Normal" },
     { value: "rare", label: "Raro" },
     { value: "special_edition", label: "Edição especial" },
@@ -1518,51 +1658,5 @@ function RarityButtons({
         </button>
       ))}
     </div>
-  );
-}
-
-function MoneyCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.03] p-5">
-      <p className="text-xs uppercase tracking-[0.22em] text-white/40">{label}</p>
-      <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
-    </div>
-  );
-}
-
-function HistorySection({
-  title,
-  entries,
-}: {
-  title: string;
-  entries?: { date: string; value: number }[];
-}) {
-  return (
-    <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-      <h3 className="text-lg font-semibold text-white">{title}</h3>
-
-      {entries && entries.length > 0 ? (
-        <div className="mt-4 space-y-3">
-          {entries.map((entry, index) => (
-            <div
-              key={`${entry.date}-${index}`}
-              className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-            >
-              <span className="text-sm text-white/65">{entry.date}</span>
-              <span className="text-sm font-semibold text-white">
-                {new Intl.NumberFormat("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                }).format(entry.value)}
-              </span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-4 text-sm text-white/55">
-          Nenhum histórico registrado ainda.
-        </p>
-      )}
-    </section>
   );
 }

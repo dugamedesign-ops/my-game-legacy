@@ -2,6 +2,7 @@
 
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 
 type Game = {
   id: number;
@@ -476,9 +477,12 @@ const groupedGames = useMemo(() => {
             >
               <div className="flex overflow-hidden rounded-3xl bg-zinc-900 shadow-xl">
                 <div className="relative flex h-[180px] w-[180px] items-center justify-center bg-zinc-950">
-                  <img
+                  <Image
                     src={game.image}
                     alt={game.title}
+                    width={150}
+                    height={150}
+                    unoptimized
                     className="h-[150px] w-[150px] rounded-xl object-contain"
                     onError={(e) => {
                       e.currentTarget.src =
@@ -657,9 +661,12 @@ const groupedGames = useMemo(() => {
                   >
                     <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-zinc-900">
                       {result.image ? (
-                        <img
+                        <Image
                           src={result.image}
                           alt={result.name}
+                          width={48}
+                          height={48}
+                          unoptimized
                           className="h-12 w-12 object-contain"
                         />
                       ) : (
@@ -712,9 +719,12 @@ const groupedGames = useMemo(() => {
             <div className="mt-5 flex items-center gap-4">
               <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl bg-zinc-800">
                 {newImage ? (
-                  <img
+                  <Image
                     src={newImage}
                     alt="Prévia"
+                    width={80}
+                    height={80}
+                    unoptimized
                     className="h-20 w-20 object-contain"
                     onError={(e) => {
                       e.currentTarget.src =
@@ -783,9 +793,12 @@ const groupedGames = useMemo(() => {
                   >
                     <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-zinc-900">
                       {result.image ? (
-                        <img
+                        <Image
                           src={result.image}
                           alt={result.name}
+                          width={48}
+                          height={48}
+                          unoptimized
                           className="h-12 w-12 object-contain"
                         />
                       ) : (
@@ -839,9 +852,12 @@ const groupedGames = useMemo(() => {
             <div className="mt-5 flex items-center gap-4">
               <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl bg-zinc-800">
                 {editImage ? (
-                  <img
+                  <Image
                     src={editImage}
                     alt="Prévia"
+                    width={80}
+                    height={80}
+                    unoptimized
                     className="h-20 w-20 object-contain"
                     onError={(e) => {
                       e.currentTarget.src =

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import {
   Item,
   ItemType,
@@ -50,6 +51,31 @@ type FormState = {
   pcMachineMode: NonNullable<Item["pcMachineMode"]> | "";
   pcStorefront: NonNullable<Item["pcStorefront"]> | "";
   pcComponents: string;
+  pcMotherboard: string;
+  pcCpu: string;
+  pcGpu: string;
+  pcRam: string;
+  pcStorage: string;
+  pcMachineName: string;
+  pcMachineBrand: string;
+  cpuModel: string;
+  cpuBrand: string;
+  cpuCores: string;
+  cpuFrequency: string;
+  gpuName: string;
+  gpuBrand: string;
+  gpuVram: string;
+  gpuMemoryType: string;
+  ramCapacity: string;
+  ramType: string;
+  ramFrequency: string;
+  ramModules: string;
+  storageType: string;
+  storageCapacity: string;
+  storageBrand: string;
+  mbModel: string;
+  mbBrand: string;
+  mbSocket: string;
   accessoryCategory: string;
 };
 
@@ -68,6 +94,7 @@ const PLATFORM_OPTIONS = [
 const NEW_PLATFORM_OPTION = "__new_platform__";
 const NEW_GENRE_OPTION = "__new_genre__";
 const NEW_FRANCHISE_OPTION = "__new_franchise__";
+const NEW_LIBRARY_OPTION = "__new_library__";
 const IGDB_GENRE_OPTIONS = [
   "Action",
   "Adventure",
@@ -109,6 +136,7 @@ export function AddItemModal({
   const [platformOptions, setPlatformOptions] = useState<string[]>(PLATFORM_OPTIONS);
   const [genreOptions, setGenreOptions] = useState<string[]>(IGDB_GENRE_OPTIONS);
   const [franchiseOptions, setFranchiseOptions] = useState<string[]>([]);
+  const [libraryOptions, setLibraryOptions] = useState<string[]>(["Steam", "Epic"]);
 
   const skipNextAutoSearchRef = useRef(false);
 
@@ -137,6 +165,31 @@ export function AddItemModal({
       pcMachineMode: "",
       pcStorefront: "",
       pcComponents: "",
+      pcMotherboard: "",
+      pcCpu: "",
+      pcGpu: "",
+      pcRam: "",
+      pcStorage: "",
+      pcMachineName: "",
+      pcMachineBrand: "",
+      cpuModel: "",
+      cpuBrand: "",
+      cpuCores: "",
+      cpuFrequency: "",
+      gpuName: "",
+      gpuBrand: "",
+      gpuVram: "",
+      gpuMemoryType: "",
+      ramCapacity: "",
+      ramType: "",
+      ramFrequency: "",
+      ramModules: "",
+      storageType: "",
+      storageCapacity: "",
+      storageBrand: "",
+      mbModel: "",
+      mbBrand: "",
+      mbSocket: "",
       accessoryCategory: "",
     };
   }
@@ -182,6 +235,22 @@ export function AddItemModal({
       .filter(Boolean) as string[];
     const merged = [...new Set([...PLATFORM_OPTIONS, ...fromExistingItems, ...customPlatforms])];
     setPlatformOptions(merged.sort((a, b) => a.localeCompare(b)));
+    const customLibrariesRaw =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("my-game-legacy-custom-libraries")
+        : null;
+    let customLibraries: string[] = [];
+    if (customLibrariesRaw) {
+      try {
+        customLibraries = JSON.parse(customLibrariesRaw) as string[];
+      } catch {
+        customLibraries = [];
+      }
+    }
+    const existingLibraries = existingItems
+      .map((entry) => entry.pcStorefront?.trim())
+      .filter(Boolean) as string[];
+    setLibraryOptions([...new Set(["Steam", "Epic", ...existingLibraries, ...customLibraries])]);
     const customGenresRaw =
       typeof window !== "undefined"
         ? window.localStorage.getItem("my-game-legacy-custom-genres")
@@ -232,6 +301,12 @@ export function AddItemModal({
   }, [existingItems, isOpen, initialType, initialPlatform]);
 
   useEffect(() => {
+    if (form.platform.trim().toLowerCase() !== "pc" || form.type !== "game") return;
+    if (!form.pcStorefront.trim()) return;
+    setForm((prev) => ({ ...prev, digital: true, physical: false }));
+  }, [form.pcStorefront, form.platform, form.type]);
+
+  useEffect(() => {
     if (form.type !== "game") return;
     if (step !== 2) return;
 
@@ -273,6 +348,8 @@ export function AddItemModal({
   const hasPhysicalSelected = form.physical;
   const hasDigitalSelected = form.digital;
   const hasBothMediaSelected = hasPhysicalSelected && hasDigitalSelected;
+  const isPcPlatform = form.platform.trim().toLowerCase() === "pc";
+  const isPcAccessory = isPcPlatform && form.type === "accessory";
 
   const parseOptionalNumber = useCallback((value: string): number | undefined => {
     const normalized = value.replace(",", ".").trim();
@@ -409,21 +486,48 @@ export function AddItemModal({
           : undefined,
       pcFolder:
         form.platform.trim().toLowerCase() === "pc"
-          ? form.pcFolder || undefined
+          ? "machine"
           : undefined,
       pcMachineMode:
-        form.platform.trim().toLowerCase() === "pc" && form.pcFolder === "machine"
+        form.platform.trim().toLowerCase() === "pc"
           ? form.pcMachineMode || undefined
           : undefined,
       pcStorefront:
-        form.platform.trim().toLowerCase() === "pc" && form.pcFolder === "games"
+        form.platform.trim().toLowerCase() === "pc" && form.type === "game"
           ? form.pcStorefront || undefined
           : undefined,
       pcComponents:
         form.platform.trim().toLowerCase() === "pc" &&
-        form.pcFolder === "machine" &&
-        form.pcMachineMode === "desktop_modular"
-          ? form.pcComponents
+        (form.pcMachineMode === "desktop_modular" || form.pcMachineMode === "prebuilt")
+          ? [
+              form.pcMotherboard && `Placa-mãe: ${form.pcMotherboard}`,
+              form.pcCpu && `CPU: ${form.pcCpu}`,
+              form.pcGpu && `GPU: ${form.pcGpu}`,
+              form.pcRam && `RAM: ${form.pcRam}`,
+              form.pcStorage && `HD/SSD: ${form.pcStorage}`,
+              form.pcMachineName && `Máquina: ${form.pcMachineName}`,
+              form.pcMachineBrand && `Marca máquina: ${form.pcMachineBrand}`,
+              form.mbModel && `MB Modelo: ${form.mbModel}`,
+              form.mbBrand && `MB Marca: ${form.mbBrand}`,
+              form.mbSocket && `MB Socket: ${form.mbSocket}`,
+              form.cpuModel && `CPU Modelo: ${form.cpuModel}`,
+              form.cpuBrand && `CPU Marca: ${form.cpuBrand}`,
+              form.cpuCores && `CPU Núcleos: ${form.cpuCores}`,
+              form.cpuFrequency && `CPU Frequência: ${form.cpuFrequency}`,
+              form.gpuName && `GPU Nome: ${form.gpuName}`,
+              form.gpuBrand && `GPU Marca: ${form.gpuBrand}`,
+              form.gpuVram && `GPU VRAM: ${form.gpuVram}`,
+              form.gpuMemoryType && `GPU Memória: ${form.gpuMemoryType}`,
+              form.ramCapacity && `RAM Capacidade: ${form.ramCapacity}`,
+              form.ramType && `RAM Tipo: ${form.ramType}`,
+              form.ramFrequency && `RAM Frequência: ${form.ramFrequency}`,
+              form.ramModules && `RAM Módulos: ${form.ramModules}`,
+              form.storageType && `Armazenamento Tipo: ${form.storageType}`,
+              form.storageCapacity && `Armazenamento Capacidade: ${form.storageCapacity}`,
+              form.storageBrand && `Armazenamento Marca: ${form.storageBrand}`,
+              ...form.pcComponents.split(","),
+            ]
+              .join(",")
               .split(",")
               .map((value) => value.trim())
               .filter(Boolean)
@@ -447,9 +551,33 @@ export function AddItemModal({
     form.ownershipStatus,
     form.physical,
     form.pcComponents,
-    form.pcFolder,
     form.pcMachineMode,
     form.pcStorefront,
+    form.pcMotherboard,
+    form.pcCpu,
+    form.pcGpu,
+    form.pcRam,
+    form.pcStorage,
+    form.pcMachineName,
+    form.pcMachineBrand,
+    form.cpuModel,
+    form.cpuBrand,
+    form.cpuCores,
+    form.cpuFrequency,
+    form.gpuName,
+    form.gpuBrand,
+    form.gpuVram,
+    form.gpuMemoryType,
+    form.ramCapacity,
+    form.ramType,
+    form.ramFrequency,
+    form.ramModules,
+    form.storageType,
+    form.storageCapacity,
+    form.storageBrand,
+    form.mbModel,
+    form.mbBrand,
+    form.mbSocket,
     form.platform,
     form.priceDigital,
     form.pricePhysical,
@@ -892,9 +1020,12 @@ export function AddItemModal({
                           >
                             <div className="h-16 w-12 overflow-hidden rounded-lg bg-white/5">
                               {result.coverUrl ? (
-                                <img
+                                <Image
                                   src={result.coverUrl}
                                   alt={result.name}
+                                  width={96}
+                                  height={128}
+                                  unoptimized
                                   className="h-full w-full object-cover"
                                 />
                               ) : null}
@@ -981,82 +1112,51 @@ export function AddItemModal({
                 </>
               )}
 
-              {form.platform.trim().toLowerCase() === "pc" && (
+              {isPcPlatform && form.type === "console" && (
                 <div className="rounded-3xl border border-cyan-300/20 bg-cyan-500/5 p-4">
-                  <p className="mb-3 text-sm font-medium text-cyan-100">Estrutura da plataforma PC</p>
+                  <p className="mb-3 text-sm font-medium text-cyan-100">Novo (PC)</p>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <FieldBlock label="Subpasta PC">
+                    <FieldBlock label="Modo de cadastro">
                       <CustomSelect
-                        value={form.pcFolder}
+                        value={form.pcMachineMode}
                         onChange={(value) =>
                           updateField(
-                            "pcFolder",
-                            (value as NonNullable<Item["pcFolder"]> | "") ?? "",
+                            "pcMachineMode",
+                            (value as NonNullable<Item["pcMachineMode"]> | "") ?? "",
                           )
                         }
                         options={[
                           { value: "", label: "Selecione" },
-                          { value: "machine", label: "Máquina" },
-                          { value: "peripherals", label: "Periféricos" },
-                          { value: "games", label: "Jogos" },
+                          { value: "desktop_modular", label: "Montar seu Computador" },
+                          { value: "prebuilt", label: "Máquina fechada (Notebook/Handheld)" },
                         ]}
                         placeholder="Selecione"
                       />
                     </FieldBlock>
-
-                    {form.pcFolder === "machine" && (
-                      <FieldBlock label="Tipo de máquina">
-                        <CustomSelect
-                          value={form.pcMachineMode}
-                          onChange={(value) =>
-                            updateField(
-                              "pcMachineMode",
-                              (value as NonNullable<Item["pcMachineMode"]> | "") ?? "",
-                            )
-                          }
-                          options={[
-                            { value: "", label: "Selecione" },
-                            { value: "prebuilt", label: "Aparelho fechado" },
-                            { value: "desktop_modular", label: "Desktop modular" },
-                          ]}
-                          placeholder="Selecione"
-                        />
-                      </FieldBlock>
-                    )}
                   </div>
 
-                  {form.pcFolder === "machine" && form.pcMachineMode === "desktop_modular" && (
-                    <FieldBlock label="Componentes do desktop (opcional)">
-                      <input
-                        value={form.pcComponents}
-                        onChange={(e) => updateField("pcComponents", e.target.value)}
-                        placeholder="CPU, GPU, RAM, SSD..."
-                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                      />
-                    </FieldBlock>
+                  {(form.pcMachineMode === "desktop_modular" || form.pcMachineMode === "prebuilt") && (
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      {form.pcMachineMode === "prebuilt" && (
+                        <>
+                          <FieldBlock label="Nome da máquina *"><input value={form.pcMachineName} onChange={(e) => updateField("pcMachineName", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
+                          <FieldBlock label="Marca da máquina *"><input value={form.pcMachineBrand} onChange={(e) => updateField("pcMachineBrand", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
+                        </>
+                      )}
+                      {form.pcMachineMode === "desktop_modular" && (
+                        <FieldBlock label="Nome do PC (opcional)"><input value={form.pcMachineName} onChange={(e) => updateField("pcMachineName", e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" /></FieldBlock>
+                      )}
+                    </div>
                   )}
 
-                  {form.pcFolder === "games" && (
-                    <FieldBlock label="Loja">
-                      <CustomSelect
-                        value={form.pcStorefront}
-                        onChange={(value) =>
-                          updateField(
-                            "pcStorefront",
-                            (value as NonNullable<Item["pcStorefront"]> | "") ?? "",
-                          )
-                        }
-                        options={[
-                          { value: "", label: "Selecione" },
-                          { value: "steam", label: "Steam" },
-                          { value: "ea", label: "EA App" },
-                          { value: "epic", label: "Epic" },
-                          { value: "gog", label: "GOG" },
-                          { value: "other", label: "Outra" },
-                        ]}
-                        placeholder="Selecione"
-                      />
-                    </FieldBlock>
+                  {(form.pcMachineMode === "desktop_modular" || form.pcMachineMode === "prebuilt") && (
+                    <div className="mt-4 space-y-4">
+                      <div className="rounded-2xl border border-white/10 p-3"><p className="mb-2 text-sm text-white/80">CPU (Processador) {form.pcMachineMode === "prebuilt" ? "(opcional)" : ""}</p><div className="grid gap-3 sm:grid-cols-2"><input placeholder="Modelo (ex: Ryzen 7 7800X3D)" value={form.cpuModel} onChange={(e)=>updateField("cpuModel",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Marca (ex: AMD)" value={form.cpuBrand} onChange={(e)=>updateField("cpuBrand",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Núcleos (ex: 8)" value={form.cpuCores} onChange={(e)=>updateField("cpuCores",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Frequência (ex: 4.2GHz)" value={form.cpuFrequency} onChange={(e)=>updateField("cpuFrequency",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/></div></div>
+                      <div className="rounded-2xl border border-white/10 p-3"><p className="mb-2 text-sm text-white/80">GPU (Placa de Vídeo) {form.pcMachineMode === "prebuilt" ? "(opcional)" : ""}</p><div className="grid gap-3 sm:grid-cols-2"><input placeholder="Nome" value={form.gpuName} onChange={(e)=>updateField("gpuName",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Marca" value={form.gpuBrand} onChange={(e)=>updateField("gpuBrand",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="VRAM" value={form.gpuVram} onChange={(e)=>updateField("gpuVram",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Tipo de memória" value={form.gpuMemoryType} onChange={(e)=>updateField("gpuMemoryType",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/></div></div>
+                      <div className="rounded-2xl border border-white/10 p-3"><p className="mb-2 text-sm text-white/80">RAM {form.pcMachineMode === "prebuilt" ? "(opcional)" : ""}</p><div className="grid gap-3 sm:grid-cols-2"><input placeholder="Capacidade" value={form.ramCapacity} onChange={(e)=>updateField("ramCapacity",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Tipo" value={form.ramType} onChange={(e)=>updateField("ramType",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Frequência" value={form.ramFrequency} onChange={(e)=>updateField("ramFrequency",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Quantidade de módulos" value={form.ramModules} onChange={(e)=>updateField("ramModules",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/></div></div>
+                      <div className="rounded-2xl border border-white/10 p-3"><p className="mb-2 text-sm text-white/80">Armazenamento (HD / SSD / NVMe) {form.pcMachineMode === "prebuilt" ? "(opcional)" : ""}</p><div className="grid gap-3 sm:grid-cols-2"><input placeholder="Tipo (ex: NVMe)" value={form.storageType} onChange={(e)=>updateField("storageType",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Capacidade (ex: 1TB)" value={form.storageCapacity} onChange={(e)=>updateField("storageCapacity",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Marca (ex: Kingston)" value={form.storageBrand} onChange={(e)=>updateField("storageBrand",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/></div></div>
+                      <div className="rounded-2xl border border-white/10 p-3"><p className="mb-2 text-sm text-white/80">MB (Placa-Mãe) {form.pcMachineMode === "prebuilt" ? "(opcional)" : ""}</p><div className="grid gap-3 sm:grid-cols-2"><input placeholder="Modelo" value={form.mbModel} onChange={(e)=>updateField("mbModel",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Marca" value={form.mbBrand} onChange={(e)=>updateField("mbBrand",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><input placeholder="Socket" value={form.mbSocket} onChange={(e)=>updateField("mbSocket",e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/></div></div>
+                    </div>
                   )}
                 </div>
               )}
@@ -1094,15 +1194,26 @@ export function AddItemModal({
                       />
                     </FieldBlock>
 
-                    <FieldBlock label="Subtítulo / versão">
+                    <FieldBlock label="Marca">
                       <input
                         value={form.subtitle}
                         onChange={(e) => updateField("subtitle", e.target.value)}
-                        placeholder="Ex: Helldivers 2"
+                        placeholder="Ex: Valve"
                         className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                       />
                     </FieldBlock>
                   </div>
+
+                  {isPcAccessory && (
+                    <FieldBlock label="Categoria do acessório">
+                      <input
+                        value={form.accessoryCategory}
+                        onChange={(e) => updateField("accessoryCategory", e.target.value)}
+                        placeholder="Ex: Controle, Teclado, Headset..."
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                      />
+                    </FieldBlock>
+                  )}
 
                   <FieldBlock label="Status de posse">
                     <OwnershipStatusButtons
@@ -1122,7 +1233,51 @@ export function AddItemModal({
                 </FieldBlock>
               ) : null}
 
-              {form.type === "game" && (
+              {isPcPlatform && form.type === "game" && (
+                <FieldBlock label="Biblioteca">
+                  <CustomSelect
+                    value={form.pcStorefront}
+                    onChange={(value) => {
+                      if (value === NEW_LIBRARY_OPTION) {
+                        const library = window.prompt("Nome da nova biblioteca:");
+                        if (!library?.trim()) return;
+                        const trimmedLibrary = library.trim();
+                        const alreadyExists = libraryOptions.some(
+                          (option) => option.toLowerCase() === trimmedLibrary.toLowerCase(),
+                        );
+                        if (!alreadyExists) {
+                          const updated = [...libraryOptions, trimmedLibrary].sort((a, b) =>
+                            a.localeCompare(b),
+                          );
+                          setLibraryOptions(updated);
+                          if (typeof window !== "undefined") {
+                            window.localStorage.setItem(
+                              "my-game-legacy-custom-libraries",
+                              JSON.stringify(updated.filter((option) => !["Steam", "Epic"].includes(option))),
+                            );
+                          }
+                        }
+                        updateField(
+                          "pcStorefront",
+                          trimmedLibrary as NonNullable<Item["pcStorefront"]> | "",
+                        );
+                        return;
+                      }
+                      updateField(
+                        "pcStorefront",
+                        ((value ?? "").toString() as NonNullable<Item["pcStorefront"]> | ""),
+                      );
+                    }}
+                    options={[
+                      ...libraryOptions.map((option) => ({ value: option, label: option })),
+                      { value: NEW_LIBRARY_OPTION, label: "+ Cadastrar nova biblioteca" },
+                    ]}
+                    placeholder="Selecione a biblioteca"
+                  />
+                </FieldBlock>
+              )}
+
+              {form.type === "game" && !(isPcPlatform && form.pcStorefront.trim()) && (
                 <>
                   <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 sm:h-full">
                     <p className="mb-3 text-sm font-medium text-white">Mídia</p>
@@ -1143,143 +1298,144 @@ export function AddItemModal({
                 </>
               )}
 
-              <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
-                <button
-                  type="button"
-                  onClick={() => setIsAdvancedOpen((prev) => !prev)}
-                  className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left text-sm text-white/90 transition hover:bg-white/10"
-                >
-                  <span>Mais opções</span>
-                  <span className="text-xs">{isAdvancedOpen ? "▲" : "▼"}</span>
-                </button>
+              {!isPcAccessory ? (
+                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdvancedOpen((prev) => !prev)}
+                    className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left text-sm text-white/90 transition hover:bg-white/10"
+                  >
+                    <span>Mais opções</span>
+                    <span className="text-xs">{isAdvancedOpen ? "▲" : "▼"}</span>
+                  </button>
 
-                {isAdvancedOpen && (
-                  <div className="mt-4 space-y-4">
-                    {form.type === "game" && (
-                      <>
-                        <FieldBlock label="Status do jogo">
-                          <CustomSelect
-                            value={form.gameProgressStatus}
-                            onChange={(value) =>
-                              updateField(
-                                "gameProgressStatus",
-                                (value as NonNullable<Item["gameProgressStatus"]> | "") ?? "",
-                              )
-                            }
-                            options={gameProgressOptions}
-                            placeholder="Não definido"
-                          />
-                        </FieldBlock>
+                  {isAdvancedOpen && (
+                    <div className="mt-4 space-y-4">
+                      {form.type === "game" && (
+                        <>
+                          <FieldBlock label="Status do jogo">
+                            <CustomSelect
+                              value={form.gameProgressStatus}
+                              onChange={(value) =>
+                                updateField(
+                                  "gameProgressStatus",
+                                  (value as NonNullable<Item["gameProgressStatus"]> | "") ?? "",
+                                )
+                              }
+                              options={gameProgressOptions}
+                              placeholder="Não definido"
+                            />
+                          </FieldBlock>
 
-                        {(hasPhysicalSelected || hasDigitalSelected) && (
-                          <div
-                            className={`grid gap-4 ${
-                              hasBothMediaSelected ? "sm:grid-cols-2" : "sm:grid-cols-1"
-                            }`}
-                          >
-                            {hasPhysicalSelected && (
-                              <FieldBlock label="Preço (Físico)">
-                                <input
-                                  value={form.pricePhysical}
-                                  onChange={(e) => updateField("pricePhysical", e.target.value)}
-                                  placeholder="Ex: 299.90"
-                                  className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                                />
-                              </FieldBlock>
-                            )}
+                          {(hasPhysicalSelected || hasDigitalSelected) && (
+                            <div
+                              className={`grid gap-4 ${
+                                hasBothMediaSelected ? "sm:grid-cols-2" : "sm:grid-cols-1"
+                              }`}
+                            >
+                              {hasPhysicalSelected && (
+                                <FieldBlock label="Preço (Físico)">
+                                  <input
+                                    value={form.pricePhysical}
+                                    onChange={(e) => updateField("pricePhysical", e.target.value)}
+                                    placeholder="Ex: 299.90"
+                                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                                  />
+                                </FieldBlock>
+                              )}
 
-                            {hasDigitalSelected && (
-                              <FieldBlock label="Preço (Digital)">
-                                <input
-                                  value={form.priceDigital}
-                                  onChange={(e) => updateField("priceDigital", e.target.value)}
-                                  placeholder="Ex: 249.90"
-                                  className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                                />
-                              </FieldBlock>
-                            )}
+                              {hasDigitalSelected && (
+                                <FieldBlock label="Preço (Digital)">
+                                  <input
+                                    value={form.priceDigital}
+                                    onChange={(e) => updateField("priceDigital", e.target.value)}
+                                    placeholder="Ex: 249.90"
+                                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                                  />
+                                </FieldBlock>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <FieldBlock label="Empresa">
+                              <input
+                                value={form.company}
+                                onChange={(e) => updateField("company", e.target.value)}
+                                placeholder="Ex: Sony, Nintendo, Capcom"
+                                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                              />
+                            </FieldBlock>
+
+                            <FieldBlock label="Franquia">
+                              <CustomSelect
+                                value={form.franchise}
+                                onChange={handleFranchiseSelect}
+                                options={franchiseSelectOptions}
+                                placeholder="Em branco"
+                              />
+                            </FieldBlock>
+
+                            <FieldBlock label="Gênero 1">
+                              <CustomSelect
+                                value={form.genrePrimary}
+                                onChange={(value) => handleGenreSelect("genrePrimary", value)}
+                                options={primaryGenreOptions}
+                                placeholder="Em branco"
+                              />
+                            </FieldBlock>
                           </div>
-                        )}
+                          {form.genrePrimary && (
+                            <FieldBlock label="Gênero 2 (opcional)">
+                              <CustomSelect
+                                value={form.genreSecondary}
+                                onChange={(value) => handleGenreSelect("genreSecondary", value)}
+                                options={secondaryGenreOptions}
+                                placeholder="Em branco"
+                              />
+                            </FieldBlock>
+                          )}
+                        </>
+                      )}
 
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          <FieldBlock label="Empresa">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div className="flex-1">
+                          <FieldBlock label="URL da imagem / Capa">
                             <input
-                              value={form.company}
-                              onChange={(e) => updateField("company", e.target.value)}
-                              placeholder="Ex: Sony, Nintendo, Capcom"
+                              value={form.imageUrl}
+                              onChange={(e) => updateField("imageUrl", e.target.value)}
+                              placeholder="Cole a URL da imagem ou use a busca automática"
                               className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
                             />
                           </FieldBlock>
-
-                          <FieldBlock label="Franquia">
-                            <CustomSelect
-                              value={form.franchise}
-                              onChange={handleFranchiseSelect}
-                              options={franchiseSelectOptions}
-                              placeholder="Em branco"
-                            />
-                          </FieldBlock>
-
-                          <FieldBlock label="Gênero 1">
-                            <CustomSelect
-                              value={form.genrePrimary}
-                              onChange={(value) => handleGenreSelect("genrePrimary", value)}
-                              options={primaryGenreOptions}
-                              placeholder="Em branco"
-                            />
-                          </FieldBlock>
                         </div>
-                        {form.genrePrimary && (
-                          <FieldBlock label="Gênero 2 (opcional)">
-                            <CustomSelect
-                              value={form.genreSecondary}
-                              onChange={(value) => handleGenreSelect("genreSecondary", value)}
-                              options={secondaryGenreOptions}
-                              placeholder="Em branco"
-                            />
-                          </FieldBlock>
+
+                        {form.type === "game" && (
+                          <button
+                            type="button"
+                            onClick={handleSearchCover}
+                            disabled={!form.title.trim() || isSearchingCover}
+                            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isSearchingCover ? "Buscando..." : "Buscar capa via IGDB"}
+                          </button>
                         )}
-
-                      </>
-                    )}
-
-                    {form.type === "accessory" && (
-                      <FieldBlock label="Categoria do acessório">
-                        <input
-                          value={form.accessoryCategory}
-                          onChange={(e) => updateField("accessoryCategory", e.target.value)}
-                          placeholder="Ex: controlador mobile, teclado, headset..."
-                          className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                        />
-                      </FieldBlock>
-                    )}
-
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                      <div className="flex-1">
-                        <FieldBlock label="URL da imagem / capa">
-                          <input
-                            value={form.imageUrl}
-                            onChange={(e) => updateField("imageUrl", e.target.value)}
-                            placeholder="Cole a URL da imagem ou use a busca automática"
-                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
-                          />
-                        </FieldBlock>
                       </div>
-
-                      {form.type === "game" && (
-                        <button
-                          type="button"
-                          onClick={handleSearchCover}
-                          disabled={!form.title.trim() || isSearchingCover}
-                          className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {isSearchingCover ? "Buscando..." : "Buscar capa via IGDB"}
-                        </button>
-                      )}
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+                  <FieldBlock label="URL da imagem / Capa">
+                    <input
+                      value={form.imageUrl}
+                      onChange={(e) => updateField("imageUrl", e.target.value)}
+                      placeholder="Cole a URL da imagem"
+                      className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                    />
+                  </FieldBlock>
+                </div>
+              )}
 
               {(duplicateCheck.exactDuplicates.length > 0 ||
                 duplicateCheck.relatedItems.length > 0) && (

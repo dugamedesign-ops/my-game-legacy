@@ -41,12 +41,28 @@ export function PlatformSection({
       accessories,
       games,
       visibleCategories: CATEGORY_ORDER.filter((category) => {
+        if (platform.trim().toLowerCase() === "pc" && category === "game") return false;
         if (category === "console") return consoles.length > 0;
         if (category === "accessory") return accessories.length > 0;
         return games.length > 0;
       }),
     };
-  }, [items]);
+  }, [items, platform]);
+  const isPcPlatform = platform.trim().toLowerCase() === "pc";
+  const pcGamesByLibrary = useMemo(() => {
+    if (!isPcPlatform) return [];
+    const groups = new Map<string, Item[]>();
+    const pcGames = getItemsByCategory(items, "game");
+    pcGames.forEach((game) => {
+      const library = game.pcStorefront?.trim() || "Sem biblioteca";
+      const bucket = groups.get(library) ?? [];
+      bucket.push(game);
+      groups.set(library, bucket);
+    });
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([library, libraryItems]) => ({ library, libraryItems }));
+  }, [isPcPlatform, items]);
 
   useEffect(() => {
     if (!isAddMenuOpen) return;
@@ -108,7 +124,7 @@ export function PlatformSection({
                     }}
                     className="flex w-full rounded-lg px-3 py-2 text-left text-xs text-white/85 transition hover:bg-white/10"
                   >
-                    🖥️ Adicionar console
+                    🖥️ {platform.trim().toLowerCase() === "pc" ? "Adicionar máquina" : "Adicionar console"}
                   </button>
                   <button
                     type="button"
@@ -149,11 +165,28 @@ export function PlatformSection({
               <CategorySection
                 key={category}
                 category={category}
+                categoryLabelOverride={isPcPlatform && category === "console" ? "Máquinas" : undefined}
                 items={getItemsByCategory(items, category)}
                 onItemClick={onItemClick}
                 onItemContextMenu={onItemContextMenu}
               />
             ))}
+            {isPcPlatform && pcGamesByLibrary.length > 0 && (
+              <section className="space-y-3 rounded-2xl border border-white/10 bg-black/10 p-4">
+                <h4 className="text-sm font-semibold text-white/70">Jogos</h4>
+                {pcGamesByLibrary.map(({ library, libraryItems }) => (
+                  <CategorySection
+                    key={`pc-library-${library}`}
+                    category="game"
+                    categoryLabelOverride={library}
+                    items={libraryItems}
+                    onItemClick={onItemClick}
+                    onItemContextMenu={onItemContextMenu}
+                    defaultOpen={false}
+                  />
+                ))}
+              </section>
+            )}
           </div>
         </div>
       </div>

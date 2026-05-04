@@ -8,6 +8,7 @@ import {
   getItemPendingLabel,
   getPendingItems,
 } from "@/lib/completion-utils";
+import { readPendingFiltersFromStorage } from "@/lib/pending-filters";
 import { getNormalizedAcquisitionStatus } from "@/lib/acquisition-utils";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -40,16 +41,31 @@ export function PendingItemsOverview({
   hideToggle = false,
 }: PendingItemsOverviewProps) {
   const { session, user } = useAuth();
+  const [initialFilters] = useState(readPendingFiltersFromStorage);
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
-  const [selectedTypes, setSelectedTypes] = useState<Item["type"][]>([]);
-  const [selectedOwnership, setSelectedOwnership] = useState<
-    Array<Item["ownershipStatus"] | "purchased">
-  >([]);
-  const [selectedMissingFields, setSelectedMissingFields] = useState<ItemPendingField[]>([]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(initialFilters.platforms);
+  const [selectedTypes, setSelectedTypes] = useState<Item["type"][]>(initialFilters.types);
+  const [selectedOwnership, setSelectedOwnership] = useState<Array<Item["ownershipStatus"] | "purchased">>(
+    initialFilters.ownership,
+  );
+  const [selectedMissingFields, setSelectedMissingFields] = useState<ItemPendingField[]>(
+    initialFilters.missingFields,
+  );
   const [activeEditors, setActiveEditors] = useState<
     Record<string, PendingEditorState | undefined>
   >({});
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      "my-game-legacy-pending-filters",
+      JSON.stringify({
+        platforms: selectedPlatforms,
+        types: selectedTypes,
+        ownership: selectedOwnership,
+        missingFields: selectedMissingFields,
+      }),
+    );
+  }, [selectedPlatforms, selectedTypes, selectedOwnership, selectedMissingFields]);
   const pendingInfos = getPendingItems(items);
   const availablePlatforms = Array.from(
     new Set(pendingInfos.map((pending) => pending.platform)),
@@ -111,6 +127,17 @@ export function PendingItemsOverview({
     if (field === "image") {
       return { textValue: item.imageUrl ?? "", multiValue: [] };
     }
+    if (field === "company") {
+      return { textValue: item.company ?? "", multiValue: [] };
+    }
+    if (field === "machineBrand") {
+      const current =
+        item.pcComponents
+          ?.find((entry) => entry.toLowerCase().startsWith("marca máquina:"))
+          ?.split(":")[1]
+          ?.trim() ?? "";
+      return { textValue: current, multiValue: [] };
+    }
     return { textValue: "", multiValue: item.mediaFormats ?? [] };
   }
 
@@ -168,6 +195,16 @@ export function PendingItemsOverview({
         }
       } else if (field === "image") {
         if (draft.textValue.trim()) nextItem.imageUrl = draft.textValue.trim();
+      } else if (field === "company") {
+        nextItem.company = draft.textValue.trim() || undefined;
+      } else if (field === "machineBrand") {
+        const filtered = (nextItem.pcComponents ?? []).filter(
+          (entry) => !entry.toLowerCase().startsWith("marca máquina:"),
+        );
+        if (draft.textValue.trim()) {
+          filtered.push(`Marca máquina: ${draft.textValue.trim()}`);
+        }
+        nextItem.pcComponents = filtered;
       } else if (field === "mediaFormats") {
         if (draft.multiValue.length > 0) {
           nextItem.mediaFormats = draft.multiValue as NonNullable<Item["mediaFormats"]>;
@@ -223,6 +260,16 @@ export function PendingItemsOverview({
           }
         } else if (field === "image") {
           if (draft.textValue.trim()) nextItem.imageUrl = draft.textValue.trim();
+        } else if (field === "company") {
+          nextItem.company = draft.textValue.trim() || undefined;
+        } else if (field === "machineBrand") {
+          const filtered = (nextItem.pcComponents ?? []).filter(
+            (entry) => !entry.toLowerCase().startsWith("marca máquina:"),
+          );
+          if (draft.textValue.trim()) {
+            filtered.push(`Marca máquina: ${draft.textValue.trim()}`);
+          }
+          nextItem.pcComponents = filtered;
         } else if (field === "mediaFormats") {
           if (draft.multiValue.length > 0) {
             nextItem.mediaFormats = draft.multiValue as NonNullable<Item["mediaFormats"]>;
@@ -363,6 +410,8 @@ export function PendingItemsOverview({
                       { value: "gameProgressStatus", label: "Status jogo" },
                       { value: "rarity", label: "Raridade" },
                       { value: "mediaFormats", label: "Mídia" },
+                      { value: "company", label: "Empresa" },
+                      { value: "machineBrand", label: "Marca da máquina" },
                     ]}
                     selected={selectedMissingFields}
                     onToggle={(value) =>
@@ -512,7 +561,9 @@ function PendingInlineEditor({
     if (
       activeField === "amountPaid" ||
       activeField === "currentValue" ||
-      activeField === "image"
+      activeField === "image" ||
+      activeField === "company" ||
+      activeField === "machineBrand"
     ) {
       textInputRef.current?.focus();
       textInputRef.current?.select();
@@ -539,7 +590,7 @@ function PendingInlineEditor({
     );
   }
 
-  if (activeField === "image") {
+  if (activeField === "image" || activeField === "company" || activeField === "machineBrand") {
     return (
       <div className="space-y-2">
         <input
@@ -554,10 +605,17 @@ function PendingInlineEditor({
               },
             })
           }
-          placeholder="https://..."
+          placeholder={
+            activeField === "image"
+              ? "https://..."
+              : activeField === "machineBrand"
+                ? "Digite a marca da máquina"
+                : "Digite a empresa"
+          }
           className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-sm text-white outline-none"
         />
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/80 transition hover:bg-white/10">
+        {activeField === "image" && (
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/80 transition hover:bg-white/10">
           <input
             type="file"
             accept="image/*"
@@ -601,6 +659,7 @@ function PendingInlineEditor({
           />
           {isUploading ? "Enviando imagem..." : "Enviar do computador"}
         </label>
+        )}
         {uploadError && (
           <p className="text-xs text-rose-200/90">{uploadError}</p>
         )}
