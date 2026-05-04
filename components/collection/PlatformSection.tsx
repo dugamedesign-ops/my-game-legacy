@@ -108,7 +108,7 @@ export function PlatformSection({
                     }}
                     className="flex w-full rounded-lg px-3 py-2 text-left text-xs text-white/85 transition hover:bg-white/10"
                   >
-                    🖥️ Adicionar console
+                    🖥️ {platform.trim().toLowerCase() === "pc" ? "Adicionar máquina" : "Adicionar console"}
                   </button>
                   <button
                     type="button"
@@ -149,6 +149,11 @@ export function PlatformSection({
               <CategorySection
                 key={category}
                 category={category}
+                categoryLabelOverride={
+                  platform.trim().toLowerCase() === "pc" && category === "console"
+                    ? "Máquinas"
+                    : undefined
+                }
                 items={getItemsByCategory(items, category)}
                 onItemClick={onItemClick}
                 onItemContextMenu={onItemContextMenu}
