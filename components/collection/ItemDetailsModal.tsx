@@ -313,6 +313,8 @@ export function ItemDetailsModal({
 
   const isGame = item.type === "game";
   const isPcMachine = item.platform.trim().toLowerCase() === "pc" && item.type === "console";
+  const isPcAccessory = item.platform.trim().toLowerCase() === "pc" && item.type === "accessory";
+  const isPcHardware = isPcMachine || isPcAccessory;
   const machineNameFromComponents = pcSpecs["Máquina"] ?? "";
   const isWishlist = ownershipStatusInput === "wishlist";
   const hasAcquisitionInWishlist = isWishlist && acquisitionStatusInput === "purchased";
@@ -715,7 +717,7 @@ export function ItemDetailsModal({
               .filter(Boolean)
               .join(" / ") || undefined
           : item.genre,
-      pcComponents: isPcMachine
+      pcComponents: isPcHardware
         ? Object.entries(pcSpecs)
             .filter(([, value]) => value.trim().length > 0)
             .map(([key, value]) => `${key}: ${value.trim()}`)
@@ -835,7 +837,7 @@ export function ItemDetailsModal({
             <div className="space-y-6">
               <div>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-                  {isPcMachine ? machineNameFromComponents || nameInput || item.title : nameInput || item.title}
+                  {isPcHardware ? machineNameFromComponents || nameInput || item.title : nameInput || item.title}
                 </h2>
                 {!isGame && subtitleInput && (
                   <p className="mt-2 text-lg text-white/65">{subtitleInput}</p>
@@ -845,7 +847,7 @@ export function ItemDetailsModal({
                     {(previewGenre || "Gênero não informado").split(",").map((genre) => genre.trim()).filter(Boolean).join(" | ")}
                   </p>
                 )}
-                {!isPcMachine && (
+                {!isPcHardware && (
                 <div className="mt-1 text-sm text-white/55">
                   {isEditingReleaseDate ? (
                     <div className="flex items-center gap-2">
@@ -882,16 +884,16 @@ export function ItemDetailsModal({
                     label={formatOwnershipLabel(ownershipStatusInput)}
                     variant={ownershipStatusInput === "wishlist" ? "wishlist" : "default"}
                   />
-                  {!isPcMachine && previewPriorityLabel && isWishlist && (
+                  {!isPcHardware && previewPriorityLabel && isWishlist && (
                     <StatusBadge label={previewPriorityLabel} variant="priority" />
                   )}
-                  {!isPcMachine && previewProgressLabel && (
+                  {!isPcHardware && previewProgressLabel && (
                     <StatusBadge label={previewProgressLabel} variant="progress" />
                   )}
-                  {!isPcMachine && mediaFormatsInput?.map((format) => (
+                  {!isPcHardware && mediaFormatsInput?.map((format) => (
                     <StatusBadge key={format} label={formatMediaLabel(format)} variant="media" />
                   ))}
-                  {!isPcMachine && rarityInput && <StatusBadge label={formatRarityLabel(rarityInput)} variant="rarity" />}
+                  {!isPcHardware && rarityInput && <StatusBadge label={formatRarityLabel(rarityInput)} variant="rarity" />}
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <div>
@@ -939,9 +941,9 @@ export function ItemDetailsModal({
                 {isDetailsOpen && (
                   <>
                 <h4 className="mt-4 text-base font-semibold tracking-[0.08em] text-white/75">
-                  {isPcMachine ? "Especificações" : "Informações principais"}
+                  {isPcHardware ? "Especificações" : "Informações principais"}
                 </h4>
-                {isPcMachine ? (
+                {isPcHardware ? (
                   <div className="mt-3 space-y-4">
                     {[
                       ["Máquina", ["Máquina", "Marca máquina"]],
