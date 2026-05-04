@@ -140,13 +140,6 @@ function mergePlatformOrderSlots(
   }) as PlatformOrderSlot[];
 }
 
-function getSlotLabel(slot: PlatformOrderSlot) {
-  const fallback = "Minha ordem";
-  if (!slot?.label) return fallback;
-  const sanitized = slot.label.trim();
-  return sanitized.length > 0 ? sanitized : fallback;
-}
-
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const { user: authUser, session, signOut, publicProfile, setProfileVisibility } = useAuth();
   const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
@@ -204,7 +197,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [isLegacyMenuOpen, setIsLegacyMenuOpen] = useState(false);
   const [isFinancialOpen, setIsFinancialOpen] = useState(false);
   const [isPendingOpen, setIsPendingOpen] = useState(false);
-  const [isCollectionFiltersOpen, setIsCollectionFiltersOpen] = useState(false);
   const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false);
   const [isPlatformOrganizerOpen, setIsPlatformOrganizerOpen] = useState(false);
   const [isInlineOrganizeMode, setIsInlineOrganizeMode] = useState(false);
@@ -217,7 +209,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const [customPlatformOrder, setCustomPlatformOrder] = useState<string[]>(
     getInitialCustomPlatformOrder,
   );
-  const [platformOrderSlots, setPlatformOrderSlots] = useState<PlatformOrderSlot[]>(
+  const [, setPlatformOrderSlots] = useState<PlatformOrderSlot[]>(
     getInitialPlatformOrderSlots,
   );
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -226,8 +218,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   );
   const [activeQuickFilter, setActiveQuickFilter] =
     useState<HeaderFilterKey>("all");
-  const [openSlotMenu, setOpenSlotMenu] = useState<1 | 2 | 3 | null>(null);
-  const [isOrganizerExpanded, setIsOrganizerExpanded] = useState(false);
   const collectionSectionRef = useRef<HTMLElement | null>(null);
   const legacyMenuRef = useRef<HTMLDivElement | null>(null);
   const isModalOpenRef = useRef(false);
@@ -711,165 +701,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   function handleResetAlphabeticalPlatformOrder() {
     setPlatformOrderMode("alphabetical");
     setCustomPlatformOrder(allActivePlatforms);
-  }
-
-  async function saveCurrentOrderToSlot(slot: 1 | 2 | 3) {
-    const existingLabel = platformOrderSlots[slot - 1]?.label;
-    const nextSlot: PlatformOrderSlotPreference = {
-      slot,
-      label: existingLabel,
-      mode: platformOrderMode,
-      order:
-        platformOrderMode === "custom"
-          ? [...effectiveCustomPlatformOrder]
-          : [],
-      updated_at: new Date().toISOString(),
-    };
-
-    const nextSlots = [...platformOrderSlots] as PlatformOrderSlot[];
-    nextSlots[slot - 1] = nextSlot;
-    setPlatformOrderSlots(nextSlots);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        PLATFORM_ORDER_SLOTS_DRAFT_KEY,
-        JSON.stringify(nextSlots.filter(Boolean)),
-      );
-      window.localStorage.setItem(
-        PLATFORM_ORDER_SLOTS_CACHE_KEY,
-        JSON.stringify(nextSlots.filter(Boolean)),
-      );
-    }
-
-    const token = session?.access_token;
-    if (!token || !authUser?.id) return;
-
-    try {
-      await saveUserPlatformOrderSlots(
-        token,
-        authUser.id,
-        nextSlots.filter(Boolean) as PlatformOrderSlotPreference[],
-      );
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
-      }
-    } catch (error) {
-      console.error("Erro ao salvar slots de ordem:", error);
-    }
-  }
-
-  async function deletePlatformOrderSlot(slotNumber: 1 | 2 | 3) {
-    const slot = platformOrderSlots[slotNumber - 1];
-    if (!slot) return;
-    const confirmed = window.confirm(
-      `Tem certeza que deseja deletar o Slot ${slotNumber}?`,
-    );
-    if (!confirmed) return;
-
-    const nextSlots = [...platformOrderSlots] as PlatformOrderSlot[];
-    nextSlots[slotNumber - 1] = null;
-    setPlatformOrderSlots(nextSlots);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        PLATFORM_ORDER_SLOTS_DRAFT_KEY,
-        JSON.stringify(nextSlots.filter(Boolean)),
-      );
-      window.localStorage.setItem(
-        PLATFORM_ORDER_SLOTS_CACHE_KEY,
-        JSON.stringify(nextSlots.filter(Boolean)),
-      );
-    }
-
-    const token = session?.access_token;
-    if (!token || !authUser?.id) return;
-
-    try {
-      await saveUserPlatformOrderSlots(
-        token,
-        authUser.id,
-        nextSlots.filter(Boolean) as PlatformOrderSlotPreference[],
-      );
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
-      }
-    } catch (error) {
-      console.error("Erro ao deletar slot de ordem:", error);
-    }
-  }
-
-  async function renamePlatformOrderSlot(slotNumber: 1 | 2 | 3) {
-    const current = platformOrderSlots[slotNumber - 1];
-    if (!current) {
-      window.alert("Salve uma ordenação neste slot antes de renomear.");
-      return;
-    }
-
-    const promptValue = window.prompt(
-      "Novo nome do filtro rápido:",
-      current.label?.trim() || `Slot ${slotNumber}`,
-    );
-    if (promptValue === null) return;
-
-    const nextLabel = promptValue.trim();
-    if (nextLabel.length === 0) {
-      window.alert("O nome do filtro não pode ficar vazio.");
-      return;
-    }
-
-    const nextSlots = [...platformOrderSlots] as PlatformOrderSlot[];
-    nextSlots[slotNumber - 1] = {
-      ...current,
-      label: nextLabel.slice(0, 40),
-      updated_at: new Date().toISOString(),
-    };
-    setPlatformOrderSlots(nextSlots);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        PLATFORM_ORDER_SLOTS_DRAFT_KEY,
-        JSON.stringify(nextSlots.filter(Boolean)),
-      );
-      window.localStorage.setItem(
-        PLATFORM_ORDER_SLOTS_CACHE_KEY,
-        JSON.stringify(nextSlots.filter(Boolean)),
-      );
-    }
-
-    const token = session?.access_token;
-    if (!token || !authUser?.id) return;
-
-    try {
-      await saveUserPlatformOrderSlots(
-        token,
-        authUser.id,
-        nextSlots.filter(Boolean) as PlatformOrderSlotPreference[],
-      );
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(PLATFORM_ORDER_SLOTS_DRAFT_KEY);
-      }
-    } catch (error) {
-      console.error("Erro ao renomear slot de ordem:", error);
-    }
-  }
-
-  const canSaveCurrentOrder = useMemo(() => {
-    if (platformOrderMode !== "custom") return false;
-    if (effectiveCustomPlatformOrder.length <= 1) return false;
-    const alphabetical = [...allActivePlatforms].sort((a, b) =>
-      a.localeCompare(b, "pt-BR", { sensitivity: "base" }),
-    );
-    return JSON.stringify(effectiveCustomPlatformOrder) !== JSON.stringify(alphabetical);
-  }, [allActivePlatforms, effectiveCustomPlatformOrder, platformOrderMode]);
-
-  function applyPlatformOrderSlot(slot: PlatformOrderSlot) {
-    if (!slot) return;
-    if (slot.mode === "alphabetical") {
-      handleResetAlphabeticalPlatformOrder();
-      return;
-    }
-    setPlatformOrderMode("custom");
-    setCustomPlatformOrder(slot.order);
   }
 
   function applyWishlistPurchaseStatus(item: Item) {
