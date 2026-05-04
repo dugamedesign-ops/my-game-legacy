@@ -50,6 +50,37 @@ export function PendingItemsOverview({
   const [activeEditors, setActiveEditors] = useState<
     Record<string, PendingEditorState | undefined>
   >({});
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem("my-game-legacy-pending-filters");
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as {
+        platforms?: string[];
+        types?: Item["type"][];
+        ownership?: Array<Item["ownershipStatus"] | "purchased">;
+        missingFields?: ItemPendingField[];
+      };
+      setSelectedPlatforms(parsed.platforms ?? []);
+      setSelectedTypes(parsed.types ?? []);
+      setSelectedOwnership(parsed.ownership ?? []);
+      setSelectedMissingFields(parsed.missingFields ?? []);
+    } catch {
+      // ignore invalid persisted state
+    }
+  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      "my-game-legacy-pending-filters",
+      JSON.stringify({
+        platforms: selectedPlatforms,
+        types: selectedTypes,
+        ownership: selectedOwnership,
+        missingFields: selectedMissingFields,
+      }),
+    );
+  }, [selectedPlatforms, selectedTypes, selectedOwnership, selectedMissingFields]);
   const pendingInfos = getPendingItems(items);
   const availablePlatforms = Array.from(
     new Set(pendingInfos.map((pending) => pending.platform)),
@@ -114,6 +145,14 @@ export function PendingItemsOverview({
     if (field === "company") {
       return { textValue: item.company ?? "", multiValue: [] };
     }
+    if (field === "machineBrand") {
+      const current =
+        item.pcComponents
+          ?.find((entry) => entry.toLowerCase().startsWith("marca máquina:"))
+          ?.split(":")[1]
+          ?.trim() ?? "";
+      return { textValue: current, multiValue: [] };
+    }
     return { textValue: "", multiValue: item.mediaFormats ?? [] };
   }
 
@@ -173,6 +212,14 @@ export function PendingItemsOverview({
         if (draft.textValue.trim()) nextItem.imageUrl = draft.textValue.trim();
       } else if (field === "company") {
         nextItem.company = draft.textValue.trim() || undefined;
+      } else if (field === "machineBrand") {
+        const filtered = (nextItem.pcComponents ?? []).filter(
+          (entry) => !entry.toLowerCase().startsWith("marca máquina:"),
+        );
+        if (draft.textValue.trim()) {
+          filtered.push(`Marca máquina: ${draft.textValue.trim()}`);
+        }
+        nextItem.pcComponents = filtered;
       } else if (field === "mediaFormats") {
         if (draft.multiValue.length > 0) {
           nextItem.mediaFormats = draft.multiValue as NonNullable<Item["mediaFormats"]>;
@@ -230,6 +277,14 @@ export function PendingItemsOverview({
           if (draft.textValue.trim()) nextItem.imageUrl = draft.textValue.trim();
         } else if (field === "company") {
           nextItem.company = draft.textValue.trim() || undefined;
+        } else if (field === "machineBrand") {
+          const filtered = (nextItem.pcComponents ?? []).filter(
+            (entry) => !entry.toLowerCase().startsWith("marca máquina:"),
+          );
+          if (draft.textValue.trim()) {
+            filtered.push(`Marca máquina: ${draft.textValue.trim()}`);
+          }
+          nextItem.pcComponents = filtered;
         } else if (field === "mediaFormats") {
           if (draft.multiValue.length > 0) {
             nextItem.mediaFormats = draft.multiValue as NonNullable<Item["mediaFormats"]>;
@@ -371,6 +426,7 @@ export function PendingItemsOverview({
                       { value: "rarity", label: "Raridade" },
                       { value: "mediaFormats", label: "Mídia" },
                       { value: "company", label: "Empresa" },
+                      { value: "machineBrand", label: "Marca da máquina" },
                     ]}
                     selected={selectedMissingFields}
                     onToggle={(value) =>
@@ -521,7 +577,8 @@ function PendingInlineEditor({
       activeField === "amountPaid" ||
       activeField === "currentValue" ||
       activeField === "image" ||
-      activeField === "company"
+      activeField === "company" ||
+      activeField === "machineBrand"
     ) {
       textInputRef.current?.focus();
       textInputRef.current?.select();
@@ -548,7 +605,7 @@ function PendingInlineEditor({
     );
   }
 
-  if (activeField === "image" || activeField === "company") {
+  if (activeField === "image" || activeField === "company" || activeField === "machineBrand") {
     return (
       <div className="space-y-2">
         <input
@@ -563,7 +620,13 @@ function PendingInlineEditor({
               },
             })
           }
-          placeholder={activeField === "image" ? "https://..." : "Digite a empresa"}
+          placeholder={
+            activeField === "image"
+              ? "https://..."
+              : activeField === "machineBrand"
+                ? "Digite a marca da máquina"
+                : "Digite a empresa"
+          }
           className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-sm text-white outline-none"
         />
         {activeField === "image" && (

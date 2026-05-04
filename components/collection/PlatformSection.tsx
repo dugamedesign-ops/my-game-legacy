@@ -173,7 +173,7 @@ export function PlatformSection({
             ))}
             {isPcPlatform && pcGamesByLibrary.length > 0 && (
               <section className="space-y-3 rounded-2xl border border-white/10 bg-black/10 p-4">
-                <h4 className="text-sm font-semibold text-white/70">Jogos por biblioteca</h4>
+                <h4 className="text-sm font-semibold text-white/70">Jogos</h4>
                 {pcGamesByLibrary.map(({ library, libraryItems }) => (
                   <CategorySection
                     key={`pc-library-${library}`}
