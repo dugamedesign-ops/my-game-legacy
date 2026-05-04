@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { Item } from "@/types/collection";
 import { StatusBadge } from "./StatusBadge";
 import { searchIgdbCover, searchIgdbGames } from "@/lib/igdb";
@@ -720,9 +721,12 @@ export function ItemDetailsModal({
               onClick={() => setIsImageActionsOpen((prev) => !prev)}
             >
               {imageUrlInput ? (
-                <img
+                <Image
                   src={imageUrlInput}
                   alt={nameInput || item.title}
+                  width={900}
+                  height={1200}
+                  unoptimized
                   className="h-full w-full object-cover"
                 />
               ) : (

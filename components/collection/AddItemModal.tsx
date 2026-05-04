@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import {
   Item,
   ItemType,
@@ -550,7 +551,6 @@ export function AddItemModal({
     form.ownershipStatus,
     form.physical,
     form.pcComponents,
-    form.pcFolder,
     form.pcMachineMode,
     form.pcStorefront,
     form.pcMotherboard,
@@ -1020,9 +1020,12 @@ export function AddItemModal({
                           >
                             <div className="h-16 w-12 overflow-hidden rounded-lg bg-white/5">
                               {result.coverUrl ? (
-                                <img
+                                <Image
                                   src={result.coverUrl}
                                   alt={result.name}
+                                  width={96}
+                                  height={128}
+                                  unoptimized
                                   className="h-full w-full object-cover"
                                 />
                               ) : null}

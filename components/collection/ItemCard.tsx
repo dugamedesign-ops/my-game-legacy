@@ -1,4 +1,5 @@
 import { Item } from "@/types/collection";
+import Image from "next/image";
 import { getAcquisitionStatusLabel, getNormalizedAcquisitionStatus } from "@/lib/acquisition-utils";
 
 type CardSize = "large" | "medium" | "small";
@@ -114,9 +115,12 @@ export function ItemCard({
           </span>
         )}
         {item.imageUrl ? (
-          <img
+          <Image
             src={item.imageUrl}
             alt={item.title}
+            width={420}
+            height={560}
+            unoptimized
             className="h-full w-full bg-black/30 object-contain p-1 transition duration-500 group-hover:scale-[1.02]"
           />
         ) : (
