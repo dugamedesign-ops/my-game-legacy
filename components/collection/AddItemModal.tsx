@@ -1274,7 +1274,7 @@ export function AddItemModal({
                 </FieldBlock>
               )}
 
-              {form.type === "game" && (
+              {form.type === "game" && !(isPcPlatform && form.pcStorefront.trim()) && (
                 <>
                   <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 sm:h-full">
                     <p className="mb-3 text-sm font-medium text-white">Mídia</p>

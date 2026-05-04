@@ -312,6 +312,10 @@ export function ItemDetailsModal({
   if (!isOpen || !item) return null;
 
   const isGame = item.type === "game";
+  const isPcGameWithLibrary =
+    item.platform.trim().toLowerCase() === "pc" &&
+    item.type === "game" &&
+    (item.pcStorefront ?? "").trim().length > 0;
   const isPcMachine = item.platform.trim().toLowerCase() === "pc" && item.type === "console";
   const isPcAccessory = item.platform.trim().toLowerCase() === "pc" && item.type === "accessory";
   const isPcHardware = isPcMachine || isPcAccessory;
@@ -1135,7 +1139,7 @@ export function ItemDetailsModal({
                       onChange={(value) => setOwnershipStatusInput(value)}
                     />
                   </div>
-                  {isGame && (
+                  {isGame && !isPcGameWithLibrary && (
                     <div className="block">
                       <span className="mb-2 block text-sm text-white/70">Mídia</span>
                       <div className="flex flex-wrap gap-2">
