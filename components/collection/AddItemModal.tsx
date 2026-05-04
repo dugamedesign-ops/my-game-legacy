@@ -93,6 +93,7 @@ const PLATFORM_OPTIONS = [
 const NEW_PLATFORM_OPTION = "__new_platform__";
 const NEW_GENRE_OPTION = "__new_genre__";
 const NEW_FRANCHISE_OPTION = "__new_franchise__";
+const NEW_LIBRARY_OPTION = "__new_library__";
 const IGDB_GENRE_OPTIONS = [
   "Action",
   "Adventure",
@@ -134,6 +135,7 @@ export function AddItemModal({
   const [platformOptions, setPlatformOptions] = useState<string[]>(PLATFORM_OPTIONS);
   const [genreOptions, setGenreOptions] = useState<string[]>(IGDB_GENRE_OPTIONS);
   const [franchiseOptions, setFranchiseOptions] = useState<string[]>([]);
+  const [libraryOptions, setLibraryOptions] = useState<string[]>(["Steam", "Epic"]);
 
   const skipNextAutoSearchRef = useRef(false);
 
@@ -232,6 +234,22 @@ export function AddItemModal({
       .filter(Boolean) as string[];
     const merged = [...new Set([...PLATFORM_OPTIONS, ...fromExistingItems, ...customPlatforms])];
     setPlatformOptions(merged.sort((a, b) => a.localeCompare(b)));
+    const customLibrariesRaw =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("my-game-legacy-custom-libraries")
+        : null;
+    let customLibraries: string[] = [];
+    if (customLibrariesRaw) {
+      try {
+        customLibraries = JSON.parse(customLibrariesRaw) as string[];
+      } catch {
+        customLibraries = [];
+      }
+    }
+    const existingLibraries = existingItems
+      .map((entry) => entry.pcStorefront?.trim())
+      .filter(Boolean) as string[];
+    setLibraryOptions([...new Set(["Steam", "Epic", ...existingLibraries, ...customLibraries])]);
     const customGenresRaw =
       typeof window !== "undefined"
         ? window.localStorage.getItem("my-game-legacy-custom-genres")
@@ -280,6 +298,12 @@ export function AddItemModal({
       setStep(1);
     }
   }, [existingItems, isOpen, initialType, initialPlatform]);
+
+  useEffect(() => {
+    if (form.platform.trim().toLowerCase() !== "pc" || form.type !== "game") return;
+    if (!form.pcStorefront.trim()) return;
+    setForm((prev) => ({ ...prev, digital: true, physical: false }));
+  }, [form.pcStorefront, form.platform, form.type]);
 
   useEffect(() => {
     if (form.type !== "game") return;
@@ -468,7 +492,7 @@ export function AddItemModal({
           ? form.pcMachineMode || undefined
           : undefined,
       pcStorefront:
-        false
+        form.platform.trim().toLowerCase() === "pc" && form.type === "game"
           ? form.pcStorefront || undefined
           : undefined,
       pcComponents:
@@ -1085,7 +1109,7 @@ export function AddItemModal({
                 </>
               )}
 
-              {isPcPlatform && form.type !== "accessory" && (
+              {isPcPlatform && form.type === "console" && (
                 <div className="rounded-3xl border border-cyan-300/20 bg-cyan-500/5 p-4">
                   <p className="mb-3 text-sm font-medium text-cyan-100">Novo (PC)</p>
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -1205,6 +1229,50 @@ export function AddItemModal({
                   />
                 </FieldBlock>
               ) : null}
+
+              {isPcPlatform && form.type === "game" && (
+                <FieldBlock label="Biblioteca">
+                  <CustomSelect
+                    value={form.pcStorefront}
+                    onChange={(value) => {
+                      if (value === NEW_LIBRARY_OPTION) {
+                        const library = window.prompt("Nome da nova biblioteca:");
+                        if (!library?.trim()) return;
+                        const trimmedLibrary = library.trim();
+                        const alreadyExists = libraryOptions.some(
+                          (option) => option.toLowerCase() === trimmedLibrary.toLowerCase(),
+                        );
+                        if (!alreadyExists) {
+                          const updated = [...libraryOptions, trimmedLibrary].sort((a, b) =>
+                            a.localeCompare(b),
+                          );
+                          setLibraryOptions(updated);
+                          if (typeof window !== "undefined") {
+                            window.localStorage.setItem(
+                              "my-game-legacy-custom-libraries",
+                              JSON.stringify(updated.filter((option) => !["Steam", "Epic"].includes(option))),
+                            );
+                          }
+                        }
+                        updateField(
+                          "pcStorefront",
+                          trimmedLibrary as NonNullable<Item["pcStorefront"]> | "",
+                        );
+                        return;
+                      }
+                      updateField(
+                        "pcStorefront",
+                        ((value ?? "").toString() as NonNullable<Item["pcStorefront"]> | ""),
+                      );
+                    }}
+                    options={[
+                      ...libraryOptions.map((option) => ({ value: option, label: option })),
+                      { value: NEW_LIBRARY_OPTION, label: "+ Cadastrar nova biblioteca" },
+                    ]}
+                    placeholder="Selecione a biblioteca"
+                  />
+                </FieldBlock>
+              )}
 
               {form.type === "game" && (
                 <>
