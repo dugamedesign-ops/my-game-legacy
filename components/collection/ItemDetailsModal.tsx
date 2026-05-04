@@ -302,6 +302,7 @@ export function ItemDetailsModal({
   if (!isOpen || !item) return null;
 
   const isGame = item.type === "game";
+  const isPcMachine = item.platform.trim().toLowerCase() === "pc" && item.type === "console";
   const isWishlist = ownershipStatusInput === "wishlist";
   const hasAcquisitionInWishlist = isWishlist && acquisitionStatusInput === "purchased";
   const shouldDisablePaidInputs = isWishlist && !hasAcquisitionInWishlist;
@@ -828,6 +829,7 @@ export function ItemDetailsModal({
                     {(previewGenre || "Gênero não informado").split(",").map((genre) => genre.trim()).filter(Boolean).join(" | ")}
                   </p>
                 )}
+                {!isPcMachine && (
                 <div className="mt-1 text-sm text-white/55">
                   {isEditingReleaseDate ? (
                     <div className="flex items-center gap-2">
@@ -858,21 +860,22 @@ export function ItemDetailsModal({
                     {isGame && franchiseInput.trim() ? ` | ${franchiseInput.trim()}` : ""}
                   </span>
                 </div>
+                )}
                 <div className="mt-3 flex flex-wrap gap-2">
                   <StatusBadge
                     label={formatOwnershipLabel(ownershipStatusInput)}
                     variant={ownershipStatusInput === "wishlist" ? "wishlist" : "default"}
                   />
-                  {previewPriorityLabel && isWishlist && (
+                  {!isPcMachine && previewPriorityLabel && isWishlist && (
                     <StatusBadge label={previewPriorityLabel} variant="priority" />
                   )}
-                  {previewProgressLabel && (
+                  {!isPcMachine && previewProgressLabel && (
                     <StatusBadge label={previewProgressLabel} variant="progress" />
                   )}
-                  {mediaFormatsInput?.map((format) => (
+                  {!isPcMachine && mediaFormatsInput?.map((format) => (
                     <StatusBadge key={format} label={formatMediaLabel(format)} variant="media" />
                   ))}
-                  {rarityInput && <StatusBadge label={formatRarityLabel(rarityInput)} variant="rarity" />}
+                  {!isPcMachine && rarityInput && <StatusBadge label={formatRarityLabel(rarityInput)} variant="rarity" />}
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <div>
@@ -920,7 +923,7 @@ export function ItemDetailsModal({
                 {isDetailsOpen && (
                   <>
                 <h4 className="mt-4 text-base font-semibold tracking-[0.08em] text-white/75">
-                  Informações principais
+                  {isPcMachine ? "Especificações" : "Informações principais"}
                 </h4>
                 <div className="mt-3 grid gap-4 md:grid-cols-2">
                   <label className="block">
