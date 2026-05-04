@@ -40,20 +40,26 @@ export function PendingItemsOverview({
   hideToggle = false,
 }: PendingItemsOverviewProps) {
   const { session, user } = useAuth();
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
-  const [selectedTypes, setSelectedTypes] = useState<Item["type"][]>([]);
-  const [selectedOwnership, setSelectedOwnership] = useState<
-    Array<Item["ownershipStatus"] | "purchased">
-  >([]);
-  const [selectedMissingFields, setSelectedMissingFields] = useState<ItemPendingField[]>([]);
-  const [activeEditors, setActiveEditors] = useState<
-    Record<string, PendingEditorState | undefined>
-  >({});
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const initialFilters = (() => {
+    if (typeof window === "undefined") {
+      return {
+        platforms: [] as string[],
+        types: [] as Item["type"][],
+        ownership: [] as Array<Item["ownershipStatus"] | "purchased">,
+        missingFields: [] as ItemPendingField[],
+      };
+    }
+
     const raw = window.localStorage.getItem("my-game-legacy-pending-filters");
-    if (!raw) return;
+    if (!raw) {
+      return {
+        platforms: [] as string[],
+        types: [] as Item["type"][],
+        ownership: [] as Array<Item["ownershipStatus"] | "purchased">,
+        missingFields: [] as ItemPendingField[],
+      };
+    }
+
     try {
       const parsed = JSON.parse(raw) as {
         platforms?: string[];
@@ -61,14 +67,33 @@ export function PendingItemsOverview({
         ownership?: Array<Item["ownershipStatus"] | "purchased">;
         missingFields?: ItemPendingField[];
       };
-      setSelectedPlatforms(parsed.platforms ?? []);
-      setSelectedTypes(parsed.types ?? []);
-      setSelectedOwnership(parsed.ownership ?? []);
-      setSelectedMissingFields(parsed.missingFields ?? []);
+      return {
+        platforms: parsed.platforms ?? [],
+        types: parsed.types ?? [],
+        ownership: parsed.ownership ?? [],
+        missingFields: parsed.missingFields ?? [],
+      };
     } catch {
-      // ignore invalid persisted state
+      return {
+        platforms: [] as string[],
+        types: [] as Item["type"][],
+        ownership: [] as Array<Item["ownershipStatus"] | "purchased">,
+        missingFields: [] as ItemPendingField[],
+      };
     }
-  }, []);
+  })();
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(initialFilters.platforms);
+  const [selectedTypes, setSelectedTypes] = useState<Item["type"][]>(initialFilters.types);
+  const [selectedOwnership, setSelectedOwnership] = useState<Array<Item["ownershipStatus"] | "purchased">>(
+    initialFilters.ownership,
+  );
+  const [selectedMissingFields, setSelectedMissingFields] = useState<ItemPendingField[]>(
+    initialFilters.missingFields,
+  );
+  const [activeEditors, setActiveEditors] = useState<
+    Record<string, PendingEditorState | undefined>
+  >({});
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(

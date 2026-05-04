@@ -47,7 +47,7 @@ export function PlatformSection({
         return games.length > 0;
       }),
     };
-  }, [items]);
+  }, [items, platform]);
   const isPcPlatform = platform.trim().toLowerCase() === "pc";
   const pcGamesByLibrary = useMemo(() => {
     if (!isPcPlatform) return [];
