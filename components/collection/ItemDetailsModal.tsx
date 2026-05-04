@@ -9,7 +9,6 @@ import { uploadSupabaseImage } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
 import { getNormalizedAcquisitionStatus } from "@/lib/acquisition-utils";
 import {
-  formatCurrency,
   formatMediaLabel,
   formatOwnershipLabel,
   formatPriorityLabel,
@@ -17,9 +16,7 @@ import {
   formatRarityLabel,
   formatReleaseDate,
   GENRE_OPTIONS,
-  getProgressIcon,
   NEW_GENRE_OPTION,
-  PURCHASE_ORIGIN_OPTIONS,
 } from "@/lib/item-details-utils";
 
 type ItemDetailsModalProps = {
@@ -85,9 +82,6 @@ export function ItemDetailsModal({
   const [purchaseMonthDigitalInput, setPurchaseMonthDigitalInput] = useState("");
   const [purchaseDayDigitalInput, setPurchaseDayDigitalInput] = useState("");
   const [purchaseOriginInput, setPurchaseOriginInput] = useState("");
-  const [purchaseOriginOptions, setPurchaseOriginOptions] = useState<string[]>(
-    [...PURCHASE_ORIGIN_OPTIONS],
-  );
   const [genrePrimaryInput, setGenrePrimaryInput] = useState("");
   const [genreSecondaryInput, setGenreSecondaryInput] = useState("");
   const [genreOptions, setGenreOptions] = useState<string[]>([...GENRE_OPTIONS]);
@@ -223,22 +217,6 @@ export function ItemDetailsModal({
     setIsImageActionsOpen(false);
     setIsEditingReleaseDate(false);
 
-    const storedRaw =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem("my-game-legacy-purchase-origins")
-        : null;
-    let stored: string[] = [];
-    if (storedRaw) {
-      try {
-        stored = JSON.parse(storedRaw) as string[];
-      } catch {
-        stored = [];
-      }
-    }
-    const merged = [...new Set([...PURCHASE_ORIGIN_OPTIONS, ...stored, item.purchaseOrigin ?? ""])]
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
-    setPurchaseOriginOptions(merged);
     const mergedGenres = [...new Set([...GENRE_OPTIONS, primary, secondary])]
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
@@ -327,11 +305,6 @@ export function ItemDetailsModal({
   const hasPhysicalSelected = mediaFormatsInput?.includes("physical") ?? false;
   const hasDigitalSelected = mediaFormatsInput?.includes("digital") ?? false;
   const hasBothMediaSelected = hasPhysicalSelected && hasDigitalSelected;
-  const purchaseOriginSelectOptions: CustomSelectOption[] = [
-    { value: "", label: "Em branco" },
-    ...purchaseOriginOptions.map((origin) => ({ value: origin, label: origin })),
-    { value: "__new_origin__", label: "+ Cadastrar nova origem" },
-  ];
   const genrePrimaryOptions: CustomSelectOption[] = [
     { value: "", label: "Em branco" },
     ...genreOptions.map((genre) => ({ value: genre, label: genre })),
@@ -382,7 +355,6 @@ export function ItemDetailsModal({
           ? `Comprado ${purchaseYearNumber - releaseYear} ano(s) após o lançamento`
           : "Comprado antes do lançamento"
       : null;
-  const progressIcon = getProgressIcon(gameProgressStatusInput || undefined);
   const previewGenre = [genrePrimaryInput, genreSecondaryInput].filter(Boolean).join(" / ");
 
   function parseOptionalNumber(value: string): number | undefined {
@@ -545,39 +517,6 @@ export function ItemDetailsModal({
     setIsEditingImage(false);
   }
 
-  function handlePurchaseOriginChange(value: string) {
-    if (value !== "__new_origin__") {
-      setPurchaseOriginInput(value);
-      return;
-    }
-
-    const typed = window.prompt("Digite a nova origem da compra:");
-    if (!typed) return;
-    const normalized = typed.trim();
-    if (!normalized) return;
-
-    const exists = purchaseOriginOptions.some(
-      (option) => option.toLowerCase() === normalized.toLowerCase(),
-    );
-    const finalValue = exists
-      ? purchaseOriginOptions.find(
-          (option) => option.toLowerCase() === normalized.toLowerCase(),
-        ) ?? normalized
-      : normalized;
-
-    if (!exists) {
-      const next = [...purchaseOriginOptions, normalized].sort((a, b) =>
-        a.localeCompare(b),
-      );
-      setPurchaseOriginOptions(next);
-      window.localStorage.setItem(
-        "my-game-legacy-purchase-origins",
-        JSON.stringify(next.filter((origin) => !PURCHASE_ORIGIN_OPTIONS.includes(origin))),
-      );
-    }
-
-    setPurchaseOriginInput(finalValue);
-  }
 
   function handleGenreChange(
     field: "primary" | "secondary",
@@ -1715,51 +1654,5 @@ function RarityButtons({
         </button>
       ))}
     </div>
-  );
-}
-
-function MoneyCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.03] p-5">
-      <p className="text-xs uppercase tracking-[0.22em] text-white/40">{label}</p>
-      <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
-    </div>
-  );
-}
-
-function HistorySection({
-  title,
-  entries,
-}: {
-  title: string;
-  entries?: { date: string; value: number }[];
-}) {
-  return (
-    <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-      <h3 className="text-lg font-semibold text-white">{title}</h3>
-
-      {entries && entries.length > 0 ? (
-        <div className="mt-4 space-y-3">
-          {entries.map((entry, index) => (
-            <div
-              key={`${entry.date}-${index}`}
-              className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-            >
-              <span className="text-sm text-white/65">{entry.date}</span>
-              <span className="text-sm font-semibold text-white">
-                {new Intl.NumberFormat("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                }).format(entry.value)}
-              </span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-4 text-sm text-white/55">
-          Nenhum histórico registrado ainda.
-        </p>
-      )}
-    </section>
   );
 }
