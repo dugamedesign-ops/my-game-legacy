@@ -316,6 +316,7 @@ export function ItemDetailsModal({
   const isPcAccessory = item.platform.trim().toLowerCase() === "pc" && item.type === "accessory";
   const isPcHardware = isPcMachine || isPcAccessory;
   const machineNameFromComponents = pcSpecs["Máquina"] ?? "";
+  const accessoryNameFromComponents = pcSpecs["Nome"] ?? "";
   const isWishlist = ownershipStatusInput === "wishlist";
   const hasAcquisitionInWishlist = isWishlist && acquisitionStatusInput === "purchased";
   const shouldDisablePaidInputs = isWishlist && !hasAcquisitionInWishlist;
@@ -837,7 +838,11 @@ export function ItemDetailsModal({
             <div className="space-y-6">
               <div>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-                  {isPcHardware ? machineNameFromComponents || nameInput || item.title : nameInput || item.title}
+                  {isPcHardware
+                    ? (isPcAccessory
+                        ? accessoryNameFromComponents || nameInput || item.title
+                        : machineNameFromComponents || nameInput || item.title)
+                    : nameInput || item.title}
                 </h2>
                 {!isGame && subtitleInput && (
                   <p className="mt-2 text-lg text-white/65">{subtitleInput}</p>
@@ -945,14 +950,16 @@ export function ItemDetailsModal({
                 </h4>
                 {isPcHardware ? (
                   <div className="mt-3 space-y-4">
-                    {[
-                      ["Máquina", ["Máquina", "Marca máquina"]],
-                      ["CPU (Processador)", ["CPU Modelo", "CPU Marca", "CPU Núcleos", "CPU Frequência"]],
-                      ["GPU (Placa de Vídeo)", ["GPU Nome", "GPU Marca", "GPU VRAM", "GPU Memória"]],
-                      ["RAM", ["RAM Capacidade", "RAM Tipo", "RAM Frequência", "RAM Módulos"]],
-                      ["Armazenamento (HD / SSD / NVMe)", ["Armazenamento Tipo", "Armazenamento Capacidade", "Armazenamento Marca"]],
-                      ["MB (Placa-Mãe)", ["MB Modelo", "MB Marca", "MB Socket"]],
-                    ].map(([title, keys]) => (
+                    {(isPcAccessory
+                      ? [["Acessório", ["Nome", "Marca", "Categoria do acessório"]]]
+                      : [
+                          ["Máquina", ["Máquina", "Marca máquina"]],
+                          ["CPU (Processador)", ["CPU Modelo", "CPU Marca", "CPU Núcleos", "CPU Frequência"]],
+                          ["GPU (Placa de Vídeo)", ["GPU Nome", "GPU Marca", "GPU VRAM", "GPU Memória"]],
+                          ["RAM", ["RAM Capacidade", "RAM Tipo", "RAM Frequência", "RAM Módulos"]],
+                          ["Armazenamento (HD / SSD / NVMe)", ["Armazenamento Tipo", "Armazenamento Capacidade", "Armazenamento Marca"]],
+                          ["MB (Placa-Mãe)", ["MB Modelo", "MB Marca", "MB Socket"]],
+                        ]).map(([title, keys]) => (
                       <div key={String(title)} className="rounded-2xl border border-white/10 p-3">
                         <p className="mb-2 text-sm text-white/80">{title}</p>
                         <div className="grid gap-3 sm:grid-cols-2">
