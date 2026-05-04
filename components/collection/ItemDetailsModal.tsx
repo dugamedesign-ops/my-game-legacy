@@ -99,6 +99,7 @@ export function ItemDetailsModal({
   const [releaseDateInput, setReleaseDateInput] = useState<string | undefined>(undefined);
   const [releaseDateDraft, setReleaseDateDraft] = useState("");
   const [isEditingReleaseDate, setIsEditingReleaseDate] = useState(false);
+  const [pcSpecs, setPcSpecs] = useState<Record<string, string>>({});
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const releaseDateInputRef = useRef<HTMLInputElement | null>(null);
@@ -206,6 +207,15 @@ export function ItemDetailsModal({
       .filter(Boolean);
     setGenrePrimaryInput(primary);
     setGenreSecondaryInput(secondary);
+    const parsedSpecs = Object.fromEntries(
+      (item.pcComponents ?? [])
+        .map((entry) => {
+          const [key, ...rest] = entry.split(":");
+          return [key.trim(), rest.join(":").trim()];
+        })
+        .filter(([key, value]) => key && value),
+    );
+    setPcSpecs(parsedSpecs);
 
     setIsEditingImage(false);
     setIsSearchingCover(false);
@@ -303,10 +313,7 @@ export function ItemDetailsModal({
 
   const isGame = item.type === "game";
   const isPcMachine = item.platform.trim().toLowerCase() === "pc" && item.type === "console";
-  const machineNameFromComponents =
-    item.pcComponents?.find((value) => value.toLowerCase().startsWith("máquina:"))?.split(":")[1]?.trim() ?? "";
-  const getPcComponentField = (prefix: string) =>
-    item.pcComponents?.find((value) => value.toLowerCase().startsWith(prefix.toLowerCase()))?.split(":")[1]?.trim() ?? "";
+  const machineNameFromComponents = pcSpecs["Máquina"] ?? "";
   const isWishlist = ownershipStatusInput === "wishlist";
   const hasAcquisitionInWishlist = isWishlist && acquisitionStatusInput === "purchased";
   const shouldDisablePaidInputs = isWishlist && !hasAcquisitionInWishlist;
@@ -708,6 +715,11 @@ export function ItemDetailsModal({
               .filter(Boolean)
               .join(" / ") || undefined
           : item.genre,
+      pcComponents: isPcMachine
+        ? Object.entries(pcSpecs)
+            .filter(([, value]) => value.trim().length > 0)
+            .map(([key, value]) => `${key}: ${value.trim()}`)
+        : item.pcComponents,
 
       updatedAt: new Date().toISOString(),
     };
@@ -930,17 +942,30 @@ export function ItemDetailsModal({
                   {isPcMachine ? "Especificações" : "Informações principais"}
                 </h4>
                 {isPcMachine ? (
-                  <div className="mt-3 grid gap-4 md:grid-cols-2">
-                    <label className="block"><span className="mb-2 block text-sm text-white/70">CPU (Modelo)</span><input value={getPcComponentField("CPU Modelo")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
-                    <label className="block"><span className="mb-2 block text-sm text-white/70">CPU (Marca)</span><input value={getPcComponentField("CPU Marca")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
-                    <label className="block"><span className="mb-2 block text-sm text-white/70">GPU (Nome)</span><input value={getPcComponentField("GPU Nome")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
-                    <label className="block"><span className="mb-2 block text-sm text-white/70">GPU (VRAM)</span><input value={getPcComponentField("GPU VRAM")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
-                    <label className="block"><span className="mb-2 block text-sm text-white/70">RAM (Capacidade)</span><input value={getPcComponentField("RAM Capacidade")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
-                    <label className="block"><span className="mb-2 block text-sm text-white/70">RAM (Tipo)</span><input value={getPcComponentField("RAM Tipo")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
-                    <label className="block"><span className="mb-2 block text-sm text-white/70">Armazenamento (Tipo)</span><input value={getPcComponentField("Armazenamento Tipo")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
-                    <label className="block"><span className="mb-2 block text-sm text-white/70">Armazenamento (Capacidade)</span><input value={getPcComponentField("Armazenamento Capacidade")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
-                    <label className="block"><span className="mb-2 block text-sm text-white/70">Placa-mãe (Modelo)</span><input value={getPcComponentField("MB Modelo")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
-                    <label className="block"><span className="mb-2 block text-sm text-white/70">Placa-mãe (Socket)</span><input value={getPcComponentField("MB Socket")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
+                  <div className="mt-3 space-y-4">
+                    {[
+                      ["Máquina", ["Máquina", "Marca máquina"]],
+                      ["CPU (Processador)", ["CPU Modelo", "CPU Marca", "CPU Núcleos", "CPU Frequência"]],
+                      ["GPU (Placa de Vídeo)", ["GPU Nome", "GPU Marca", "GPU VRAM", "GPU Memória"]],
+                      ["RAM", ["RAM Capacidade", "RAM Tipo", "RAM Frequência", "RAM Módulos"]],
+                      ["Armazenamento (HD / SSD / NVMe)", ["Armazenamento Tipo", "Armazenamento Capacidade", "Armazenamento Marca"]],
+                      ["MB (Placa-Mãe)", ["MB Modelo", "MB Marca", "MB Socket"]],
+                    ].map(([title, keys]) => (
+                      <div key={String(title)} className="rounded-2xl border border-white/10 p-3">
+                        <p className="mb-2 text-sm text-white/80">{title}</p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {(keys as string[]).map((key) => (
+                            <input
+                              key={key}
+                              value={pcSpecs[key] ?? ""}
+                              onChange={(e) => setPcSpecs((prev) => ({ ...prev, [key]: e.target.value }))}
+                              placeholder={key}
+                              className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                 <div className="mt-3 grid gap-4 md:grid-cols-2">
