@@ -303,6 +303,10 @@ export function ItemDetailsModal({
 
   const isGame = item.type === "game";
   const isPcMachine = item.platform.trim().toLowerCase() === "pc" && item.type === "console";
+  const machineNameFromComponents =
+    item.pcComponents?.find((value) => value.toLowerCase().startsWith("máquina:"))?.split(":")[1]?.trim() ?? "";
+  const getPcComponentField = (prefix: string) =>
+    item.pcComponents?.find((value) => value.toLowerCase().startsWith(prefix.toLowerCase()))?.split(":")[1]?.trim() ?? "";
   const isWishlist = ownershipStatusInput === "wishlist";
   const hasAcquisitionInWishlist = isWishlist && acquisitionStatusInput === "purchased";
   const shouldDisablePaidInputs = isWishlist && !hasAcquisitionInWishlist;
@@ -819,7 +823,7 @@ export function ItemDetailsModal({
             <div className="space-y-6">
               <div>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-                  {nameInput || item.title}
+                  {isPcMachine ? machineNameFromComponents || nameInput || item.title : nameInput || item.title}
                 </h2>
                 {!isGame && subtitleInput && (
                   <p className="mt-2 text-lg text-white/65">{subtitleInput}</p>
@@ -925,6 +929,20 @@ export function ItemDetailsModal({
                 <h4 className="mt-4 text-base font-semibold tracking-[0.08em] text-white/75">
                   {isPcMachine ? "Especificações" : "Informações principais"}
                 </h4>
+                {isPcMachine ? (
+                  <div className="mt-3 grid gap-4 md:grid-cols-2">
+                    <label className="block"><span className="mb-2 block text-sm text-white/70">CPU (Modelo)</span><input value={getPcComponentField("CPU Modelo")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
+                    <label className="block"><span className="mb-2 block text-sm text-white/70">CPU (Marca)</span><input value={getPcComponentField("CPU Marca")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
+                    <label className="block"><span className="mb-2 block text-sm text-white/70">GPU (Nome)</span><input value={getPcComponentField("GPU Nome")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
+                    <label className="block"><span className="mb-2 block text-sm text-white/70">GPU (VRAM)</span><input value={getPcComponentField("GPU VRAM")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
+                    <label className="block"><span className="mb-2 block text-sm text-white/70">RAM (Capacidade)</span><input value={getPcComponentField("RAM Capacidade")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
+                    <label className="block"><span className="mb-2 block text-sm text-white/70">RAM (Tipo)</span><input value={getPcComponentField("RAM Tipo")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
+                    <label className="block"><span className="mb-2 block text-sm text-white/70">Armazenamento (Tipo)</span><input value={getPcComponentField("Armazenamento Tipo")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
+                    <label className="block"><span className="mb-2 block text-sm text-white/70">Armazenamento (Capacidade)</span><input value={getPcComponentField("Armazenamento Capacidade")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
+                    <label className="block"><span className="mb-2 block text-sm text-white/70">Placa-mãe (Modelo)</span><input value={getPcComponentField("MB Modelo")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
+                    <label className="block"><span className="mb-2 block text-sm text-white/70">Placa-mãe (Socket)</span><input value={getPcComponentField("MB Socket")} readOnly className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85 outline-none" /></label>
+                  </div>
+                ) : (
                 <div className="mt-3 grid gap-4 md:grid-cols-2">
                   <label className="block">
                     <span className="mb-2 block text-sm text-white/70">Nome</span>
@@ -1041,6 +1059,7 @@ export function ItemDetailsModal({
                     </>
                   )}
                 </div>
+                )}
 
               {isEditingImage && (
                 <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
