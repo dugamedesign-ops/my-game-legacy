@@ -8,6 +8,7 @@ import {
   getItemPendingLabel,
   getPendingItems,
 } from "@/lib/completion-utils";
+import { readPendingFiltersFromStorage } from "@/lib/pending-filters";
 import { getNormalizedAcquisitionStatus } from "@/lib/acquisition-utils";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -40,48 +41,7 @@ export function PendingItemsOverview({
   hideToggle = false,
 }: PendingItemsOverviewProps) {
   const { session, user } = useAuth();
-  const initialFilters = (() => {
-    if (typeof window === "undefined") {
-      return {
-        platforms: [] as string[],
-        types: [] as Item["type"][],
-        ownership: [] as Array<Item["ownershipStatus"] | "purchased">,
-        missingFields: [] as ItemPendingField[],
-      };
-    }
-
-    const raw = window.localStorage.getItem("my-game-legacy-pending-filters");
-    if (!raw) {
-      return {
-        platforms: [] as string[],
-        types: [] as Item["type"][],
-        ownership: [] as Array<Item["ownershipStatus"] | "purchased">,
-        missingFields: [] as ItemPendingField[],
-      };
-    }
-
-    try {
-      const parsed = JSON.parse(raw) as {
-        platforms?: string[];
-        types?: Item["type"][];
-        ownership?: Array<Item["ownershipStatus"] | "purchased">;
-        missingFields?: ItemPendingField[];
-      };
-      return {
-        platforms: parsed.platforms ?? [],
-        types: parsed.types ?? [],
-        ownership: parsed.ownership ?? [],
-        missingFields: parsed.missingFields ?? [],
-      };
-    } catch {
-      return {
-        platforms: [] as string[],
-        types: [] as Item["type"][],
-        ownership: [] as Array<Item["ownershipStatus"] | "purchased">,
-        missingFields: [] as ItemPendingField[],
-      };
-    }
-  })();
+  const [initialFilters] = useState(readPendingFiltersFromStorage);
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(initialFilters.platforms);
   const [selectedTypes, setSelectedTypes] = useState<Item["type"][]>(initialFilters.types);
