@@ -227,9 +227,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const skipNextPopstateRef = useRef(false);
   const didInstallExitGuardRef = useRef(false);
   const allowNextPopstateExitRef = useRef(false);
+  const lastExitBackAtRef = useRef(0);
+  const exitHintTimerRef = useRef<number | undefined>(undefined);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [notificationFeedback, setNotificationFeedback] = useState<string | null>(null);
+  const [showExitHint, setShowExitHint] = useState(false);
   const [isLatestAddedPaused, setIsLatestAddedPaused] = useState(false);
 
   const [prefilledType, setPrefilledType] = useState<
@@ -418,6 +421,24 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   }, [isBlockingLayerOpen]);
 
   useEffect(() => {
+    function showBackAgainHint() {
+      lastExitBackAtRef.current = Date.now();
+      setShowExitHint(true);
+      window.history.pushState(
+        { ...(window.history.state ?? {}), __mglExitGuard: true },
+        "",
+      );
+
+      if (exitHintTimerRef.current) {
+        window.clearTimeout(exitHintTimerRef.current);
+      }
+
+      exitHintTimerRef.current = window.setTimeout(() => {
+        lastExitBackAtRef.current = 0;
+        setShowExitHint(false);
+      }, 2200);
+    }
+
     function handlePopState() {
       if (allowNextPopstateExitRef.current) return;
 
@@ -427,30 +448,34 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       }
 
       if (isMobileSidebarOpenRef.current || isModalOpenRef.current) {
+        lastExitBackAtRef.current = 0;
+        setShowExitHint(false);
         hasBlockingLayerHistoryEntryRef.current = false;
         closeTopBlockingLayer();
         return;
       }
 
-      const confirmed = window.confirm(
-        "Deseja realmente sair do My Game Legacy?",
-      );
-
-      if (!confirmed) {
-        window.history.pushState(
-          { ...(window.history.state ?? {}), __mglExitGuard: true },
-          "",
-        );
+      if (Date.now() - lastExitBackAtRef.current <= 2200) {
+        allowNextPopstateExitRef.current = true;
+        setShowExitHint(false);
+        if (exitHintTimerRef.current) {
+          window.clearTimeout(exitHintTimerRef.current);
+        }
+        window.history.back();
+        window.setTimeout(() => window.close(), 120);
         return;
       }
 
-      allowNextPopstateExitRef.current = true;
-      window.history.back();
-      window.setTimeout(() => window.close(), 120);
+      showBackAgainHint();
     }
 
     window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      if (exitHintTimerRef.current) {
+        window.clearTimeout(exitHintTimerRef.current);
+      }
+    };
   }, [closeTopBlockingLayer]);
 
   useEffect(() => {
@@ -614,7 +639,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
         new Notification(title, options);
       }
 
-      setNotificationFeedback("Notificação de teste enviada.");
+      const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      setNotificationFeedback(
+        isMobileDevice
+          ? "Notificação de teste enviada."
+          : "Teste enviado neste dispositivo. Para o desktop avisar o celular, ainda precisamos ativar push remoto.",
+      );
     } catch (error) {
       console.error("Erro ao enviar notificação de teste:", error);
       const message =
@@ -1572,6 +1602,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
         initialPlatform={prefilledPlatform}
         currentUserId={user?.id}
       />
+
+      {showExitHint && (
+        <div className="fixed bottom-6 left-1/2 z-[90] -translate-x-1/2 rounded-full border border-white/15 bg-black/80 px-4 py-2 text-sm font-medium text-white shadow-2xl backdrop-blur">
+          Voltar novamente para sair do app
+        </div>
+      )}
 
       {contextMenu && (
         <div
