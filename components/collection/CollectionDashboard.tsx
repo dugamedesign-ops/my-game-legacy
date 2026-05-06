@@ -140,6 +140,19 @@ function mergePlatformOrderSlots(
   }) as PlatformOrderSlot[];
 }
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = `${base64String}${padding}`.replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let index = 0; index < rawData.length; index += 1) {
+    outputArray[index] = rawData.charCodeAt(index);
+  }
+
+  return outputArray;
+}
+
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const { user: authUser, session, signOut, publicProfile, setProfileVisibility } = useAuth();
   const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
@@ -596,8 +609,114 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     window.open(publicLink, "_blank", "noopener,noreferrer");
   }
 
+  async function showLocalTestNotification() {
+    const title = "My Game Legacy";
+    const options: NotificationOptions = {
+      body: "Essa é uma notificação de teste do seu legado.",
+      icon: "/icon.png",
+      badge: "/icon.png",
+      tag: "my-game-legacy-test",
+    };
+
+    if ("serviceWorker" in navigator) {
+      const registration = await navigator.serviceWorker.register(
+        "/notification-sw.js",
+        { scope: "/" },
+      );
+      await navigator.serviceWorker.ready;
+      await registration.showNotification(title, options);
+      return;
+    }
+
+    new Notification(title, options);
+  }
+
+  async function registerThisDeviceForRemotePush(publicKey: string) {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+    if (!("Notification" in window)) return false;
+
+    let permission: NotificationPermission = Notification.permission;
+
+    if (permission === "default") {
+      permission = await Notification.requestPermission();
+    }
+
+    if (permission !== "granted") return false;
+
+    const registration = await navigator.serviceWorker.register(
+      "/notification-sw.js",
+      { scope: "/" },
+    );
+    const readyRegistration = await navigator.serviceWorker.ready;
+    const existingSubscription = await readyRegistration.pushManager.getSubscription();
+    const subscription =
+      existingSubscription ??
+      (await readyRegistration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      }));
+
+    const response = await fetch("/api/push/subscribe", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session?.access_token ?? ""}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ subscription: subscription.toJSON() }),
+    });
+
+    if (!response.ok) throw new Error(await response.text());
+    return !!registration;
+  }
+
   async function handleTestNotification() {
     setNotificationFeedback(null);
+
+    if (session?.access_token) {
+      try {
+        const configResponse = await fetch("/api/push/config", { cache: "no-store" });
+        const config = (await configResponse.json()) as {
+          enabled?: boolean;
+          publicKey?: string | null;
+        };
+
+        if (config.enabled && config.publicKey) {
+          await registerThisDeviceForRemotePush(config.publicKey);
+
+          const sendResponse = await fetch("/api/push/send-test", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          const result = (await sendResponse.json()) as {
+            sent?: number;
+            total?: number;
+            error?: string;
+          };
+
+          if (!sendResponse.ok) {
+            throw new Error(result.error ?? "Falha ao enviar push remoto.");
+          }
+
+          if (!result.total) {
+            setNotificationFeedback(
+              "Nenhum celular inscrito ainda. Abra o app no celular e toque em Teste uma vez para cadastrar o aparelho.",
+            );
+            return;
+          }
+
+          setNotificationFeedback(
+            `Push remoto enviado para ${result.sent ?? 0} de ${result.total} aparelho(s).`,
+          );
+          return;
+        }
+      } catch (error) {
+        console.error("Erro no push remoto:", error);
+        setNotificationFeedback(
+          "Push remoto indisponível. Confira VAPID, service role e tabela push_subscriptions.",
+        );
+        return;
+      }
+    }
 
     if (!("Notification" in window)) {
       const message = "Este navegador não oferece suporte a notificações.";
@@ -619,31 +738,12 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
       return;
     }
 
-    const title = "My Game Legacy";
-    const options: NotificationOptions = {
-      body: "Essa é uma notificação de teste do seu legado.",
-      icon: "/icon.png",
-      badge: "/icon.png",
-      tag: "my-game-legacy-test",
-    };
-
     try {
-      if ("serviceWorker" in navigator) {
-        const registration = await navigator.serviceWorker.register(
-          "/notification-sw.js",
-          { scope: "/" },
-        );
-        await navigator.serviceWorker.ready;
-        await registration.showNotification(title, options);
-      } else {
-        new Notification(title, options);
-      }
-
-      const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      await showLocalTestNotification();
       setNotificationFeedback(
-        isMobileDevice
-          ? "Notificação de teste enviada."
-          : "Teste enviado neste dispositivo. Para o desktop avisar o celular, ainda precisamos ativar push remoto.",
+        session?.access_token
+          ? "Teste local enviado. Configure o push remoto para enviar desktop → celular."
+          : "Teste local enviado. Entre na conta para cadastrar este aparelho no push remoto.",
       );
     } catch (error) {
       console.error("Erro ao enviar notificação de teste:", error);
