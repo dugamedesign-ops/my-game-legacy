@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Image from "next/image";
 import { Item } from "@/types/collection";
@@ -213,6 +213,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     getInitialPlatformOrderSlots,
   );
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [isPageScrolling, setIsPageScrolling] = useState(false);
   const [financialFocusFilters, setFinancialFocusFilters] = useState<FinancialCollectionViewFilters>(
     createEmptyFinancialCollectionViewFilters,
   );
@@ -222,10 +223,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const legacyMenuRef = useRef<HTMLDivElement | null>(null);
   const isModalOpenRef = useRef(false);
   const isMobileSidebarOpenRef = useRef(false);
-  const hasModalHistoryEntryRef = useRef(false);
-  const hasSidebarHistoryEntryRef = useRef(false);
+  const hasBlockingLayerHistoryEntryRef = useRef(false);
   const skipNextPopstateRef = useRef(false);
-  const skipNextSidebarPopstateRef = useRef(false);
+  const didInstallExitGuardRef = useRef(false);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [isLatestAddedPaused, setIsLatestAddedPaused] = useState(false);
@@ -283,16 +283,34 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   }, []);
 
   useEffect(() => {
+    let scrollTimer: number | undefined;
+
     function handleScroll() {
       setShowBackToTop(window.scrollY > 900);
+      setIsPageScrolling(true);
+
+      if (scrollTimer) window.clearTimeout(scrollTimer);
+      scrollTimer = window.setTimeout(() => {
+        setIsPageScrolling(false);
+      }, 260);
     }
 
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (scrollTimer) window.clearTimeout(scrollTimer);
+    };
   }, []);
 
-  const isAnyModalOpen = isAddModalOpen || !!selectedItem;
+  const isAnyModalOpen =
+    isAddModalOpen ||
+    !!selectedItem ||
+    isFinancialOpen ||
+    isPendingOpen ||
+    isFiltersModalOpen ||
+    isPlatformOrganizerOpen;
+  const isBlockingLayerOpen = isAnyModalOpen || isMobileSidebarOpen;
 
   useEffect(() => {
     isModalOpenRef.current = isAnyModalOpen;
@@ -302,72 +320,112 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     isMobileSidebarOpenRef.current = isMobileSidebarOpen;
   }, [isMobileSidebarOpen]);
 
+  const closeTopBlockingLayer = useCallback(() => {
+    if (isMobileSidebarOpenRef.current) {
+      setIsMobileSidebarOpen(false);
+      return;
+    }
+
+    if (isPlatformOrganizerOpen) {
+      setIsPlatformOrganizerOpen(false);
+      return;
+    }
+
+    if (isFiltersModalOpen) {
+      setIsFiltersModalOpen(false);
+      return;
+    }
+
+    if (isPendingOpen) {
+      setIsPendingOpen(false);
+      return;
+    }
+
+    if (isFinancialOpen) {
+      setIsFinancialOpen(false);
+      return;
+    }
+
+    if (isAddModalOpen) {
+      setIsAddModalOpen(false);
+      setPrefilledType(null);
+      setPrefilledPlatform(null);
+      return;
+    }
+
+    setSelectedItem(null);
+  }, [
+    isAddModalOpen,
+    isFinancialOpen,
+    isFiltersModalOpen,
+    isPendingOpen,
+    isPlatformOrganizerOpen,
+    setPrefilledPlatform,
+    setPrefilledType,
+  ]);
+
   useEffect(() => {
-    if (!isAnyModalOpen || hasModalHistoryEntryRef.current) return;
+    if (didInstallExitGuardRef.current) return;
 
     window.history.pushState(
-      { ...(window.history.state ?? {}), __mglModal: true },
+      { ...(window.history.state ?? {}), __mglExitGuard: true },
       "",
     );
-    hasModalHistoryEntryRef.current = true;
-  }, [isAnyModalOpen]);
+    didInstallExitGuardRef.current = true;
+  }, []);
 
   useEffect(() => {
-    if (isAnyModalOpen || !hasModalHistoryEntryRef.current) return;
+    if (!isBlockingLayerOpen || hasBlockingLayerHistoryEntryRef.current) return;
+
+    window.history.pushState(
+      { ...(window.history.state ?? {}), __mglBlockingLayer: true },
+      "",
+    );
+    hasBlockingLayerHistoryEntryRef.current = true;
+  }, [isBlockingLayerOpen]);
+
+  useEffect(() => {
+    if (isBlockingLayerOpen || !hasBlockingLayerHistoryEntryRef.current) return;
 
     skipNextPopstateRef.current = true;
-    hasModalHistoryEntryRef.current = false;
+    hasBlockingLayerHistoryEntryRef.current = false;
     window.history.back();
-  }, [isAnyModalOpen]);
-
-  useEffect(() => {
-    if (!isMobileSidebarOpen || hasSidebarHistoryEntryRef.current) return;
-
-    window.history.pushState(
-      { ...(window.history.state ?? {}), __mglSidebar: true },
-      "",
-    );
-    hasSidebarHistoryEntryRef.current = true;
-  }, [isMobileSidebarOpen]);
-
-  useEffect(() => {
-    if (isMobileSidebarOpen || !hasSidebarHistoryEntryRef.current) return;
-
-    skipNextSidebarPopstateRef.current = true;
-    hasSidebarHistoryEntryRef.current = false;
-    window.history.back();
-  }, [isMobileSidebarOpen]);
+  }, [isBlockingLayerOpen]);
 
   useEffect(() => {
     function handlePopState() {
-      if (skipNextSidebarPopstateRef.current) {
-        skipNextSidebarPopstateRef.current = false;
-        return;
-      }
-
       if (skipNextPopstateRef.current) {
         skipNextPopstateRef.current = false;
         return;
       }
 
-      if (isMobileSidebarOpenRef.current) {
-        hasSidebarHistoryEntryRef.current = false;
-        setIsMobileSidebarOpen(false);
+      if (isMobileSidebarOpenRef.current || isModalOpenRef.current) {
+        hasBlockingLayerHistoryEntryRef.current = false;
+        closeTopBlockingLayer();
         return;
       }
 
-      if (!isModalOpenRef.current) return;
+      const confirmed = window.confirm(
+        "Deseja realmente sair do My Game Legacy?",
+      );
 
-      hasModalHistoryEntryRef.current = false;
-      setIsAddModalOpen(false);
-      setPrefilledType(null);
-      setPrefilledPlatform(null);
-      setSelectedItem(null);
+      if (!confirmed) {
+        window.history.pushState(
+          { ...(window.history.state ?? {}), __mglExitGuard: true },
+          "",
+        );
+        return;
+      }
+
+      window.close();
+      window.setTimeout(() => {
+        window.history.back();
+      }, 0);
     }
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  }, [closeTopBlockingLayer]);
 
   useEffect(() => {
     if (!isMobileSidebarOpen) return;
@@ -380,6 +438,33 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
+  }, [isMobileSidebarOpen]);
+
+  useEffect(() => {
+    if (!isMobileSidebarOpen) return;
+
+    const scrollY = window.scrollY;
+    const { body, documentElement } = document;
+    const previousBodyPosition = body.style.position;
+    const previousBodyTop = body.style.top;
+    const previousBodyWidth = body.style.width;
+    const previousBodyOverflow = body.style.overflow;
+    const previousOverscrollBehavior = documentElement.style.overscrollBehaviorY;
+
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+    documentElement.style.overscrollBehaviorY = "none";
+
+    return () => {
+      body.style.position = previousBodyPosition;
+      body.style.top = previousBodyTop;
+      body.style.width = previousBodyWidth;
+      body.style.overflow = previousBodyOverflow;
+      documentElement.style.overscrollBehaviorY = previousOverscrollBehavior;
+      window.scrollTo(0, scrollY);
+    };
   }, [isMobileSidebarOpen]);
 
   useEffect(() => {
@@ -887,7 +972,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     <>
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_25%),radial-gradient(circle_at_80%_20%,_rgba(168,85,247,0.12),_transparent_20%),linear-gradient(180deg,_#09090b_0%,_#111827_100%)] text-white">
         <div className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 lg:px-8">
-          <div className="mb-4 flex items-center justify-between lg:hidden">
+          <div className="mb-4 pr-16 lg:hidden">
             <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/80">
               {legacyTitle}
             </p>
@@ -896,7 +981,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               onClick={() => setIsMobileSidebarOpen((open) => !open)}
               aria-expanded={isMobileSidebarOpen}
               aria-controls="mobile-sidebar"
-              className="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 p-2 text-white transition hover:bg-white/10 active:scale-95"
+              className={`fixed right-4 top-4 z-[70] inline-flex items-center justify-center rounded-xl border border-white/15 bg-[#0b1220]/90 p-2 text-white shadow-2xl backdrop-blur transition hover:bg-[#0b1220] active:scale-95 lg:hidden ${
+                isPageScrolling && !isMobileSidebarOpen ? "opacity-25" : "opacity-100"
+              }`}
             >
               <span className="sr-only">Abrir funções da barra lateral</span>
               <span className="text-xl leading-none">☰</span>
@@ -915,7 +1002,7 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
               id="mobile-sidebar"
               className={`mb-6 lg:sticky lg:top-6 lg:mb-0 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto ${
                 isMobileSidebarOpen
-                  ? "styled-scrollbar fixed inset-y-0 left-0 z-50 w-[86vw] max-w-[320px] overflow-y-auto border-r border-white/10 bg-[#0b1220] p-4 shadow-2xl sm:w-[380px] lg:static lg:inset-auto lg:z-auto lg:w-auto lg:max-w-none lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
+                  ? "styled-scrollbar fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[86vw] max-w-[360px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[30px] border border-white/10 bg-[#0b1220] p-4 shadow-2xl sm:w-[380px] lg:static lg:inset-auto lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:translate-y-0 lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
                   : "hidden lg:block"
               }`}
             >
