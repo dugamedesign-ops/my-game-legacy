@@ -226,8 +226,10 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const hasBlockingLayerHistoryEntryRef = useRef(false);
   const skipNextPopstateRef = useRef(false);
   const didInstallExitGuardRef = useRef(false);
+  const allowNextPopstateExitRef = useRef(false);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [notificationFeedback, setNotificationFeedback] = useState<string | null>(null);
   const [isLatestAddedPaused, setIsLatestAddedPaused] = useState(false);
 
   const [prefilledType, setPrefilledType] = useState<
@@ -364,15 +366,38 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     setPrefilledType,
   ]);
 
-  useEffect(() => {
-    if (didInstallExitGuardRef.current) return;
+  const installExitGuard = useCallback(() => {
+    if (didInstallExitGuardRef.current || isBlockingLayerOpen) return;
 
+    window.history.replaceState(
+      { ...(window.history.state ?? {}), __mglExitBase: true },
+      "",
+    );
     window.history.pushState(
       { ...(window.history.state ?? {}), __mglExitGuard: true },
       "",
     );
     didInstallExitGuardRef.current = true;
-  }, []);
+  }, [isBlockingLayerOpen]);
+
+  useEffect(() => {
+    function handleFirstUserGesture() {
+      installExitGuard();
+    }
+
+    window.addEventListener("pointerdown", handleFirstUserGesture, { once: true });
+    window.addEventListener("keydown", handleFirstUserGesture, { once: true });
+    window.addEventListener("touchstart", handleFirstUserGesture, {
+      once: true,
+      passive: true,
+    });
+
+    return () => {
+      window.removeEventListener("pointerdown", handleFirstUserGesture);
+      window.removeEventListener("keydown", handleFirstUserGesture);
+      window.removeEventListener("touchstart", handleFirstUserGesture);
+    };
+  }, [installExitGuard]);
 
   useEffect(() => {
     if (!isBlockingLayerOpen || hasBlockingLayerHistoryEntryRef.current) return;
@@ -394,6 +419,8 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
 
   useEffect(() => {
     function handlePopState() {
+      if (allowNextPopstateExitRef.current) return;
+
       if (skipNextPopstateRef.current) {
         skipNextPopstateRef.current = false;
         return;
@@ -417,10 +444,9 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
         return;
       }
 
-      window.close();
-      window.setTimeout(() => {
-        window.history.back();
-      }, 0);
+      allowNextPopstateExitRef.current = true;
+      window.history.back();
+      window.setTimeout(() => window.close(), 120);
     }
 
     window.addEventListener("popstate", handlePopState);
@@ -543,6 +569,59 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     if (!publicProfile?.friend_code || !publicProfile.is_public) return;
     const publicLink = `${window.location.origin}/u/${publicProfile.friend_code}`;
     window.open(publicLink, "_blank", "noopener,noreferrer");
+  }
+
+  async function handleTestNotification() {
+    setNotificationFeedback(null);
+
+    if (!("Notification" in window)) {
+      const message = "Este navegador não oferece suporte a notificações.";
+      setNotificationFeedback(message);
+      globalThis.alert(message);
+      return;
+    }
+
+    let permission: NotificationPermission = Notification.permission;
+
+    if (permission === "default") {
+      permission = await Notification.requestPermission();
+    }
+
+    if (permission !== "granted") {
+      const message = "Permita notificações para receber o teste no celular.";
+      setNotificationFeedback(message);
+      globalThis.alert(message);
+      return;
+    }
+
+    const title = "My Game Legacy";
+    const options: NotificationOptions = {
+      body: "Essa é uma notificação de teste do seu legado.",
+      icon: "/icon.png",
+      badge: "/icon.png",
+      tag: "my-game-legacy-test",
+    };
+
+    try {
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.register(
+          "/notification-sw.js",
+          { scope: "/" },
+        );
+        await navigator.serviceWorker.ready;
+        await registration.showNotification(title, options);
+      } else {
+        new Notification(title, options);
+      }
+
+      setNotificationFeedback("Notificação de teste enviada.");
+    } catch (error) {
+      console.error("Erro ao enviar notificação de teste:", error);
+      const message =
+        "Não foi possível enviar a notificação de teste neste navegador.";
+      setNotificationFeedback(message);
+      globalThis.alert(message);
+    }
   }
 
   const allActivePlatforms = useMemo(() => {
@@ -1048,6 +1127,17 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                       setIsMobileSidebarOpen(false);
                     }}
                   />
+                  <SidebarActionButton
+                    label="Teste"
+                    onClick={() => {
+                      void handleTestNotification();
+                    }}
+                  />
+                  {notificationFeedback && (
+                    <p className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/55">
+                      {notificationFeedback}
+                    </p>
+                  )}
                   <button
                     type="button"
                     disabled
