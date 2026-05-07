@@ -140,19 +140,6 @@ function mergePlatformOrderSlots(
   }) as PlatformOrderSlot[];
 }
 
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = `${base64String}${padding}`.replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let index = 0; index < rawData.length; index += 1) {
-    outputArray[index] = rawData.charCodeAt(index);
-  }
-
-  return outputArray;
-}
-
 export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const { user: authUser, session, signOut, publicProfile, setProfileVisibility } = useAuth();
   const userMetadata = (authUser?.user_metadata ?? {}) as Record<string, unknown>;
@@ -244,7 +231,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
   const exitHintTimerRef = useRef<number | undefined>(undefined);
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
-  const [notificationFeedback, setNotificationFeedback] = useState<string | null>(null);
   const [showExitHint, setShowExitHint] = useState(false);
   const [isLatestAddedPaused, setIsLatestAddedPaused] = useState(false);
 
@@ -607,151 +593,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
     if (!publicProfile?.friend_code || !publicProfile.is_public) return;
     const publicLink = `${window.location.origin}/u/${publicProfile.friend_code}`;
     window.open(publicLink, "_blank", "noopener,noreferrer");
-  }
-
-  async function showLocalTestNotification() {
-    const title = "My Game Legacy";
-    const options: NotificationOptions = {
-      body: "Essa é uma notificação de teste do seu legado.",
-      icon: "/icon.png",
-      badge: "/icon.png",
-      tag: "my-game-legacy-test",
-    };
-
-    if ("serviceWorker" in navigator) {
-      const registration = await navigator.serviceWorker.register(
-        "/notification-sw.js",
-        { scope: "/" },
-      );
-      await navigator.serviceWorker.ready;
-      await registration.showNotification(title, options);
-      return;
-    }
-
-    new Notification(title, options);
-  }
-
-  async function registerThisDeviceForRemotePush(publicKey: string) {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
-    if (!("Notification" in window)) return false;
-
-    let permission: NotificationPermission = Notification.permission;
-
-    if (permission === "default") {
-      permission = await Notification.requestPermission();
-    }
-
-    if (permission !== "granted") return false;
-
-    const registration = await navigator.serviceWorker.register(
-      "/notification-sw.js",
-      { scope: "/" },
-    );
-    const readyRegistration = await navigator.serviceWorker.ready;
-    const existingSubscription = await readyRegistration.pushManager.getSubscription();
-    const subscription =
-      existingSubscription ??
-      (await readyRegistration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
-      }));
-
-    const response = await fetch("/api/push/subscribe", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${session?.access_token ?? ""}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ subscription: subscription.toJSON() }),
-    });
-
-    if (!response.ok) throw new Error(await response.text());
-    return !!registration;
-  }
-
-  async function handleTestNotification() {
-    setNotificationFeedback(null);
-
-    if (session?.access_token) {
-      try {
-        const configResponse = await fetch("/api/push/config", { cache: "no-store" });
-        const config = (await configResponse.json()) as {
-          enabled?: boolean;
-          publicKey?: string | null;
-        };
-
-        if (config.enabled && config.publicKey) {
-          await registerThisDeviceForRemotePush(config.publicKey);
-
-          const sendResponse = await fetch("/api/push/send-test", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${session.access_token}` },
-          });
-          const result = (await sendResponse.json()) as {
-            sent?: number;
-            total?: number;
-            error?: string;
-          };
-
-          if (!sendResponse.ok) {
-            throw new Error(result.error ?? "Falha ao enviar push remoto.");
-          }
-
-          if (!result.total) {
-            setNotificationFeedback(
-              "Nenhum celular inscrito ainda. Abra o app no celular e toque em Teste uma vez para cadastrar o aparelho.",
-            );
-            return;
-          }
-
-          setNotificationFeedback(
-            `Push remoto enviado para ${result.sent ?? 0} de ${result.total} aparelho(s).`,
-          );
-          return;
-        }
-      } catch (error) {
-        console.error("Erro no push remoto:", error);
-        setNotificationFeedback(
-          "Push remoto indisponível. Confira VAPID, service role e tabela push_subscriptions.",
-        );
-        return;
-      }
-    }
-
-    if (!("Notification" in window)) {
-      const message = "Este navegador não oferece suporte a notificações.";
-      setNotificationFeedback(message);
-      globalThis.alert(message);
-      return;
-    }
-
-    let permission: NotificationPermission = Notification.permission;
-
-    if (permission === "default") {
-      permission = await Notification.requestPermission();
-    }
-
-    if (permission !== "granted") {
-      const message = "Permita notificações para receber o teste no celular.";
-      setNotificationFeedback(message);
-      globalThis.alert(message);
-      return;
-    }
-
-    try {
-      await showLocalTestNotification();
-      setNotificationFeedback(
-        session?.access_token
-          ? "Teste local enviado. Configure o push remoto para enviar desktop → celular."
-          : "Teste local enviado. Entre na conta para cadastrar este aparelho no push remoto.",
-      );
-    } catch (error) {
-      console.error("Erro ao enviar notificação de teste:", error);
-      const message =
-        "Não foi possível enviar a notificação de teste neste navegador.";
-      setNotificationFeedback(message);
-      globalThis.alert(message);
-    }
   }
 
   const allActivePlatforms = useMemo(() => {
@@ -1257,17 +1098,6 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
                       setIsMobileSidebarOpen(false);
                     }}
                   />
-                  <SidebarActionButton
-                    label="Teste"
-                    onClick={() => {
-                      void handleTestNotification();
-                    }}
-                  />
-                  {notificationFeedback && (
-                    <p className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/55">
-                      {notificationFeedback}
-                    </p>
-                  )}
                   <button
                     type="button"
                     disabled
