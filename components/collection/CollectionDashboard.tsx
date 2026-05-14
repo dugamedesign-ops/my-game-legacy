@@ -1546,6 +1546,17 @@ export function CollectionDashboard({ items }: CollectionDashboardProps) {
           onClick={(e) => e.stopPropagation()}
         >
           {contextMenu.item.ownershipStatus === "wishlist" &&
+            contextMenu.item.type === "game" &&
+            getNormalizedAcquisitionStatus(contextMenu.item) !== "purchased" && (
+              <button
+                type="button"
+                onClick={() => moveItemToCollection(contextMenu.item)}
+                className="mb-1 flex w-full rounded-xl px-3 py-2 text-left text-sm text-violet-100 transition hover:bg-violet-500/10"
+              >
+                Marcar como Na Coleção
+              </button>
+            )}
+          {contextMenu.item.ownershipStatus === "wishlist" &&
             !getNormalizedAcquisitionStatus(contextMenu.item) && (
               <button
                 type="button"
